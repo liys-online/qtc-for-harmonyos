@@ -1,0 +1,14 @@
+﻿{
+    "Id" : "harmony",
+    "Name" : "Harmony",
+    "Version" : "0.0.1",
+    "CompatVersion" : "0.0.1",
+    "Vendor" : "Li-Yaosong",
+    "VendorId" : "li-yaosong",
+    "Copyright" : "(C) Li-Yaosong",
+    "License" : "Put short license information here",
+    "Description" : "Put a short description of your plugin here",
+    "Url" : "https://www.li-yaosong.com",
+    "DocumentationUrl" : "",
+    ${IDE_PLUGIN_DEPENDENCIES}
+}
