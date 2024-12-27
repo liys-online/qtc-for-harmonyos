@@ -31,13 +31,11 @@ if(WITH_TESTS)
   # Enable ctest for auto tests.
   enable_testing()
 endif()
-set(TRANSLATIONS
-    Harmony.ts
-)
-# 生成 .qm 文件
+
 find_package(Qt6 REQUIRED COMPONENTS LinguistTools)
 qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES zh_CN)
 qt_add_translations(TARGETS Harmony)
+
 add_qtc_plugin(Harmony
   PLUGIN_DEPENDS
     QtCreator::Core
@@ -48,9 +46,6 @@ add_qtc_plugin(Harmony
     QtCreator::ExtensionSystem
     QtCreator::Utils
   SOURCES
-    .github/workflows/build_cmake.yml
-    .github/workflows/README.md
-    README.md
     qrc.qrc
     ohos.cpp
     harmonydevice.cpp
