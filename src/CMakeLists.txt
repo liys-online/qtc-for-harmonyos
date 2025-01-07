@@ -1,7 +1,24 @@
 ﻿cmake_minimum_required(VERSION 3.16)
 
 # Remove when sharing with others.
-list(APPEND CMAKE_PREFIX_PATH "D:/Qt/Tools/QtCreator")
+
+if(DEFINED QtCreator)
+    set(QtCreatorConfig ${QtCreator}/lib/cmake/QtCreator/QtCreatorConfig.cmake)
+else()
+    set(QT_INSTALL_PATH ${CMAKE_PREFIX_PATH})
+    get_filename_component(PARENT_DIR ${QT_INSTALL_PATH} DIRECTORY)
+    get_filename_component(GRANDPARENT_DIR ${PARENT_DIR} DIRECTORY)
+    set(QtCreatorConfig ${GRANDPARENT_DIR}/Tools/QtCreator/lib/cmake/QtCreator/QtCreatorConfig.cmake)
+endif()
+
+if(EXISTS ${QtCreatorConfig})
+    set(QtCreator ${GRANDPARENT_DIR}/Tools/QtCreator)
+    message(STATUS "QtCreator API found at ${GRANDPARENT_DIR}/Tools/QtCreator")
+else()
+    message(WARNING "File ${QtCreatorConfig} does not exist.")
+endif()
+
+list(APPEND CMAKE_PREFIX_PATH ${QtCreator})
 
 project(Harmony)
 
