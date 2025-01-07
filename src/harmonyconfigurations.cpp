@@ -261,6 +261,11 @@ void HarmonyConfigurations::registerQtVersions()
         });
         for(QtVersion *v: installedVersions)
         {
+            if(!v->qmakeFilePath().exists())
+            {
+                QtVersionManager::instance()->removeVersion(v);
+                continue;
+            }
             if(v->qmakeFilePath() == version->qmakeFilePath()
                 && v->displayName() == version->displayName())
             {

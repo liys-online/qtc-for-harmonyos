@@ -64,6 +64,7 @@ public:
     {
         // Add code here to handle kits being restored
         HarmonyConfigurations::registerNewToolchains();
+        HarmonyConfigurations::registerQtVersions();
     }
     void loadTranslations() {
         QTranslator *translator = new QTranslator();
