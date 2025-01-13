@@ -1,4 +1,5 @@
 ﻿#include "harmonydevice.h"
+#include "harmonydevicemanager.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
 #include <projectexplorer/devicesupport/idevicewidget.h>
@@ -79,6 +80,11 @@ void setupHarmonyDevice()
 void setupHarmonyDeviceManager(QObject *guard)
 {
 
+}
+
+void setupDevicesWatcher()
+{
+    instance()->setupDevicesWatcher();
 }
 
 }

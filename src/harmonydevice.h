@@ -14,6 +14,8 @@ public:
 public:
     ProjectExplorer::IDeviceWidget *createWidget() override;
 };
+void setupDevicesWatcher();
+
 void setupHarmonyDevice();
 void setupHarmonyDeviceManager(QObject *guard);
 } // namespace Ohos::Internal

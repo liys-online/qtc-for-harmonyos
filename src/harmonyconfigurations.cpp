@@ -4,10 +4,12 @@
 #include <qjsonobject.h>
 #include <utils/persistentsettings.h>
 #include <projectexplorer/toolchainmanager.h>
+#include <projectexplorer/devicesupport/devicemanager.h>
 #include <qtsupport/qtversionfactory.h>
 #include <qtsupport/qtversionmanager.h>
 #include "harmonytoolchain.h"
 #include "harmonyqtversion.h"
+#include "harmonydevice.h"
 #include <QJsonDocument>
 using namespace Utils;
 
@@ -195,6 +197,11 @@ FilePath qmakeLocation()
     return config().m_qmakeLocation;
 }
 
+FilePath hdcToolPath()
+{
+    return config().m_sdkLocation.pathAppended("default/openharmony/toolchains/hdc").withExecutableSuffix();
+}
+
 } // namespace HarmonyConfig
 
 const char SettingsGroup[] = "HarmonyConfigurations";
@@ -203,6 +210,8 @@ HarmonyConfigurations::HarmonyConfigurations(QObject *parent)
     : QObject{parent}
 {
     load();
+    connect(DeviceManager::instance(), &DeviceManager::devicesLoaded,
+        this, &HarmonyConfigurations::updateHarmonyDevice);
     m_instance = this;
 }
 
@@ -222,6 +231,16 @@ void HarmonyConfigurations::save()
     settings->endGroup();
 }
 
+void HarmonyConfigurations::updateHarmonyDevice()
+{
+    // Remove any dummy Harmony device, because it won't be usable.
+    DeviceManager *const devMgr = DeviceManager::instance();
+    IDevice::ConstPtr dev = devMgr->find(Constants::HARMONY_DEVICE_ID);
+    if (dev)
+        devMgr->removeDevice(dev->id());
+    setupDevicesWatcher();
+}
+
 HarmonyConfigurations *HarmonyConfigurations::instance()
 {
     return m_instance;
@@ -231,7 +250,7 @@ void HarmonyConfigurations::applyConfig()
 {
     emit m_instance->aboutToUpdate();
     m_instance->save();
-    // updateHarmonyDevice();
+    updateHarmonyDevice();
     registerNewToolchains();
     registerQtVersions();
     // updateAutomaticKitList();

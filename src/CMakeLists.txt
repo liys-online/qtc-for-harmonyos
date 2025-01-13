@@ -75,6 +75,8 @@ add_qtc_plugin(Harmony
     harmonytoolchain.h
     harmonyqtversion.cpp
     harmonyqtversion.h
+    harmonydevicemanager.cpp
+    harmonydevicemanager.h
     ohosconstants.h
     ohostr.h
 )

@@ -16,8 +16,11 @@ public:
 private:
     friend void setupHarmonyConfigurations();
     explicit HarmonyConfigurations(QObject *parent = nullptr);
+
     void load();
     void save();
+
+    static void updateHarmonyDevice();
 signals:
     void aboutToUpdate();
     void updated();
@@ -41,6 +44,8 @@ QLatin1String displayName(const ProjectExplorer::Abi &abi);
 QVersionNumber sdkVersion();
 QVersionNumber ndkVersion();
 bool setVersion(const Utils::FilePath &releaseFile);
+
+Utils::FilePath hdcToolPath();
 }
 void setupHarmonyConfigurations();
 } // namespace OhosConfig
