@@ -46,6 +46,10 @@ QVersionNumber ndkVersion();
 bool setVersion(const Utils::FilePath &releaseFile);
 
 Utils::FilePath hdcToolPath();
+int getSDKVersion(const QString &device);
+QString getProductModel(const QString &device);
+QString getDeviceName(const QString &device);
+QString getAbis(const QString &device);
 }
 void setupHarmonyConfigurations();
 } // namespace OhosConfig

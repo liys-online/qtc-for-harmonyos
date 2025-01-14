@@ -42,7 +42,7 @@ HarmonyDevice::HarmonyDevice()
                      }});
 }
 
-IDevice::Ptr HarmonyDevice::create()
+IDevicePtr HarmonyDevice::create()
 {
     return IDevice::Ptr(new HarmonyDevice);
 }
@@ -66,9 +66,7 @@ public:
                         ":/android/images/androiddevice.png");
         setConstructionFunction(&HarmonyDevice::create);
 
-        setCreator([] {
-            return IDevice::Ptr(new HarmonyDevice);
-        });
+        setCreator(HarmonyDevice::create);
     }
 };
 

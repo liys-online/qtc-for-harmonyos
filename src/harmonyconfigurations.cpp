@@ -11,11 +11,13 @@
 #include "harmonyqtversion.h"
 #include "harmonydevice.h"
 #include <QJsonDocument>
+#include <utils/qtcprocess.h>
 using namespace Utils;
 
 using namespace ProjectExplorer;
 using namespace QtSupport;
 namespace Ohos::Internal {
+using namespace Constants::Parameter;
 const Key changeTimeStamp("ChangeTimeStamp");
 const QLatin1String ArmToolsDisplayName("arm");
 const QLatin1String X86ToolsDisplayName("i686");
@@ -25,6 +27,18 @@ const QLatin1String Unknown("unknown");
 static FilePath sdkSettingsFileName()
 {
     return Core::ICore::installerResourcePath("harmony.xml");
+}
+
+static QString getDeviceProperty(const QString &device, const QString &property)
+{
+    Process hdcParam;
+    const CommandLine command{HarmonyConfig::hdcToolPath(), {"-t", device, "shell", "param", "get", property}};
+    qDebug() << "getDeviceProperty" << command.toUserOutput();
+    hdcParam.setCommand(command);
+    hdcParam.runBlocking();
+    if (hdcParam.result() == ProcessResult::FinishedWithSuccess)
+        return hdcParam.allOutput();
+    return {};
 }
 namespace HarmonyConfig {
 struct HarmonyConfigData{
@@ -202,7 +216,32 @@ FilePath hdcToolPath()
     return config().m_sdkLocation.pathAppended("default/openharmony/toolchains/hdc").withExecutableSuffix();
 }
 
+int getSDKVersion(const QString &device)
+{
+    const QString tmp = getDeviceProperty(device, Ohos::apiversion);
+    return tmp.isEmpty() ? -1 : tmp.trimmed().toInt();
+}
+
+QString getProductModel(const QString &device)
+{
+    const QString tmp = getDeviceProperty(device, Product::model);
+    return tmp.isEmpty() ? QString() : tmp.trimmed();
+}
+
+QString getDeviceName(const QString &device)
+{
+    const QString tmp = getDeviceProperty(device, Product::name);
+    return tmp.isEmpty() ? QString() : tmp.trimmed();
+}
+
+QString getAbis(const QString &device)
+{
+    const QString tmp = getDeviceProperty(device, Product::Cpu::abilist);
+    return tmp.isEmpty() ? QString() : tmp.trimmed();
+}
+
 } // namespace HarmonyConfig
+
 
 const char SettingsGroup[] = "HarmonyConfigurations";
 HarmonyConfigurations *m_instance = nullptr;
@@ -238,6 +277,14 @@ void HarmonyConfigurations::updateHarmonyDevice()
     IDevice::ConstPtr dev = devMgr->find(Constants::HARMONY_DEVICE_ID);
     if (dev)
         devMgr->removeDevice(dev->id());
+    /*
+     * Add a deault Harmony device
+     */
+    HarmonyDevice *deaultDevice = new HarmonyDevice();
+    deaultDevice->setupId(IDevice::AutoDetected, Constants::HARMONY_DEVICE_ID);
+    deaultDevice->setMachineType(IDevice::Emulator);
+    deaultDevice->setDeviceState(IDevice::DeviceStateUnknown);
+    devMgr->addDevice(IDevicePtr(deaultDevice));
     setupDevicesWatcher();
 }
 

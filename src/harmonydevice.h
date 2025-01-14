@@ -8,7 +8,7 @@ class HarmonyDevice : public ProjectExplorer::IDevice
 public:
     HarmonyDevice();
 
-    static IDevice::Ptr create();
+    static ProjectExplorer::IDevicePtr create();
 
     // IDevice interface
 public:
