@@ -897,49 +897,6 @@ namespace Parameter {
             const char DistributedHardwareFWK[] = "const.SystemCapability.DistributedHardware.DistributedHardwareFWK";
         }
     }
-        // ohos.boot.time.kernel = 2051866
-        // ohos.boot.time.init = 6540069
-        // ohos.boot.time.bms.main.bundles.ready = 77791997
-        // ohos.boot.time.wms.fullscreen.ready = 79576138
-        // ohos.boot.time.wms.ready = 79596083
-        // ohos.boot.time.samgr.ready = 6581160
-        // ohos.boot.time.boot.completed = 86804218
-        // ohos.boot.time.hdf_devmgr.ready = 6582141
-        // ohos.boot.time.appspawn.started = 7343357
-        // ohos.boot.time.useriam.fwkready = 8714486
-        // ohos.boot.time.appfwk.ready = 8983964
-        // ohos.boot.time.account.ready = 9045673
-        // ohos.boot.time.launcher.ready = 86803486
-        // ohos.boot.time.lockscreen.ready = 84908473
-        // ohos.boot.time.param_watcher.started = 6599855
-        // ohos.boot.time.renderservice.ready = 7551002
-        // ohos.boot.time.bootanimation.ready = 8124322
-        // ohos.boot.time.bootanimation.started = 9018322
-        // ohos.boot.time.bootanimation.finished = 17141536
-        // ohos.boot.time.avsessionservice.ready = 8463249
-        // bootevent.boot.completed = true
-        // persist.sys.hilog.kmsg.on = true
-        // persist.sys.hilog.binary.on = true
-        // persist.sys.hilog.binary.forhota.on = false
-        // hilog.flowctrl.proc.on = true
-        // hilog.flowctrl.domain.on = true
-        // hilog.level.debug.on = false
-        // hilog.loggable.global = I
-        // hilog.buffersize.global = 262144
-        // const.hdc.version = Ver: 3.0.0b
-        // web.debug.devtools = false
-        // web.debug.netlog = None
-        // web.debug.trace = false
-        // web.debug.strictsiteIsolation.enable = none
-        // persist.hdc.jdwp = 0
-        // persist.time.auto_restore_timer_apps = com.huawei.hmos.clock,com.huawei.hmos.settings,com.huawei.hmos.emergencycommunication
-        // persist.time.ntpserver = 1.cn.pool.ntp.org,ntp.sjtu.edu.cn,time.windows.com,time.nist.gov,pool.ntp.org
-        // persist.time.timezone = Asia/Shanghai
-        // persist.time.ntpserver_specific =
-        // persist.time.auto_time = ON
-        // persist.global.tz_override = false
-        // const.product.devicetype = tablet
-        // const.build.characteristics = default
     namespace Ohos
     {
         namespace Boot
