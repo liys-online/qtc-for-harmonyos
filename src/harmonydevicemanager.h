@@ -13,8 +13,8 @@ class HarmonyDeviceManager : public QObject
     Q_OBJECT
 public:
     explicit HarmonyDeviceManager(QObject *parent = nullptr);
-    ~HarmonyDeviceManager() = default;
-
+    ~HarmonyDeviceManager();
+    void queryDevice();
     void setupDevicesWatcher();
 private:
     TaskTreeRunner m_hdcDeviceWatcherRunner;
