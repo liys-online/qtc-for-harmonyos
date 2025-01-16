@@ -321,7 +321,8 @@ void HarmonyConfigurations::registerQtVersions()
         // 创建 Qt 版本
         QtVersion * qtVersion = QtVersionFactory::createQtVersionFromQMakePath(qmakePath, true);
         HarmonyQtVersion * version = dynamic_cast<HarmonyQtVersion *>(qtVersion);
-        version->setUnexpandedDisplayName(version->defaultUnexpandedDisplayName());
+        version->setUnexpandedDisplayName(version->defaultUnexpandedDisplayName()
+                                          + HarmonyConfig::sdkVersion().toString());
         const QtVersions installedVersions = QtVersionManager::versions([](const QtVersion *v) {
             return v->type() == Constants::HARMONY_QT_TYPE;
         });
