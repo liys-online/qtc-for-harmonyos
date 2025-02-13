@@ -1,0 +1,16 @@
+
+name: QTC For HarmonyOS CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-server
+    steps:
+      - name: Install Dependencies
+        run: echo test.
+    
