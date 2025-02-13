@@ -11,8 +11,13 @@ jobs:
   build:
     runs-on: windows-server
     steps:
-      - name: Install Dependencies
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Build
         shell: cmd
         run: |
           call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+          call ‪"C:\Qt\6.8.1\msvc2022_64\bin\qtenv2.bat"
+          dir
     
