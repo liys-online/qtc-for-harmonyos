@@ -10,10 +10,6 @@
 #include <projectexplorer/kitmanager.h>
 #include <extensionsystem/iplugin.h>
 
-// #include <QAction>
-// #include <QMainWindow>
-// #include <QMenu>
-// #include <QMessageBox>
 #include <QTranslator>
 #include "harmonysettingswidget.h"
 #include "harmonyconfigurations.h"
