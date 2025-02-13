@@ -16,11 +16,18 @@ bool HarmonyQtVersion::supportsMultipleQtAbis() const
 void HarmonyQtVersion::addToBuildEnvironment(const ProjectExplorer::Kit *k, Utils::Environment &env) const
 {
     QtVersion::addToBuildEnvironment(k, env);
-    const FilePath sdkLocation = HarmonyConfig::sdkLocation();
-    if (sdkLocation.exists())
+    const QStringList sdkList = HarmonyConfig::getSdkList();
+    if (!sdkList.isEmpty())
     {
-        const FilePath sdkPath = sdkLocation.pathAppended("default/openharmony");
-        env.set(Constants::OHOS_SDK_ENV_VAR, sdkPath.toUserOutput());
+        for(const QString &sdk : sdkList)
+        {
+            FilePath releaseFile = HarmonyConfig::releaseFile(HarmonyConfig::ndkLocation(FilePath::fromString(sdk)));
+            if(HarmonyConfig::getVersion(releaseFile).first == supportOhVersion())
+            {
+                const FilePath sdkPath = FilePath::fromString(sdk).pathAppended("default/openharmony");
+                env.set(Constants::OHOS_SDK_ENV_VAR, sdkPath.toUserOutput());
+            }
+        }
     }
 }
 
@@ -37,6 +44,31 @@ QString HarmonyQtVersion::description() const
 QString HarmonyQtVersion::defaultUnexpandedDisplayName() const
 {
     return Tr::tr("Qt %{Qt:Version} for HarmonyOS");
+}
+
+QVersionNumber HarmonyQtVersion::supportOhVersion() const
+{
+    FilePath headerDir = headerPath();
+    FilePath qconfigHeader = headerDir.pathAppended(Constants::Q_CONFIG_H);
+    if (qconfigHeader.exists())
+    {
+        QFile qconfigFile(qconfigHeader.toString());
+        if (qconfigFile.open(QIODevice::ReadOnly))
+        {
+            QTextStream in(&qconfigFile);
+            while (!in.atEnd())
+            {
+                QString line = in.readLine();
+                if (line.contains(Constants::OHOS_SDK_VERSION))
+                {
+                    QStringList list = line.split(" ");
+                    QString version = list.at(2);
+                    return QVersionNumber::fromString(version);
+                }
+            }
+        }
+    }
+    return QVersionNumber();
 }
 
 // Factory

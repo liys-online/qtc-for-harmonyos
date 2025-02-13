@@ -47,11 +47,10 @@ HarmonyToolchain::HarmonyToolchain()
 
 void HarmonyToolchain::addToEnvironment(Utils::Environment &env) const
 {
-    const FilePath sdkLocation = HarmonyConfig::sdkLocation();
+    const FilePath sdkLocation = ndkLocation().parentDir();
     if (sdkLocation.exists())
     {
-        const FilePath sdkPath = sdkLocation.pathAppended("default/openharmony");
-        env.set(Constants::OHOS_SDK_ENV_VAR, sdkPath.toUserOutput());
+        env.set(Constants::OHOS_SDK_ENV_VAR, sdkLocation.toUserOutput());
     }
 }
 
@@ -83,8 +82,8 @@ FilePath HarmonyToolchain::makeCommand(const Utils::Environment &environment) co
 
 ToolchainList autodetectToolchains(const ToolchainList &alreadyKnown)
 {
-    const FilePath uniqueNdk = HarmonyConfig::ndkLocation();
-    return autodetectToolchainsFromNdk(alreadyKnown, uniqueNdk);
+    const QList<FilePath> ndkLocations = HarmonyConfig::ndkLocations();
+    return autodetectToolchainsFromNdk(alreadyKnown, ndkLocations);
 }
 
 class HarmonyToolchainFactory final : public ToolchainFactory
@@ -117,7 +116,9 @@ static FilePath clangPlusPlusPath(const FilePath &clangPath)
     return clangPath.parentDir().pathAppended(clangPath.baseName() + "++").withExecutableSuffix();
 }
 
-ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown, const Utils::FilePath &ndkLocation, const bool isCustom)
+ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown,
+                                          const QList<FilePath> &ndkLocations,
+                                          const bool isCustom)
 {
     QList<Toolchain *> newToolchains;
 
@@ -125,60 +126,73 @@ ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown, con
         ProjectExplorer::Constants::CXX_LANGUAGE_ID,
         ProjectExplorer::Constants::C_LANGUAGE_ID
     };
-    const FilePath clangPath = HarmonyConfig::clangPathFromNdk(ndkLocation);
-    if (!clangPath.exists()) {
-        qCDebug(harmonyTCLog) << "Clang toolchains detection fails. Can not find Clang"
-                              << clangPath;
-    }
-    for (const Id &lang : LanguageIds) {
-        FilePath compilerCommand = clangPath;
-        if (lang == ProjectExplorer::Constants::CXX_LANGUAGE_ID)
-            compilerCommand = clangPlusPlusPath(clangPath);
 
-        if (!compilerCommand.exists()) {
-            qCDebug(harmonyTCLog)
-            << "Skipping Clang toolchain. Can not find compiler" << compilerCommand;
-            continue;
+    for (const FilePath &ndkLocation : ndkLocations)
+    {
+        const FilePath clangPath = HarmonyConfig::clangPathFromNdk(ndkLocation);
+        if (!clangPath.exists())
+        {
+            qCDebug(harmonyTCLog) << "Clang toolchains detection fails. Can not find Clang"
+                                  << clangPath;
         }
+        for (const Id &lang : LanguageIds)
+        {
+            FilePath compilerCommand = clangPath;
+            if (lang == ProjectExplorer::Constants::CXX_LANGUAGE_ID)
+                compilerCommand = clangPlusPlusPath(clangPath);
 
-        auto targetItr = clangTargets().constBegin();
-        while (targetItr != clangTargets().constEnd()) {
-            const Abi &abi = targetItr.value();
-            const QString target = targetItr.key();
-            Toolchain *tc = findToolchain(compilerCommand, lang, target, alreadyKnown);
+            if (!compilerCommand.exists())
+            {
+                qCDebug(harmonyTCLog)
+                << "Skipping Clang toolchain. Can not find compiler" << compilerCommand;
+                continue;
+            }
 
-            const QString customStr = isCustom ? "Custom " : QString();
-            const QString displayName(customStr + QString("Harmony Clang (%1, %2, API %3 NDK %4)")
-                                                      .arg(ToolchainManager::displayNameOfLanguageId(lang),
-                                                           HarmonyConfig::displayName(abi),
-                                                           HarmonyConfig::sdkVersion().toString(),
-                                                           HarmonyConfig::ndkVersion().toString()));
-            if(tc) {
-                if (tc->displayName() != displayName) {
-                    tc->setDisplayName(displayName);
+            auto targetItr = clangTargets().constBegin();
+            while (targetItr != clangTargets().constEnd())
+            {
+                const Abi &abi = targetItr.value();
+                const QString target = targetItr.key();
+                Toolchain *tc = findToolchain(compilerCommand, lang, target, alreadyKnown);
+
+                const QString customStr = isCustom ? "Custom " : QString();
+                QPair<QVersionNumber, QVersionNumber> versionPair = HarmonyConfig::getVersion(HarmonyConfig::releaseFile(ndkLocation));
+                const QString displayName(customStr + QString("Harmony Clang (%1, %2, API %3 NDK %4)")
+                                                          .arg(ToolchainManager::displayNameOfLanguageId(lang),
+                                                               HarmonyConfig::displayName(abi),
+                                                               versionPair.first.toString(),
+                                                               versionPair.second.toString()));
+                if(tc)
+                {
+                    if (tc->displayName() != displayName)
+                    {
+                        tc->setDisplayName(displayName);
+                    }
                 }
-            }
-            else {
-                qCDebug(harmonyTCLog) << "New Clang toolchain found" << abi.toString() << lang
-                                      << "for NDK" << ndkLocation;
-                auto atc = new HarmonyToolchain();
-                atc->setNdkLocation(ndkLocation);
-                atc->setOriginalTargetTriple(target);
-                atc->setLanguage(lang);
-                atc->setTargetAbi(clangTargets().value(target));
-                atc->setPlatformCodeGenFlags({"-target", target});
-                atc->setPlatformLinkerFlags({"-target", target});
-                atc->setDisplayName(displayName);
-                tc = atc;
-                newToolchains << tc;
-            }
-            if (auto gccTc = dynamic_cast<GccToolchain*>(tc))
-                gccTc->resetToolchain(compilerCommand);
+                else
+                {
+                    qCDebug(harmonyTCLog) << "New Clang toolchain found" << abi.toString() << lang
+                                          << "for NDK" << ndkLocation;
+                    auto atc = new HarmonyToolchain();
+                    atc->setNdkLocation(ndkLocation);
+                    atc->setOriginalTargetTriple(target);
+                    atc->setLanguage(lang);
+                    atc->setTargetAbi(clangTargets().value(target));
+                    atc->setPlatformCodeGenFlags({"-target", target});
+                    atc->setPlatformLinkerFlags({"-target", target});
+                    atc->setDisplayName(displayName);
+                    tc = atc;
+                    newToolchains << tc;
+                }
+                if (auto gccTc = dynamic_cast<GccToolchain*>(tc))
+                    gccTc->resetToolchain(compilerCommand);
 
-            tc->setDetection(Toolchain::ManualDetection);
-            ++targetItr;
+                tc->setDetection(Toolchain::ManualDetection);
+                ++targetItr;
+            }
         }
     }
+
     return newToolchains;
 }
 

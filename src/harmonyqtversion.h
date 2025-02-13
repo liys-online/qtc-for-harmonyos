@@ -13,6 +13,7 @@ public:
     QString description() const override;
     QString defaultUnexpandedDisplayName() const;
     bool isHarmonyQtVersion() const { return true; };
+    QVersionNumber supportOhVersion() const;
 };
 void setupHarmonyQtVersion();
 } // Ohos::Internal

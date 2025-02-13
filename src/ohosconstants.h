@@ -6,22 +6,18 @@ const char HARMONY_TOOLCHAIN_TYPEID[] = "Qt4ProjectManager.ToolChain.Harmony";
 const char HARMONY_QT_TYPE[] = "Qt4ProjectManager.QtVersion.Harmony";
 const char HARMONY_DEVICE_ID[] = "Harmony Device";
 const char HARMONY_DEVICE_TYPE[] = "Harmony.Device.Type";
-// const char ACTION_ID[] = "Ohos.Action";
-// const char MENU_ID[] = "Ohos.Menu";
-
 const char MakeLocationKey[] = "Harmony.MakeLocation";
-const char SDKLocationKey[] = "Harmony.SDKLocation";
-const char NDKLocationKey[] = "Harmony.NDKLocation";
 const char DevecoStudioLocationKey[] = "Harmony.DevecoStudioPath";
-const char QmakeLocationKey[] = "Harmony.QmakeLocation";
-const char SDKVersionKey[] = "Harmony.SDKVersion";
-const char NDKVersionKey[] = "Harmony.NDKVersion";
+const char QmakeLocationKey[] = "Harmony.QmakeLocations";
+const char SDKLocationsKey[] = "Harmony.SDKLocations";
+const char DefaultSDKLocationKey[] = "Harmony.DefaultSDKLocation";
 const char OHOS_SDK_ENV_VAR[] = "OHOS_SDK_PATH";
+const char OHOS_SDK_VERSION[] = "OHOS_SDK_VERSION";
+const char Q_CONFIG_H[] = "QtCore/qconfig.h";
 
-
-const Utils::Id HarmonySerialNumber = "HarmonySerialNumber";
-const Utils::Id HarmonyCpuAbi = "HarmonyCpuAbi";
-const Utils::Id HarmonySdk = "HarmonySdk";
+const char HarmonySerialNumber[] = "HarmonySerialNumber";
+const char HarmonyCpuAbi[] = "HarmonyCpuAbi";
+const char HarmonySdk[] = "HarmonySdk";
 namespace Parameter {
     namespace Product
     {

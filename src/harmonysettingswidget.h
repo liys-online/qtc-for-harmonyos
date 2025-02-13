@@ -4,6 +4,8 @@
 #include <projectexplorer/toolchainmanager.h>
 using namespace Utils;
 using namespace ProjectExplorer;
+class QListWidget;
+class QPushButton;
 namespace Ohos::Internal {
 class SummaryWidget;
 class HarmonySettingsWidget final : public Core::IOptionsPageWidget
@@ -13,19 +15,24 @@ public:
 private:
     void showEvent(QShowEvent *event) override;
 
+    void updateSdkList();
     void openDownloadUrl();
     void openMakeDownloadUrl();
+    void addSdkItem();
+    void addQmakeItem();
+    void checkSdkItem(QString sdkLocation);
+    void checkQmakeItem(QString qmakeLocation);
+    bool isDefaultSdkSelected() const;
     void setAllOk();
-    void onSdkPathChanged();
     void onDevecoStudioPathChanged();
     void onMakePathChanged();
-    void onQmakePathChanged();
     void validateSdk();
     Toolchain *findGccToolChain() const;
     PathChooser *m_makePathChooser = nullptr;
     PathChooser *m_devecoStudioPathChooser = nullptr;
-    PathChooser *m_sdkLocationPathChooser = nullptr;
-    PathChooser *m_qmakePathChooser = nullptr;
+    QPushButton *m_makeDefaultSdkButton = nullptr;
+    QListWidget *m_sdkListWidget = nullptr;
+    QListWidget *m_qmakeListWidget = nullptr;
 
     bool m_isInitialReloadDone = false;
     SummaryWidget *m_harmonySummary = nullptr;

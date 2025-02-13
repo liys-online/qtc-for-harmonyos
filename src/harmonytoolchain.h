@@ -20,7 +20,7 @@ private:
 };
 ToolchainList autodetectToolchains(const ToolchainList &alreadyKnown);
 ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown,
-                                           const Utils::FilePath &ndkLocation,
+                                           const QList<Utils::FilePath> &ndkLocations,
                                            const bool isCustom = false);
 void setupHarmonyToolchain();
 } // namespace Ohos

@@ -45,13 +45,10 @@ struct HarmonyConfigData{
     void load(const QtcSettings &settings);
     void save(QtcSettings &settings) const;
     FilePath m_makeLocation;
-    FilePath m_sdkLocation;
-    FilePath m_ndkLocation;
+    FilePath m_defaultSdkLocation;
     FilePath m_devecoStudioPath;
-    FilePath m_qmakeLocation;
-
-    QVersionNumber m_sdkVersion;
-    QVersionNumber m_ndkVersion;
+    QStringList m_qmakeList;
+    QStringList m_sdkList;
 };
 static HarmonyConfigData &config()
 {
@@ -62,12 +59,10 @@ static HarmonyConfigData &config()
 void HarmonyConfigData::load(const QtcSettings &settings)
 {
     m_makeLocation = FilePath::fromString(settings.value(Constants::MakeLocationKey).toString());
-    m_sdkLocation = FilePath::fromString(settings.value(Constants::SDKLocationKey).toString());
-    m_ndkLocation = FilePath::fromString(settings.value(Constants::NDKLocationKey).toString());
     m_devecoStudioPath = FilePath::fromString(settings.value(Constants::DevecoStudioLocationKey).toString());
-    m_qmakeLocation = FilePath::fromString(settings.value(Constants::QmakeLocationKey).toString());
-    m_sdkVersion = QVersionNumber::fromString(settings.value(Constants::SDKVersionKey).toString());
-    m_ndkVersion = QVersionNumber::fromString(settings.value(Constants::NDKVersionKey).toString());
+    m_qmakeList = settings.value(Constants::QmakeLocationKey).toStringList();
+    m_sdkList = settings.value(Constants::SDKLocationsKey).toStringList();
+    m_defaultSdkLocation = FilePath::fromString(settings.value(Constants::DefaultSDKLocationKey).toString());
     // PersistentSettingsReader reader;
 
     // if (reader.load(sdkSettingsFileName())
@@ -77,6 +72,8 @@ void HarmonyConfigData::load(const QtcSettings &settings)
     //     m_sdkLocation = FilePath::fromString(reader.restoreValue(Constants::SDKLocationKey).toString());
     //     m_devecoStudioPath = FilePath::fromString(reader.restoreValue(Constants::DevecoStudioLocationKey).toString());
     // }
+    m_qmakeList.removeAll("");
+    m_sdkList.removeAll("");
 
 
 }
@@ -88,23 +85,10 @@ void HarmonyConfigData::save(QtcSettings &settings) const
         settings.setValue(changeTimeStamp, sdkSettingsFile.lastModified().toMSecsSinceEpoch() / 1000);
 
     settings.setValue(Constants::MakeLocationKey, m_makeLocation.toString());
-    settings.setValue(Constants::SDKLocationKey, m_sdkLocation.toString());
-    settings.setValue(Constants::NDKLocationKey, m_ndkLocation.toString());
     settings.setValue(Constants::DevecoStudioLocationKey, m_devecoStudioPath.toString());
-    settings.setValue(Constants::QmakeLocationKey, m_qmakeLocation.toString());
-    settings.setValue(Constants::SDKVersionKey, m_sdkVersion.toString());
-    settings.setValue(Constants::NDKVersionKey, m_ndkVersion.toString());
-
-}
-
-FilePath sdkLocation()
-{
-    return config().m_sdkLocation;
-}
-
-void setSdkLocation(const Utils::FilePath &sdkLocation)
-{
-    config().m_sdkLocation = sdkLocation;
+    settings.setValue(Constants::QmakeLocationKey, m_qmakeList);
+    settings.setValue(Constants::SDKLocationsKey, m_sdkList);
+    settings.setValue(Constants::DefaultSDKLocationKey, m_defaultSdkLocation.toString());
 }
 
 FilePath devecoStudioLocation()
@@ -127,14 +111,18 @@ void setMakeLocation(const Utils::FilePath &makeLocation)
     config().m_makeLocation = makeLocation;
 }
 
-FilePath ndkLocation()
+QList<FilePath> ndkLocations()
 {
-    return config().m_ndkLocation;
-}
-
-void setNdkLocation(const Utils::FilePath &ndkLocation)
-{
-    config().m_ndkLocation = ndkLocation;
+    QList<FilePath> ndkLocations;
+    for (const QString &path : qAsConst(config().m_sdkList))
+    {
+        FilePath ndkPath = FilePath::fromString(path) / "default" / "openharmony" / "native";
+        if (ndkPath.isReadableDir())
+        {
+            ndkLocations <<  ndkPath;
+        }
+    }
+    return ndkLocations;
 }
 
 FilePath toolchainPathFromNdk(const Utils::FilePath &ndkLocation)
@@ -167,53 +155,35 @@ QLatin1String displayName(const ProjectExplorer::Abi &abi)
     }
 }
 
-QVersionNumber ndkVersion()
-{
-    return config().m_ndkVersion;
-}
-
-QVersionNumber sdkVersion()
-{
-    return config().m_sdkVersion;
-}
-
-bool setVersion(const Utils::FilePath &releaseFile)
+QPair<QVersionNumber, QVersionNumber> getVersion(const Utils::FilePath &releaseFile)
 {
     // 打开文件
+    QPair<QVersionNumber, QVersionNumber> versionPair(QVersionNumber(-1), QVersionNumber(-1));
+
     QString filePath = releaseFile.path();
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qWarning() << "Failed to open file:" << filePath;
-        return false;
+        return versionPair;
     }
     QByteArray rawData = file.readAll();
     file.close();
     QJsonDocument doc = QJsonDocument::fromJson(rawData);
     if (doc.isNull() || !doc.isObject()) {
         qWarning() << "Invalid JSON data!";
-        return false;
+        return versionPair;
     }
     QJsonObject rootObj = doc.object();
     QString versionStr = rootObj.value("version").toString();
     QString apiVersionStr = rootObj.value("apiVersion").toString();
-    config().m_ndkVersion = QVersionNumber::fromString(versionStr);
-    config().m_sdkVersion = QVersionNumber::fromString(apiVersionStr);
-    return true;
-}
-
-void setQmakeLocation(const Utils::FilePath &qmakeLocation)
-{
-    config().m_qmakeLocation = qmakeLocation;
-}
-
-FilePath qmakeLocation()
-{
-    return config().m_qmakeLocation;
+    versionPair.first = QVersionNumber::fromString(apiVersionStr);
+    versionPair.second = QVersionNumber::fromString(versionStr);
+    return versionPair;
 }
 
 FilePath hdcToolPath()
 {
-    return config().m_sdkLocation.pathAppended("default/openharmony/toolchains/hdc").withExecutableSuffix();
+    return config().m_defaultSdkLocation.pathAppended("default/openharmony/toolchains/hdc").withExecutableSuffix();
 }
 
 int getSDKVersion(const QString &device)
@@ -231,7 +201,7 @@ QString getProductModel(const QString &device)
 QString getDeviceName(const QString &device)
 {
     const QString tmp = getDeviceProperty(device, Product::name);
-    if (tmp.contains("[Fail][E001005]")) {
+    if (tmp.contains("[Fail][E001005]") || tmp.contains("[Fail]Device not founded or connected")) {
         return QString();
     }
     return tmp.isEmpty() ? QString() : tmp.trimmed();
@@ -241,6 +211,74 @@ QString getAbis(const QString &device)
 {
     const QString tmp = getDeviceProperty(device, Product::Cpu::abilist);
     return tmp.isEmpty() ? QString() : tmp.trimmed();
+}
+
+QStringList &getSdkList()
+{
+    return config().m_sdkList;
+}
+
+void addSdk(const QString &sdk)
+{
+    if (!config().m_sdkList.contains(sdk))
+        config().m_sdkList.append(sdk);
+}
+
+void removeSdkList(const QString &sdk)
+{
+    config().m_sdkList.removeAll(sdk);
+}
+
+bool isValidSdk(const QString &sdkLocation)
+{
+    FilePath ndkPath = ndkLocation(FilePath::fromString(sdkLocation));
+    if (ndkPath.isReadableDir())
+    {
+        if (releaseFile(ndkPath).isReadableFile())
+        {
+            return true;
+        }
+        return false;
+    }
+    return false;
+}
+
+FilePath releaseFile(const Utils::FilePath &ndkLocation)
+{
+    return ndkLocation / "oh-uni-package.json";
+}
+
+FilePath ndkLocation(const Utils::FilePath &sdkLocation)
+{
+    return sdkLocation / "default" / "openharmony" / "native";
+}
+
+FilePath defaultSdk()
+{
+    return config().m_defaultSdkLocation;
+}
+
+void setdefaultSdk(const Utils::FilePath &sdkLocation)
+{
+    config().m_defaultSdkLocation = sdkLocation;
+}
+
+void addQmake(const QString &qmake)
+{
+    if (!config().m_qmakeList.contains(qmake))
+    {
+        config().m_qmakeList.append(qmake);
+    }
+}
+
+void removeQmake(const QString &qmake)
+{
+    config().m_qmakeList.removeAll(qmake);
+}
+
+QStringList &getQmakeList()
+{
+    return config().m_qmakeList;
 }
 
 } // namespace HarmonyConfig
@@ -318,38 +356,40 @@ void HarmonyConfigurations::registerNewToolchains()
 
 void HarmonyConfigurations::registerQtVersions()
 {
-    const FilePath qmakePath = HarmonyConfig::qmakeLocation();
-    if (qmakePath.isExecutableFile())
+    const QtVersions installedVersions = QtVersionManager::versions([](const QtVersion *v) {
+        return v->type() == Constants::HARMONY_QT_TYPE;
+    });
+    for (QtVersion *v : installedVersions)
     {
-        // 创建 Qt 版本
-        QtVersion * qtVersion = QtVersionFactory::createQtVersionFromQMakePath(qmakePath, true);
-        HarmonyQtVersion * version = dynamic_cast<HarmonyQtVersion *>(qtVersion);
-        version->setUnexpandedDisplayName(version->defaultUnexpandedDisplayName()
-                                          + HarmonyConfig::sdkVersion().toString());
-        const QtVersions installedVersions = QtVersionManager::versions([](const QtVersion *v) {
-            return v->type() == Constants::HARMONY_QT_TYPE;
-        });
-        for(QtVersion *v: installedVersions)
+        if (!v->qmakeFilePath().exists())
         {
-            if(!v->qmakeFilePath().exists())
-            {
-                QtVersionManager::instance()->removeVersion(v);
-                continue;
-            }
-            if(v->qmakeFilePath() == version->qmakeFilePath()
-                && v->displayName() == version->displayName())
-            {
-                return;
-            }
-            else if (v->qmakeFilePath() == version->qmakeFilePath()
-                && v->displayName() != version->displayName())
-            {
-                QtVersionManager::instance()->removeVersion(v);
-            }
+            QtVersionManager::instance()->removeVersion(v);
+            continue;
         }
-        if(QtVersionManager::instance()->isLoaded())
+        if (!HarmonyConfig::getQmakeList().contains(v->qmakeFilePath().toString()))
         {
-            QtVersionManager::instance()->addVersion(version);
+            QtVersionManager::instance()->removeVersion(v);
+        }
+    }
+    for(const QString &qmake : HarmonyConfig::getQmakeList())
+    {
+        const FilePath qmakePath = FilePath::fromString(qmake);
+        if (qmakePath.isExecutableFile())
+        {
+            QtVersion *qtVersion = QtVersionFactory::createQtVersionFromQMakePath(qmakePath, true);
+            HarmonyQtVersion *version = dynamic_cast<HarmonyQtVersion *>(qtVersion);
+            version->setUnexpandedDisplayName(version->defaultUnexpandedDisplayName()
+                                              + version->supportOhVersion().toString());
+            if(QtVersionManager::instance()->isLoaded())
+            {
+                const QtVersions installedVersions = QtVersionManager::versions([qtVersion](const QtVersion *v) {
+                    return v->qmakeFilePath() == qtVersion->qmakeFilePath();
+                });
+                if (installedVersions.isEmpty())
+                {
+                    QtVersionManager::instance()->addVersion(qtVersion);
+                }
+            }
         }
     }
 }

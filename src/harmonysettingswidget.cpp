@@ -12,6 +12,10 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 #include <QTimer>
+#include <QPushButton>
+#include <QListWidget>
+#include <QStandardPaths>
+#include <QFileDialog>
 namespace Ohos::Internal {
 
 class SummaryWidget : public QWidget
@@ -105,7 +109,7 @@ private:
     void updateUi() {
         bool ok = allRowsOk();
         m_detailsWidget->setIcon(ok ? Icons::OK.icon() : Icons::CRITICAL.icon());
-        m_detailsWidget->setSummaryText(ok ? QString("%1 %2").arg(m_validText).arg(m_infoText)
+        m_detailsWidget->setSummaryText(ok ? QString("%1 %2").arg(m_validText, m_infoText)
                                            : m_invalidText);
     }
     QString m_validText;
@@ -135,18 +139,39 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     downloadSdkToolButton->setIcon(downloadIcon);
     downloadSdkToolButton->setToolTip(Tr::tr("Open OpenHarmony SDK download URL in the system's browser."));
 
-    m_sdkLocationPathChooser = new PathChooser;
-    m_sdkLocationPathChooser->setFilePath(HarmonyConfig::sdkLocation());
-    m_sdkLocationPathChooser->setPromptDialogTitle(Tr::tr("Select OpenHarmony SDK Folder"));
+    auto addSDKButton = new QPushButton(Tr::tr("Add..."));
+    addSDKButton->setToolTip(Tr::tr("Add the selected SDK. The toolchains "
+                                          "and debuggers will be created automatically."));
+    auto removeSDKButton = new QPushButton(Tr::tr("Remove"));
+    removeSDKButton->setEnabled(false);
+    removeSDKButton->setToolTip(Tr::tr("Remove the selected SDK if it has been added manually."));
+
+    m_makeDefaultSdkButton = new QPushButton;
+
+    m_sdkListWidget = new QListWidget;
+    m_sdkListWidget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+    m_sdkListWidget->setIconSize(QSize(16, 16));
+    m_sdkListWidget->setResizeMode(QListView::Adjust);
+    m_sdkListWidget->setModelColumn(0);
+    m_sdkListWidget->setSortingEnabled(false);
 
     auto downloadDevecoStudio = new QToolButton;
     downloadDevecoStudio->setIcon(downloadIcon);
     downloadDevecoStudio->setToolTip(Tr::tr("Open Deveco Studio download URL in the system's browser."));
-    m_qmakePathChooser = new PathChooser;
-    m_qmakePathChooser->setExpectedKind(PathChooser::Kind::File);
-    m_qmakePathChooser->setPromptDialogFilter(Tr::tr("Qmake binaries (qmake.exe)"));
-    m_qmakePathChooser->setFilePath(HarmonyConfig::qmakeLocation());
-    m_qmakePathChooser->setPromptDialogTitle(Tr::tr("Select Qt for Harmony qmake binaries Location"));
+
+    m_qmakeListWidget = new QListWidget;
+    m_qmakeListWidget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+    m_qmakeListWidget->setIconSize(QSize(16, 16));
+    m_qmakeListWidget->setResizeMode(QListView::Adjust);
+    m_qmakeListWidget->setModelColumn(0);
+    m_qmakeListWidget->setSortingEnabled(false);
+
+    auto addQmakeButton = new QPushButton(Tr::tr("Add..."));
+    addQmakeButton->setToolTip(Tr::tr("Add the selected qmake. The toolchains "
+                                          "and debuggers will be created automatically."));
+    auto removeQmakeButton = new QPushButton(Tr::tr("Remove"));
+    removeQmakeButton->setEnabled(false);
+
     auto downloadQtForHarmony = new QToolButton;
     downloadQtForHarmony->setIcon(downloadIcon);
     downloadQtForHarmony->setToolTip(Tr::tr("Open Qt for Harmony download URL in the system's browser."));
@@ -185,8 +210,13 @@ HarmonySettingsWidget::HarmonySettingsWidget()
                 downloadDevecoStudio,
                 br,
 #endif
-                Tr::tr("OpenHarmony SDK location:"),
-                m_sdkLocationPathChooser,
+                Column { Tr::tr("OpenHarmony SDK list:"), st },
+                m_sdkListWidget,
+                Column {
+                    addSDKButton,
+                    removeSDKButton,
+                    m_makeDefaultSdkButton
+                },
                 downloadSdkToolButton,
                 br,
                 Span(4, harmonyDetailsWidget), br,
@@ -196,8 +226,12 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         Group {
             title(Tr::tr("Qt for Harmony Settings")),
             Grid {
-                Tr::tr("Qt for Harmony qmake location:"),
-                m_qmakePathChooser,
+                Column {Tr::tr("Qt for Harmony qmake list:"), st },
+                m_qmakeListWidget,
+                Column {
+                    addQmakeButton,
+                    removeQmakeButton
+                },
                 downloadQtForHarmony,
                 br,
 
@@ -207,13 +241,46 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         st
     }.attachTo(this);
 
-    connect(m_sdkLocationPathChooser, &PathChooser::rawPathChanged, this, &HarmonySettingsWidget::onSdkPathChanged);
 #ifdef Q_OS_WIN
     connect(m_devecoStudioPathChooser, &PathChooser::rawPathChanged,
         this, &HarmonySettingsWidget::onDevecoStudioPathChanged);
 #endif
+    connect(m_sdkListWidget, &QListWidget::currentTextChanged,
+            this, [this, removeSDKButton](const QString &sdk) {
+                setAllOk();
+                removeSDKButton->setEnabled(HarmonyConfig::getSdkList().contains(sdk));
+            });
+    connect(addSDKButton, &QPushButton::clicked, this,
+            &HarmonySettingsWidget::addSdkItem);
+
+    connect(removeSDKButton, &QPushButton::clicked, this, [this, removeSDKButton] {
+        if (isDefaultSdkSelected())
+            HarmonyConfig::setdefaultSdk({});
+        HarmonyConfig::removeSdkList(m_sdkListWidget->currentItem()->text());
+        m_sdkListWidget->takeItem(m_sdkListWidget->currentRow());
+    });
+    connect(m_makeDefaultSdkButton, &QPushButton::clicked, this, [this] {
+        const FilePath defaultSdk = isDefaultSdkSelected()
+        ? FilePath()
+        : FilePath::fromUserInput(m_sdkListWidget->currentItem()->text());
+        HarmonyConfig::setdefaultSdk(defaultSdk);
+        setAllOk();
+    });
+
+    connect(m_qmakeListWidget, &QListWidget::currentTextChanged,
+            this, [this, removeQmakeButton](const QString &qmake) {
+                setAllOk();
+                removeQmakeButton->setEnabled(HarmonyConfig::getQmakeList().contains(qmake));
+            });
+    connect(addQmakeButton, &QPushButton::clicked, this,
+            &HarmonySettingsWidget::addQmakeItem);
+
+    connect(removeQmakeButton, &QPushButton::clicked, this, [this, removeQmakeButton] {
+        HarmonyConfig::removeQmake(m_qmakeListWidget->currentItem()->text());
+        m_qmakeListWidget->takeItem(m_qmakeListWidget->currentRow());
+    });
+
     connect(m_makePathChooser, &PathChooser::rawPathChanged, this, &HarmonySettingsWidget::onMakePathChanged);
-    connect(m_qmakePathChooser, &PathChooser::rawPathChanged, this, &HarmonySettingsWidget::onQmakePathChanged);
 
     connect(downloadmake, &QAbstractButton::clicked, this, &HarmonySettingsWidget::openMakeDownloadUrl);
     connect(downloadDevecoStudio, &QAbstractButton::clicked, this, &HarmonySettingsWidget::openDownloadUrl);
@@ -232,6 +299,15 @@ void HarmonySettingsWidget::showEvent(QShowEvent *event)
     }
 }
 
+void HarmonySettingsWidget::updateSdkList()
+{
+    m_sdkListWidget->clear();
+    const QStringList sdkList = HarmonyConfig::getSdkList();
+    for (const QString &sdk : sdkList) {
+        m_sdkListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), sdk));
+    }
+}
+
 void HarmonySettingsWidget::openDownloadUrl()
 {
     QDesktopServices::openUrl(QUrl::fromUserInput(
@@ -244,19 +320,27 @@ void HarmonySettingsWidget::openMakeDownloadUrl()
         "https://download.qt.io/development_releases/prebuilt/mingw_64/"));
 }
 
-void HarmonySettingsWidget::setAllOk()
+void HarmonySettingsWidget::addSdkItem()
 {
-    m_harmonySummary->setPointValid(AllEssentialsInstalledRow, true);
-    if (!m_harmonySummary->allRowsOk())
-    {
-        m_harmonySummary->setPointValid(AllEssentialsInstalledRow, false);
-    }
+    const QString homePath = QStandardPaths::standardLocations(QStandardPaths::HomeLocation)
+    .constFirst();
+    const QString sdkPath = QFileDialog::getExistingDirectory(this, Tr::tr("Select an NDK"), homePath);
+
+    checkSdkItem(sdkPath);
 }
 
-void HarmonySettingsWidget::onSdkPathChanged()
+void HarmonySettingsWidget::addQmakeItem()
 {
-    const FilePath sdkPath = m_sdkLocationPathChooser->filePath().cleanPath();
-    if (sdkPath.isReadableDir())
+    const QString homePath = QStandardPaths::standardLocations(QStandardPaths::HomeLocation)
+    .constFirst();
+    const QString qmakePath = QFileDialog::getOpenFileName(this, Tr::tr("Select Qt for Harmony qmake"),
+                                                           homePath, Tr::tr("qmake.exe"));
+    checkQmakeItem(qmakePath);
+}
+
+void HarmonySettingsWidget::checkSdkItem(QString sdkLocation)
+{
+    if (FilePath::fromString(sdkLocation).isReadableDir())
     {
         m_harmonySummary->setPointValid(SdkPathExistsAndWritableRow, true);
 
@@ -264,27 +348,84 @@ void HarmonySettingsWidget::onSdkPathChanged()
     else
     {
         m_harmonySummary->setPointValid(SdkPathExistsAndWritableRow, false
-            , Tr::tr("SDK path does not exist or is not writable"));
+                                        , Tr::tr("SDK path does not exist or is not writable"));
     }
-    FilePath ndkPath = sdkPath / "default" / "openharmony" / "native";
-    if (ndkPath.isReadableDir())
-    {
-        FilePath packagejsonPath = ndkPath / "oh-uni-package.json";
-        if (packagejsonPath.isReadableFile())
-        {
-            if(HarmonyConfig::setVersion(packagejsonPath))
-            {
-                HarmonyConfig::setSdkLocation(sdkPath);
-                HarmonyConfig::setNdkLocation(ndkPath);
-                m_harmonySummary->setPointValid(SdkToolsInstalledRow, true);
-                setAllOk();
-                return;
+
+    if (HarmonyConfig::isValidSdk(sdkLocation)) {
+        HarmonyConfig::addSdk(sdkLocation);
+        if (m_sdkListWidget->findItems(sdkLocation, Qt::MatchExactly).size() == 0) {
+            m_sdkListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), sdkLocation));
+            if (HarmonyConfig::defaultSdk().isEmpty()) {
+                HarmonyConfig::setdefaultSdk(FilePath::fromString(sdkLocation));
             }
         }
+        m_harmonySummary->setPointValid(SdkToolsInstalledRow, true);
+        setAllOk();
+    } else if (!sdkLocation.isEmpty()) {
+        QMessageBox::warning(
+            this,
+            Tr::tr("Add Custom SDK"),
+            Tr::tr("The selected path has an invalid SDK. This might mean that the path contains space "
+                   "characters, or that it does not have a \"toolchains\" sub-directory, or that the "
+                   "NDK version could not be retrieved because of a missing \"source.properties\" or "
+                   "\"RELEASE.TXT\" file"));
+        m_harmonySummary->setPointValid(SdkToolsInstalledRow, false
+                                        , Tr::tr("SDK tools are not installed"));
+        setAllOk();
     }
-    m_harmonySummary->setPointValid(SdkToolsInstalledRow, false
-        , Tr::tr("SDK tools are not installed"));
-    setAllOk();
+}
+
+void HarmonySettingsWidget::checkQmakeItem(QString qmakeLocation)
+{
+    if (FilePath::fromString(qmakeLocation).isExecutableFile())
+    {
+        qtForHarmonySummary->setPointValid(QMakeToolsInstalledRow, true);
+        HarmonyConfig::addQmake(qmakeLocation);
+        if (m_qmakeListWidget->findItems(qmakeLocation, Qt::MatchExactly).size() == 0) {
+            m_qmakeListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), qmakeLocation));
+        }
+    }
+    else
+    {
+        qtForHarmonySummary->setPointValid(QMakeToolsInstalledRow, false
+                                           , Tr::tr("Qt for Harmony qmake does not exist"));
+    }
+}
+
+bool HarmonySettingsWidget::isDefaultSdkSelected() const
+{
+    if (!HarmonyConfig::defaultSdk().isEmpty()) {
+        if (const QListWidgetItem *item = m_sdkListWidget->currentItem()) {
+            return FilePath::fromUserInput(item->text()) == HarmonyConfig::defaultSdk();
+        }
+    }
+    return false;
+}
+
+void HarmonySettingsWidget::setAllOk()
+{
+    m_harmonySummary->setPointValid(AllEssentialsInstalledRow, true);
+    if (!m_harmonySummary->allRowsOk())
+    {
+        m_harmonySummary->setPointValid(AllEssentialsInstalledRow, false);
+    }
+    // Mark default entry in NDK list widget
+    {
+        const QFont font = m_sdkListWidget->font();
+        QFont markedFont = font;
+        markedFont.setItalic(true);
+        for (int row = 0; row < m_sdkListWidget->count(); ++row) {
+            QListWidgetItem *item = m_sdkListWidget->item(row);
+            const bool isDefaultNdk =
+                FilePath::fromUserInput(item->text()) == HarmonyConfig::defaultSdk();
+            item->setFont(isDefaultNdk ? markedFont : font);
+            item->setIcon((isDefaultNdk ? Icons::LOCKED : Icons::UNLOCKED).icon());
+        }
+    }
+
+    m_makeDefaultSdkButton->setEnabled(m_sdkListWidget->count() > 0);
+    m_makeDefaultSdkButton->setText(isDefaultSdkSelected() ? Tr::tr("Unset Default")
+                                                           : Tr::tr("Make Default"));
 }
 
 void HarmonySettingsWidget::onDevecoStudioPathChanged()
@@ -311,27 +452,20 @@ void HarmonySettingsWidget::onMakePathChanged()
     HarmonyConfig::setMakeLocation(makePath);
 }
 
-void HarmonySettingsWidget::onQmakePathChanged()
-{
-    const FilePath qmakePath = m_qmakePathChooser->filePath().cleanPath();
-    if (qmakePath.isExecutableFile())
-    {
-        qtForHarmonySummary->setPointValid(QMakeToolsInstalledRow, true);
-        HarmonyConfig::setQmakeLocation(qmakePath);
-    }
-    else
-    {
-        qtForHarmonySummary->setPointValid(QMakeToolsInstalledRow, false
-            , Tr::tr("Qt for Harmony qmake does not exist"));
-    }
-}
-
 void HarmonySettingsWidget::validateSdk()
 {
-    onSdkPathChanged();
     onDevecoStudioPathChanged();
     onMakePathChanged();
-    onQmakePathChanged();
+    for(const QString &qmake : qAsConst(HarmonyConfig::getQmakeList()))
+    {
+        checkQmakeItem(qmake);
+    }
+    updateSdkList();
+    for(const QString &sdk : qAsConst(HarmonyConfig::getSdkList()))
+    {
+        checkSdkItem(sdk);
+    }
+    setAllOk();
 }
 
 Toolchain *HarmonySettingsWidget::findGccToolChain() const
