@@ -28,7 +28,13 @@ static FilePath sdkSettingsFileName()
 {
     return Core::ICore::installerResourcePath("harmony.xml");
 }
-
+/**
+ * @brief getDeviceProperty
+ * 获取设备属性
+ * @param device 设备
+ * @param property 属性
+ * @return QString 属性值
+ */
 static QString getDeviceProperty(const QString &device, const QString &property)
 {
     Process hdcParam;
@@ -44,10 +50,30 @@ namespace HarmonyConfig {
 struct HarmonyConfigData{
     void load(const QtcSettings &settings);
     void save(QtcSettings &settings) const;
+    /**
+     * @brief m_makeLocation
+     * make路径
+     */
     FilePath m_makeLocation;
+    /**
+     * @brief m_sdkLocation
+     * 默认SDK路径
+     */
     FilePath m_defaultSdkLocation;
+    /**
+     * @brief m_devecoStudioPath
+     * Deveco Studio路径
+     */
     FilePath m_devecoStudioPath;
+    /**
+     * @brief m_qmakeList
+     * qmake路径列表
+     */
     QStringList m_qmakeList;
+    /**
+     * @brief m_sdkList
+     * SDK路径列表
+     */
     QStringList m_sdkList;
 };
 static HarmonyConfigData &config()

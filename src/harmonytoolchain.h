@@ -8,9 +8,24 @@ class HarmonyToolchain : public ProjectExplorer::GccToolchain
 {
 public:
     explicit HarmonyToolchain();
-
+    /**
+     * @brief addToEnvironment
+     * 添加到环境变量
+     * @param env
+     */
     void addToEnvironment(Utils::Environment &env) const override;
+    /**
+     * @brief suggestedMkspecList
+     * 建议的mkspec列表
+     * @return
+     */
     QStringList suggestedMkspecList() const override;
+    /**
+     * @brief makeCommand
+     * make命令
+     * @param environment
+     * @return
+     */
     Utils::FilePath makeCommand(const Utils::Environment &environment) const override;
 
     void setNdkLocation(const Utils::FilePath &ndkLocation);

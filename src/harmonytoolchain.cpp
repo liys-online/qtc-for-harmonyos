@@ -77,7 +77,7 @@ FilePath HarmonyToolchain::makeCommand(const Utils::Environment &environment) co
     FilePath makeExecutable = makePath / "bin" / "mingw32-make.exe";
     if (makeExecutable.isExecutableFile())
         return makeExecutable;
-    return "";
+    return {};
 }
 
 ToolchainList autodetectToolchains(const ToolchainList &alreadyKnown)

@@ -10,10 +10,12 @@ public:
 
     static ProjectExplorer::IDevicePtr create();
 
-    // IDevice interface
-public:
     ProjectExplorer::IDeviceWidget *createWidget() override;
 };
+/**
+ * @brief setupDevicesWatcher
+ * 设置设备监视器
+ */
 void setupDevicesWatcher();
 
 void setupHarmonyDevice();

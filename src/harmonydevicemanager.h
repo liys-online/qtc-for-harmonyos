@@ -14,10 +14,17 @@ class HarmonyDeviceManager : public QObject
 public:
     explicit HarmonyDeviceManager(QObject *parent = nullptr);
     ~HarmonyDeviceManager();
+    /**
+     * @brief queryDevice
+     * 查询设备
+     */
     void queryDevice();
+    /**
+     * @brief setupDevicesWatcher
+     * 设置设备监视器
+     */
     void setupDevicesWatcher();
 private:
-    TaskTreeRunner m_hdcDeviceWatcherRunner;
     Q_DISABLE_COPY(HarmonyDeviceManager)
 };
 Q_GLOBAL_STATIC(HarmonyDeviceManager, instance)
