@@ -41,19 +41,6 @@ public:
         setupHarmonyToolchain();
         connect(KitManager::instance(), &KitManager::kitsLoaded, this, &OhosPlugin::kitsRestored,
                 Qt::SingleShotConnection);
-        // auto action = new QAction(Tr::tr("Ohos Action"), this);
-        // Core::Command *cmd = Core::ActionManager::registerAction(action,
-        //                                                          Constants::ACTION_ID,
-        //                                                          Core::Context(
-        //                                                              Core::Constants::C_GLOBAL));
-        // cmd->setDefaultKeySequence(QKeySequence(Tr::tr("Ctrl+Alt+Meta+A")));
-        // connect(action, &QAction::triggered, this, &OhosPlugin::triggerAction);
-
-        // Core::ActionContainer *menu = Core::ActionManager::createMenu(Constants::MENU_ID);
-        // menu->menu()->setTitle(Tr::tr("Ohos"));
-        // menu->addAction(cmd);
-        // Core::ActionManager::actionContainer(Core::Constants::M_TOOLS)->addMenu(menu);
-
     }
 
     void kitsRestored()

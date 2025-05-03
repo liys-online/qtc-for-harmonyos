@@ -48,24 +48,17 @@ QString HarmonyQtVersion::defaultUnexpandedDisplayName() const
 
 QVersionNumber HarmonyQtVersion::supportOhVersion() const
 {
-    FilePath headerDir = headerPath();
-    FilePath qconfigHeader = headerDir.pathAppended(Constants::Q_CONFIG_H);
-    if (qconfigHeader.exists())
+    if (FilePath qconfigHeader = headerPath().pathAppended(Constants::Q_CONFIG_H); qconfigHeader.exists())
     {
-        QFile qconfigFile(qconfigHeader.toString());
-        if (qconfigFile.open(QIODevice::ReadOnly))
+        if (QFile qconfigFile(qconfigHeader.toFSPathString()); qconfigFile.open(QIODevice::ReadOnly))
         {
             QTextStream in(&qconfigFile);
             while (!in.atEnd())
             {
-                QString line = in.readLine();
-                if (line.contains(Constants::OHOS_SDK_VERSION))
-                {
-                    QStringList list = line.split(" ");
-                    QString version = list.at(2);
-                    return QVersionNumber::fromString(version);
-                }
+                if (const QString line = in.readLine(); line.contains(Constants::OHOS_SDK_VERSION))
+                    return QVersionNumber::fromString(line.simplified().split(' ').last());
             }
+            qconfigFile.close();
         }
     }
     return QVersionNumber();
@@ -82,11 +75,11 @@ public:
         setSupportedType(Constants::HARMONY_QT_TYPE);
         setPriority(90);
 
-        // setRestrictionChecker([](const SetupData &setup) {
-        //     return !setup.config.contains("harmony-no-sdk")
-        //     && (setup.config.contains("harmony")
-        //        || setup.platforms.contains("harmony"));
-        // });
+        setRestrictionChecker([](const SetupData &setup) {
+            return !setup.config.contains("harmony-no-sdk")
+            && (setup.config.contains("harmony")
+               || setup.platforms.contains("harmony"));
+        });
     }
 };
 
