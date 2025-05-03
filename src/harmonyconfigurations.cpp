@@ -110,11 +110,11 @@ void HarmonyConfigData::save(QtcSettings &settings) const
     if (sdkSettingsFile.exists())
         settings.setValue(changeTimeStamp, sdkSettingsFile.lastModified().toMSecsSinceEpoch() / 1000);
 
-    settings.setValue(Constants::MakeLocationKey, m_makeLocation.toString());
-    settings.setValue(Constants::DevecoStudioLocationKey, m_devecoStudioPath.toString());
+    settings.setValue(Constants::MakeLocationKey, m_makeLocation.toFSPathString());
+    settings.setValue(Constants::DevecoStudioLocationKey, m_devecoStudioPath.toFSPathString());
     settings.setValue(Constants::QmakeLocationKey, m_qmakeList);
     settings.setValue(Constants::SDKLocationsKey, m_sdkList);
-    settings.setValue(Constants::DefaultSDKLocationKey, m_defaultSdkLocation.toString());
+    settings.setValue(Constants::DefaultSDKLocationKey, m_defaultSdkLocation.toFSPathString());
 }
 
 FilePath devecoStudioLocation()
@@ -382,30 +382,26 @@ void HarmonyConfigurations::registerNewToolchains()
 
 void HarmonyConfigurations::registerQtVersions()
 {
-    const QtVersions installedVersions = QtVersionManager::versions([](const QtVersion *v) {
-        return v->type() == Constants::HARMONY_QT_TYPE;
+    const auto installedVersions = QtVersionManager::versions([](auto version) {
+        return version->type() == Constants::HARMONY_QT_TYPE;
     });
-    for (QtVersion *v : installedVersions)
+    for (auto *version : installedVersions)
     {
-        if (!v->qmakeFilePath().exists())
+        if (!version->qmakeFilePath().exists() ||
+            !HarmonyConfig::getQmakeList().contains(version->qmakeFilePath().toFSPathString()))
         {
-            QtVersionManager::instance()->removeVersion(v);
-            continue;
-        }
-        if (!HarmonyConfig::getQmakeList().contains(v->qmakeFilePath().toString()))
-        {
-            QtVersionManager::instance()->removeVersion(v);
+            QtVersionManager::instance()->removeVersion(version);
         }
     }
-    for(const QString &qmake : HarmonyConfig::getQmakeList())
+    for(const auto &qmake : std::as_const(HarmonyConfig::getQmakeList()))
     {
-        const FilePath qmakePath = FilePath::fromString(qmake);
+        const auto qmakePath = FilePath::fromString(qmake);
         if (qmakePath.isExecutableFile())
         {
-            QtVersion *qtVersion = QtVersionFactory::createQtVersionFromQMakePath(qmakePath, true);
-            HarmonyQtVersion *version = dynamic_cast<HarmonyQtVersion *>(qtVersion);
-            version->setUnexpandedDisplayName(version->defaultUnexpandedDisplayName()
-                                              + version->supportOhVersion().toString());
+            auto *qtVersion = QtVersionFactory::createQtVersionFromQMakePath(qmakePath, true);
+            auto *harmonyQtVersion = dynamic_cast<HarmonyQtVersion *>(qtVersion);
+            harmonyQtVersion->setUnexpandedDisplayName(harmonyQtVersion->defaultUnexpandedDisplayName()
+                                              + harmonyQtVersion->supportOhVersion().toString());
             if(QtVersionManager::instance()->isLoaded())
             {
                 const QtVersions installedVersions = QtVersionManager::versions([qtVersion](const QtVersion *v) {

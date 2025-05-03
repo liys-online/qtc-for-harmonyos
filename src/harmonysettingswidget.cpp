@@ -481,7 +481,7 @@ HarmonySettingsPage::HarmonySettingsPage()
 {
     setId(Constants::HARMONY_SETTINGS_ID);
     setDisplayName(Tr::tr("HarmonyOS"));
-    setCategory(ProjectExplorer::Constants::DEVICE_SETTINGS_CATEGORY);
+    setCategory(ProjectExplorer::Constants::SDK_SETTINGS_CATEGORY);
     setWidgetCreator([] { return new HarmonySettingsWidget; });
 }
 

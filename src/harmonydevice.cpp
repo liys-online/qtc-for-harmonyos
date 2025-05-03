@@ -35,11 +35,12 @@ HarmonyDevice::HarmonyDevice()
     setMachineType(IDevice::Hardware);
     setOsType(OsType::OsTypeOtherUnix);
     setDeviceState(DeviceDisconnected);
-
-    addDeviceAction({Tr::tr("Refresh"), [](const IDevice::Ptr &device, QWidget *parent) {
-                         Q_UNUSED(parent)
-                         updateDeviceState(device);
-                     }});
+    DeviceAction refreshAction;
+    refreshAction.display = Tr::tr("Refresh");
+    // refreshAction.execute = [](const IDevice::Ptr &device) {
+    //     updateDeviceState(device);
+    // };
+    addDeviceAction(refreshAction);
 }
 
 IDevicePtr HarmonyDevice::create()

@@ -97,8 +97,7 @@ static void handleDevicesListChange(const QString &serialNumber)
             newDev->setExtraData(Constants::HarmonySerialNumber, dirtySerial);
             newDev->setExtraData(Constants::HarmonyCpuAbi, HarmonyConfig::getAbis(dirtySerial));
             newDev->setExtraData(Constants::HarmonySdk, HarmonyConfig::getSDKVersion(dirtySerial));
-            qCDebug(harmonyDeviceLog, "Registering new Harmony device id \"%s\".",
-                    newDev->id().toString().toUtf8().data());
+            qCDebug(harmonyDeviceLog, "Registering new Harmony device id \"%s\".", newDev->id().name().data());
             devMgr->addDevice(IDevice::ConstPtr(newDev));
         }
     }
