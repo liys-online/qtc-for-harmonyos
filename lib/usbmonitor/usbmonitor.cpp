@@ -1,4 +1,5 @@
 #include "usbmonitor.h"
+#include "libusbi.h"
 #include <QDebug>
 #include <libusb.h>
 #include <QTimer>
@@ -18,15 +19,15 @@ public:
             libusb_exit(ctx);
         }
     }
-    libusb_context *ctx;
+    libusb_context *ctx = nullptr;
     int blank = 100;
+    bool running = false;
     static UsbMonitor *m_instance;
 };
 UsbMonitor *UsbMonitorPrivate::m_instance = nullptr;
 UsbMonitor *UsbMonitor::instance()
 {
-    UsbMonitorPrivate::m_instance = UsbMonitorPrivate::m_instance ? UsbMonitorPrivate::m_instance : new UsbMonitor;
-    return UsbMonitorPrivate::m_instance;
+    return UsbMonitorPrivate::m_instance ? UsbMonitorPrivate::m_instance : new UsbMonitor;
 }
 
 void UsbMonitor::destroy()
@@ -44,11 +45,13 @@ void UsbMonitor::setBlank(int blank)
 
 void UsbMonitor::startMonitor()
 {
+    UsbMonitor::instance()->m_p->running = true;
     UsbMonitor::instance()->start();
 }
 
 void UsbMonitor::stopMonitor()
 {
+    UsbMonitor::instance()->m_p->running = false;
     UsbMonitor::instance()->quit();
     UsbMonitor::instance()->wait();
 }
@@ -57,25 +60,27 @@ UsbMonitor::UsbMonitor(QObject *parent)
     : QThread(parent),
     m_p(new UsbMonitorPrivate)
 {
-
+    m_p->m_instance = this;
+    setBlank(1000);
 }
 
 UsbMonitor::~UsbMonitor()
 {
-    delete m_p;
+    qDebug() << "UsbMonitor destructor called.";
     if(isRunning()) {
-        quit();
-        wait();
+        stopMonitor();
     }
+    delete m_p;
 }
 
 void UsbMonitor::run()
 {
-    if (!m_p->ctx) return;
 
     QSet<QString> previousDevices;
 
     while (true) {
+        if (!m_p->ctx || !m_p->running) return;
+
         QSet<QString> currentDevices;
         libusb_device **devices;
         ssize_t deviceCount = libusb_get_device_list(m_p->ctx, &devices);
@@ -94,25 +99,26 @@ void UsbMonitor::run()
 
         for (const auto &device : currentDevices) {
             if (!previousDevices.contains(device)) {
-                QTimer::singleShot(3000, this, [this, device] {
+                // QTimer::singleShot(0, this, [this, device] {
                     emit usbDeviceChanged(device);
                     emit usbDeviceAdded(device);
-                });
+                // });
             }
         }
 
         for (const auto &device : previousDevices) {
             if (!currentDevices.contains(device)) {
-                QTimer::singleShot(3000, this, [this, device] {
+                // QTimer::singleShot(0, this, [this, device] {
                     emit usbDeviceChanged(device);
                     emit usbDeviceRemoved(device);
-                });
+                // });
             }
         }
 
         previousDevices = currentDevices;
         libusb_free_device_list(devices, 1);
 
+        qDebug() << "UsbMonitor active.";
         QThread::msleep(m_p->blank);
     }
 }

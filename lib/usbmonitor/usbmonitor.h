@@ -24,7 +24,7 @@ signals:
 private:
     explicit UsbMonitor(QObject *parent = nullptr);
     ~UsbMonitor();
-    UsbMonitorPrivate * const m_p;
+    UsbMonitorPrivate * const m_p = nullptr;
 };
 
 #endif // USBMONITOR_H
