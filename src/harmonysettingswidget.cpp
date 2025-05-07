@@ -1,4 +1,4 @@
-﻿#include "harmonysettingswidget.h"
+#include "harmonysettingswidget.h"
 #include "ohostr.h"
 #include "ohosconstants.h"
 #include <projectexplorer/projectexplorerconstants.h>
@@ -57,7 +57,7 @@ public:
         setPointValid(key, test.has_value(), test.has_value() ? QString{} : test.error());
     }
 
-    void setPointValid(int key, bool valid, const QString errorText = {})
+    void setPointValid(int key, bool valid, const QString &errorText = {})
     {
         if (!m_validationData.contains(key))
             return;
@@ -70,11 +70,10 @@ public:
 
     bool rowsOk(const QList<int> &keys) const
     {
-        for (auto key : keys) {
-            if (!m_validationData[key].m_valid)
-                return false;
-        }
-        return true;
+        auto isKeyValid = [this](const auto &key) {
+            return m_validationData[key].m_valid;
+        };
+        return std::all_of(keys.cbegin(), keys.cend(), isKeyValid);
     }
 
     bool allRowsOk() const

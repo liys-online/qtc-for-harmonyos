@@ -1,4 +1,4 @@
-﻿#ifndef HARMONYDEVICE_H
+#ifndef HARMONYDEVICE_H
 #define HARMONYDEVICE_H
 
 #include <projectexplorer/devicesupport/idevice.h>
@@ -19,7 +19,7 @@ public:
 void setupDevicesWatcher();
 
 void setupHarmonyDevice();
-void setupHarmonyDeviceManager(QObject *guard);
+void setupHarmonyDeviceManager(const QObject *guard);
 } // namespace Ohos::Internal
 
 #endif // HARMONYDEVICE_H

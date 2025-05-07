@@ -1,4 +1,4 @@
-﻿#include "harmonytoolchain.h"
+#include "harmonytoolchain.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
 #include "harmonyconfigurations.h"
@@ -26,7 +26,7 @@ const ClangTargetsType &clangTargets()
     return targets;
 }
 
-static Toolchain *findToolchain(FilePath &compilerPath, Id lang, const QString &target,
+static Toolchain *findToolchain(const FilePath &compilerPath, Id lang, const QString &target,
                                 const ToolchainList &alreadyKnown)
 {
     Toolchain *tc = Utils::findOrDefault(alreadyKnown, [target, compilerPath, lang](Toolchain *tc) {

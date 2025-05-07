@@ -1,4 +1,4 @@
-﻿#include "harmonydevice.h"
+#include "harmonydevice.h"
 #include "harmonydevicemanager.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
@@ -11,7 +11,7 @@ namespace Ohos::Internal {
 class HarmonyDeviceWidget : public IDeviceWidget
 {
 public:
-    HarmonyDeviceWidget(const IDevice::Ptr &device);
+    explicit HarmonyDeviceWidget(const IDevice::Ptr &device);
 
     void updateDeviceFromUi() final {}
 };
@@ -76,7 +76,7 @@ void setupHarmonyDevice()
     static HarmonyDeviceFactory theHarmonyDeviceFactory;
 }
 
-void setupHarmonyDeviceManager(QObject *guard)
+void setupHarmonyDeviceManager(const QObject *guard)
 {
 
 }
