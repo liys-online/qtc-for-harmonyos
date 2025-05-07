@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16)
 
 project(qtc-for-harmonyos)
 
@@ -8,5 +8,4 @@ include_directories(${CMAKE_BINARY_DIR}/libs/libusb)
 # add the subdirectories
 add_subdirectory(lib)
 add_subdirectory(src)
-
-
+add_subdirectory(test)
