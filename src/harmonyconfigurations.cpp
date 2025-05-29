@@ -1,4 +1,4 @@
-﻿#include "harmonyconfigurations.h"
+#include "harmonyconfigurations.h"
 #include <coreplugin/icore.h>
 #include "ohosconstants.h"
 #include <qjsonobject.h>
@@ -379,6 +379,13 @@ void HarmonyConfigurations::registerNewToolchains()
     ToolchainManager::registerToolchains(autodetectToolchains(existingHarmonyToolchains));
     // registerCustomToolchainsAndDebuggers();
 }
+bool hasExistingVersion(const QtVersion *qtVersion) {
+    const QtVersions installedVersions = QtVersionManager::versions(
+        [qtVersion](const QtVersion *v) {
+            return v->qmakeFilePath() == qtVersion->qmakeFilePath();
+        });
+    return !installedVersions.isEmpty();
+}
 
 void HarmonyConfigurations::registerQtVersions()
 {
@@ -399,17 +406,14 @@ void HarmonyConfigurations::registerQtVersions()
         if (qmakePath.isExecutableFile())
         {
             auto *qtVersion = QtVersionFactory::createQtVersionFromQMakePath(qmakePath, true);
-            auto *harmonyQtVersion = dynamic_cast<HarmonyQtVersion *>(qtVersion);
-            harmonyQtVersion->setUnexpandedDisplayName(harmonyQtVersion->defaultUnexpandedDisplayName()
-                                              + harmonyQtVersion->supportOhVersion().toString());
-            if(QtVersionManager::instance()->isLoaded())
+            if (auto *harmonyQtVersion = dynamic_cast<HarmonyQtVersion *>(qtVersion))
             {
-                const QtVersions installedVersions = QtVersionManager::versions([qtVersion](const QtVersion *v) {
-                    return v->qmakeFilePath() == qtVersion->qmakeFilePath();
-                });
-                if (installedVersions.isEmpty())
+                QString displayName = harmonyQtVersion->defaultUnexpandedDisplayName()
+                                      + harmonyQtVersion->supportOhVersion().toString();
+                harmonyQtVersion->setUnexpandedDisplayName(displayName);
+                if(QtVersionManager::instance()->isLoaded() && !hasExistingVersion(harmonyQtVersion))
                 {
-                    QtVersionManager::instance()->addVersion(qtVersion);
+                    QtVersionManager::instance()->addVersion(harmonyQtVersion);
                 }
             }
         }
