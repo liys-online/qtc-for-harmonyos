@@ -289,3 +289,6 @@ tmp/
 /*-debug/
 /*-release/
 /out/
+
+# Translation files
+Harmony_en.ts
