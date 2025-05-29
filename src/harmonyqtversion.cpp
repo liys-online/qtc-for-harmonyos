@@ -1,4 +1,4 @@
-﻿#include "harmonyqtversion.h"
+#include "harmonyqtversion.h"
 #include "harmonyconfigurations.h"
 #include "ohosconstants.h"
 #include <utils/filepath.h>
@@ -76,9 +76,9 @@ public:
         setPriority(90);
 
         setRestrictionChecker([](const SetupData &setup) {
-            return !setup.config.contains("harmony-no-sdk")
-            && (setup.config.contains("harmony")
-               || setup.platforms.contains("harmony"));
+            return !setup.config.contains("openharmony-no-sdk")
+            && (setup.config.contains("openharmony")
+               || setup.platforms.contains("openharmony"));
         });
     }
 };
