@@ -142,7 +142,7 @@ QList<FilePath> ndkLocations()
     QList<FilePath> ndkLocations;
     for (const QString &path : qAsConst(config().m_sdkList))
     {
-        FilePath ndkPath = FilePath::fromString(path) / "default" / "openharmony" / "native";
+        FilePath ndkPath = ndkLocation(FilePath::fromString(path));
         if (ndkPath.isReadableDir())
         {
             ndkLocations <<  ndkPath;
@@ -276,7 +276,17 @@ FilePath releaseFile(const Utils::FilePath &ndkLocation)
 
 FilePath ndkLocation(const Utils::FilePath &sdkLocation)
 {
-    return sdkLocation / "default" / "openharmony" / "native";
+    const QVector<FilePath> candidatePaths = {
+        sdkLocation / "native",
+        sdkLocation / "default" / "openharmony" / "native"
+    };
+
+    for (const FilePath &path : candidatePaths) {
+        if (releaseFile(path).isReadableFile())
+            return path;
+    }
+
+    return candidatePaths.first();
 }
 
 FilePath defaultSdk()

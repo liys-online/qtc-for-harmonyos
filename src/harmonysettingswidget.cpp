@@ -16,6 +16,7 @@
 #include <QListWidget>
 #include <QStandardPaths>
 #include <QFileDialog>
+
 namespace Ohos::Internal {
 
 class SummaryWidget : public QWidget
@@ -51,11 +52,6 @@ public:
         setContentsMargins(0, 0, 0, 0);
     }
 
-    template<class T>
-    void setPointValid(int key, const expected_str<T> &test)
-    {
-        setPointValid(key, test.has_value(), test.has_value() ? QString{} : test.error());
-    }
 
     void setPointValid(int key, bool valid, const QString &errorText = {})
     {
