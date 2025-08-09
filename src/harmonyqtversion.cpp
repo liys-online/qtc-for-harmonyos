@@ -24,8 +24,7 @@ void HarmonyQtVersion::addToBuildEnvironment(const ProjectExplorer::Kit *k, Util
             FilePath releaseFile = HarmonyConfig::releaseFile(HarmonyConfig::ndkLocation(FilePath::fromString(sdk)));
             if(HarmonyConfig::getVersion(releaseFile).first == supportOhVersion())
             {
-                const FilePath sdkPath = FilePath::fromString(sdk).pathAppended("default/openharmony");
-                env.set(Constants::OHOS_SDK_ENV_VAR, sdkPath.toUserOutput());
+                env.set(Constants::OHOS_SDK_ENV_VAR, sdk);
             }
         }
     }
@@ -62,6 +61,29 @@ QVersionNumber HarmonyQtVersion::supportOhVersion() const
         }
     }
     return QVersionNumber();
+}
+
+ProjectExplorer::Abi HarmonyQtVersion::targetAbi() const
+{
+    if (FilePath qdevicepri = mkspecsPath().pathAppended(Constants::Q_DEVICE_PRI); qdevicepri.exists())
+    {
+        if (QFile qconfigFile(qdevicepri.toFSPathString()); qconfigFile.open(QIODevice::ReadOnly))
+        {
+            QTextStream in(&qconfigFile);
+            while (!in.atEnd())
+            {
+                if (const QString line = in.readLine(); line.contains(Constants::OHOS_ARCH))
+                {
+                    auto arch = QLatin1String(line.simplified().split(' ').last().toUtf8());
+                    qconfigFile.close();
+                    return HarmonyConfig::abi(arch);
+                }
+            }
+            qconfigFile.close();
+        }
+    }
+    // Default to a generic ABI if not found
+    return ProjectExplorer::Abi();
 }
 
 // Factory

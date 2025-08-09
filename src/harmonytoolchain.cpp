@@ -5,6 +5,7 @@
 #include <projectexplorer/projectexplorerconstants.h>
 #include <projectexplorer/toolchainmanager.h>
 #include <projectexplorer/toolchainconfigwidget.h>
+#include <coreplugin/messagemanager.h>
 #include <QLoggingCategory>
 using namespace Utils;
 using namespace ProjectExplorer;
@@ -59,13 +60,58 @@ QStringList HarmonyToolchain::suggestedMkspecList() const
     return {"oh-clang++", "oh-clang"};
 }
 
+bool HarmonyToolchain::isValid() const
+{
+    // 确保NDK位置被正确推断（如果还没有设置的话）
+    ndkLocation(); // 这会触发自动推断逻辑
+    
+    const bool isChildofNdk = compilerCommand().isChildOf(m_ndkLocation);
+    const bool hasValidNdk = !m_ndkLocation.isEmpty() && m_ndkLocation.exists();
+    
+    return Toolchain::isValid()
+           && typeId() == Constants::HARMONY_TOOLCHAIN_TYPEID
+           && targetAbi().isValid() 
+           && isChildofNdk 
+           && hasValidNdk
+           && !originalTargetTriple().isEmpty();
+}
+
 void HarmonyToolchain::setNdkLocation(const Utils::FilePath &ndkLocation)
 {
     m_ndkLocation = ndkLocation;
 }
 
+QVersionNumber HarmonyToolchain::apiVersion() const
+{
+    if (m_apiVersion.isNull()) {
+        m_apiVersion = HarmonyConfig::getVersion(HarmonyConfig::releaseFile(m_ndkLocation)).first;
+    }
+    return m_apiVersion;
+}
+
 FilePath HarmonyToolchain::ndkLocation() const
 {
+    // 如果NDK位置为空，尝试从编译器路径推断
+    if (m_ndkLocation.isEmpty()) {
+        const QString compilerPath = compilerCommand().toFSPathString();
+        
+        // HarmonyOS NDK的典型路径结构：.../native/llvm/bin/clang
+        QStringList ndkParts = compilerPath.split("/native/llvm/");
+        if (ndkParts.size() > 1) {
+            QString inferredNdkLocation = ndkParts.first() + "/native";
+            m_ndkLocation = FilePath::fromString(inferredNdkLocation);
+        } else {
+            // 备用方案：尝试其他可能的路径模式
+            ndkParts = compilerPath.split("/llvm/");
+            if (ndkParts.size() > 1) {
+                // 检查是否在 native 目录下
+                QString basePath = ndkParts.first();
+                if (basePath.endsWith("/native")) {
+                    m_ndkLocation = FilePath::fromString(basePath);
+                }
+            }
+        }
+    }
     return m_ndkLocation;
 }
 
@@ -182,6 +228,7 @@ ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown,
                     atc->setPlatformLinkerFlags({"-target", target});
                     atc->setDisplayName(displayName);
                     tc = atc;
+
                     newToolchains << tc;
                 }
                 if (auto gccTc = dynamic_cast<GccToolchain*>(tc))

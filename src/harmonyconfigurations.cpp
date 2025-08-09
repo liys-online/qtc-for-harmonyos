@@ -3,15 +3,26 @@
 #include "ohosconstants.h"
 #include <qjsonobject.h>
 #include <utils/persistentsettings.h>
+
 #include <projectexplorer/toolchainmanager.h>
+#include <projectexplorer/devicesupport/devicekitaspects.h>
 #include <projectexplorer/devicesupport/devicemanager.h>
+#include <projectexplorer/kitmanager.h>
+#include <projectexplorer/projectexplorerconstants.h>
+#include <projectexplorer/toolchainkitaspect.h>
+#include <projectexplorer/abi.h>
+
 #include <qtsupport/qtversionfactory.h>
 #include <qtsupport/qtversionmanager.h>
+#include <qtsupport/qtkitaspect.h>
+
 #include "harmonytoolchain.h"
 #include "harmonyqtversion.h"
 #include "harmonydevice.h"
 #include <QJsonDocument>
 #include <utils/qtcprocess.h>
+
+#include <coreplugin/messagemanager.h>
 using namespace Utils;
 
 using namespace ProjectExplorer;
@@ -19,7 +30,7 @@ using namespace QtSupport;
 namespace Ohos::Internal {
 using namespace Constants::Parameter;
 const Key changeTimeStamp("ChangeTimeStamp");
-const QLatin1String ArmToolsDisplayName("arm");
+const QLatin1String ArmToolsDisplayName("armeabi-v7a");
 const QLatin1String X86ToolsDisplayName("i686");
 const QLatin1String AArch64ToolsDisplayName("arm64-v8a");
 const QLatin1String X86_64ToolsDisplayName("x86_64");
@@ -179,6 +190,19 @@ QLatin1String displayName(const ProjectExplorer::Abi &abi)
     default:
         return Unknown;
     }
+}
+
+Abi abi(const QLatin1String &arch)
+{
+    if (arch == ArmToolsDisplayName)
+        return Abi(Abi::ArmArchitecture, Abi::LinuxOS, Abi::GenericFlavor, Abi::ElfFormat, 32);
+    if (arch == X86ToolsDisplayName)
+        return Abi(Abi::X86Architecture, Abi::LinuxOS, Abi::GenericFlavor, Abi::ElfFormat, 32);
+    if (arch == AArch64ToolsDisplayName)
+        return Abi(Abi::ArmArchitecture, Abi::LinuxOS, Abi::GenericFlavor, Abi::ElfFormat, 64);
+    if (arch == X86_64ToolsDisplayName)
+        return Abi(Abi::X86Architecture, Abi::LinuxOS, Abi::GenericFlavor, Abi::ElfFormat, 64);
+    return {};
 }
 
 QPair<QVersionNumber, QVersionNumber> getVersion(const Utils::FilePath &releaseFile)
@@ -377,8 +401,8 @@ void HarmonyConfigurations::applyConfig()
     updateHarmonyDevice();
     registerNewToolchains();
     registerQtVersions();
-    // updateAutomaticKitList();
-    // removeOldToolchains();
+    updateAutomaticKitList();
+    removeOldToolchains();
     emit m_instance->updated();
 }
 
@@ -395,6 +419,20 @@ bool hasExistingVersion(const QtVersion *qtVersion) {
             return v->qmakeFilePath() == qtVersion->qmakeFilePath();
         });
     return !installedVersions.isEmpty();
+}
+
+// 匹配Kit与工具链Bundle的辅助函数
+static bool matchKit(const ToolchainBundle &bundle, const Kit &kit)
+{
+    using namespace ProjectExplorer::Constants;
+    for (const Id lang : {Id(C_LANGUAGE_ID), Id(CXX_LANGUAGE_ID)}) {
+        const Toolchain * const tc = ToolchainKitAspect::toolchain(&kit, lang);
+        if (!tc || tc->typeId() != Constants::HARMONY_TOOLCHAIN_TYPEID
+            || tc->targetAbi() != bundle.targetAbi()) {
+            return false;
+        }
+    }
+    return true;
 }
 
 void HarmonyConfigurations::registerQtVersions()
@@ -430,9 +468,136 @@ void HarmonyConfigurations::registerQtVersions()
     }
 }
 
+void HarmonyConfigurations::removeOldToolchains()
+{
+    const auto invalidAndroidTcs = ToolchainManager::toolchains([](const Toolchain *tc) {
+        return tc->id() == Constants::HARMONY_TOOLCHAIN_TYPEID && !tc->isValid();
+    });
+    ToolchainManager::deregisterToolchains(invalidAndroidTcs);
+}
+
+void HarmonyConfigurations::updateAutomaticKitList()
+{
+    // 更新现有Harmony Kit的NDK和SDK设置
+    for (Kit *k : KitManager::kits()) {
+        if (RunDeviceTypeKitAspect::deviceTypeId(k) == Constants::HARMONY_DEVICE_TYPE) {
+            if (k->value(Constants::HARMONY_KIT_NDK).isNull() || k->value(Constants::HARMONY_KIT_SDK).isNull()) {
+                if (QtVersion *qt = QtKitAspect::qtVersion(k)) {
+                    // 设置NDK和SDK路径
+                    const FilePath ndkPath = HarmonyConfig::ndkLocation(HarmonyConfig::defaultSdk());
+                    k->setValueSilently(Constants::HARMONY_KIT_NDK, ndkPath.toSettings());
+                    k->setValueSilently(Constants::HARMONY_KIT_SDK, HarmonyConfig::defaultSdk().toSettings());
+                }
+            }
+        }
+    }
+
+    // 获取现有的Harmony Kit列表
+    const QList<Kit *> existingKits = Utils::filtered(KitManager::kits(), [](Kit *k) {
+        Id deviceTypeId = RunDeviceTypeKitAspect::deviceTypeId(k);
+        return k->isAutoDetected() && !k->isSdkProvided()
+               && deviceTypeId == Constants::HARMONY_DEVICE_TYPE;
+    });
+
+    // 按架构分组Qt版本
+    QHash<Abi, QList<const QtVersion *>> qtVersionsForArch;
+    const QtVersions qtVersions = QtVersionManager::versions([](const QtVersion *v) {
+        return v->type() == Constants::HARMONY_QT_TYPE;
+    });
+    
+    for (const QtVersion *qtVersion : qtVersions) {
+        const Abis qtAbis = qtVersion->qtAbis();
+        if (qtAbis.empty())
+            continue;
+        qtVersionsForArch[qtAbis.first()].append(qtVersion);
+    }
+
+    // 获取有效的工具链Bundle
+    const QList<ToolchainBundle> bundles = Utils::filtered(
+        ToolchainBundle::collectBundles(
+            ToolchainManager::toolchains([](const Toolchain *tc) {
+                return /*tc->isAutoDetected() &&*/ tc->typeId() == Constants::HARMONY_TOOLCHAIN_TYPEID;
+            }),
+            ToolchainBundle::HandleMissing::CreateAndRegister),
+        [](const ToolchainBundle &b) { return b.isCompletelyValid(); });
+    Core::MessageManager::writeSilently(
+        tr("Found %1 Harmony toolchain bundles").arg(bundles.size()));
+    QList<Kit *> unhandledKits = existingKits;
+
+    // 为每个工具链Bundle和Qt版本组合创建Kit
+    for (const ToolchainBundle &bundle : bundles) {
+        const auto &versions = qtVersionsForArch.value(bundle.targetAbi());
+        for (const QtVersion *qt : versions) {
+            // 检查工具链的NDK位置是否与Qt版本匹配
+            const auto tcApiVersion = bundle.get(&HarmonyToolchain::apiVersion);
+            const auto expectedNdkPath = bundle.get(&HarmonyToolchain::ndkLocation);
+            Core::MessageManager::writeSilently(
+                tr("Processing Qt %1 for HarmonyOS %2 with NDK %3")
+                    .arg(qt->displayName(), bundle.targetAbi().toString(), expectedNdkPath.toUserOutput()));
+            auto ohQt = static_cast<const HarmonyQtVersion *>(qt);
+            if(tcApiVersion.isNull() || ohQt->supportOhVersion() != tcApiVersion) {
+                Core::MessageManager::writeSilently(
+                    tr("Skipping Qt %1 for HarmonyOS %2: unsupported API version %3")
+                        .arg(ohQt->displayName(), ohQt->supportOhVersion().toString(), tcApiVersion.toString()));
+                continue;
+            }
+            // 查找是否已存在匹配的Kit
+            Kit *existingKit = Utils::findOrDefault(existingKits, [&](const Kit *k) {
+                if (ohQt != QtKitAspect::qtVersion(k))
+                    return false;
+                return matchKit(bundle, *k);
+            });
+
+            // Kit初始化函数
+            const auto initializeKit = [&bundle, expectedNdkPath, ohQt](Kit *k) {
+                k->setAutoDetected(true);
+                k->setAutoDetectionSource("HarmonyConfiguration");
+                RunDeviceTypeKitAspect::setDeviceTypeId(k, Constants::HARMONY_DEVICE_TYPE);
+                ToolchainKitAspect::setBundle(k, bundle);
+                QtKitAspect::setQtVersion(k, ohQt);
+                
+                // 设置构建设备为默认桌面设备
+                BuildDeviceKitAspect::setDeviceId(k, DeviceManager::defaultDesktopDevice()->id());
+                
+                // 设置粘性属性，防止用户意外修改关键设置
+                k->setSticky(QtKitAspect::id(), true);
+                k->setSticky(RunDeviceTypeKitAspect::id(), true);
+                k->setSticky(ToolchainKitAspect::id(), true);
+
+                // 设置显示名称
+                QString versionStr = QLatin1String("Qt %{Qt:Version}");
+                if (!ohQt->isAutodetected())
+                    versionStr = QString("%1").arg(ohQt->displayName());
+                
+                k->setUnexpandedDisplayName(QObject::tr("HarmonyOS%1 %2 Clang %3")
+                                                .arg(ohQt->supportOhVersion().toString(),
+                                                     versionStr,
+                                                     HarmonyConfig::displayName(ohQt->targetAbi())));
+
+                // 设置NDK和SDK路径
+                k->setValueSilently(Constants::HARMONY_KIT_NDK, expectedNdkPath.toSettings());
+                k->setValueSilently(Constants::HARMONY_KIT_SDK, ohQt->qmakeFilePath().toSettings());
+            };
+
+            if (existingKit) {
+                // 更新现有Kit
+                initializeKit(existingKit);
+                unhandledKits.removeOne(existingKit);
+            } else {
+                // 注册新Kit
+                KitManager::registerKit(initializeKit);
+            }
+        }
+    }
+
+    // 清理不再使用的Kit
+    KitManager::deregisterKits(unhandledKits);
+}
+
 void setupHarmonyConfigurations()
 {
-    qDebug() << "setupHarmonyConfigurations";
+    Core::MessageManager::writeSilently(
+        QObject::tr("Setting up Harmony configurations..."));
     static HarmonyConfigurations harmonyConfigurations;
 }
 

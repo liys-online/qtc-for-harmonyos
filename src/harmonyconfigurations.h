@@ -1,4 +1,4 @@
-﻿#ifndef HARMONYCONFIGURATIONS_H
+#ifndef HARMONYCONFIGURATIONS_H
 #define HARMONYCONFIGURATIONS_H
 
 #include <QObject>
@@ -25,6 +25,16 @@ namespace Ohos::Internal {
          * 注册Qt版本
          */
         static void registerQtVersions();
+        /**
+         * @brief removeOldToolchains
+         * 移除旧的工具链
+         */
+        static void removeOldToolchains();
+        /**
+         * @brief updateAutomaticKitList
+         * 更新自动Kit列表
+         */
+        static void updateAutomaticKitList();
     private:
         friend void setupHarmonyConfigurations();
         explicit HarmonyConfigurations(QObject *parent = nullptr);
@@ -156,6 +166,13 @@ namespace Ohos::Internal {
          * 显示名称
          */
         QLatin1String displayName(const ProjectExplorer::Abi &abi);
+        /**
+         * @brief abi
+         * @param arch
+         * @return
+         * 获取ABI
+         */
+        ProjectExplorer::Abi abi(const QLatin1String &arch);
         /**
          * @brief ndkLocation
          * @param sdkLocation

@@ -1,4 +1,4 @@
-﻿#ifndef HARMONYQTVERSION_H
+#ifndef HARMONYQTVERSION_H
 #define HARMONYQTVERSION_H
 #include <qtsupport/baseqtversion.h>
 #include <qtsupport/qtversionfactory.h>
@@ -50,6 +50,8 @@ public:
      * @return
      */
     QVersionNumber supportOhVersion() const;
+
+    ProjectExplorer::Abi targetAbi() const;
 };
 void setupHarmonyQtVersion();
 } // Ohos::Internal

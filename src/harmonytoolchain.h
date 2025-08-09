@@ -28,10 +28,15 @@ public:
      */
     Utils::FilePath makeCommand(const Utils::Environment &environment) const override;
 
+    bool isValid() const override;
+    
     void setNdkLocation(const Utils::FilePath &ndkLocation);
     Utils::FilePath ndkLocation() const;
+
+    QVersionNumber apiVersion() const;
 private:
     mutable Utils::FilePath m_ndkLocation;
+    mutable QVersionNumber m_apiVersion;
 };
 ToolchainList autodetectToolchains(const ToolchainList &alreadyKnown);
 ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown,

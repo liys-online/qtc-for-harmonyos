@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <utils/id.h>
 namespace Ohos::Constants {
 const char HARMONY_SETTINGS_ID[] = "LL.Harmony Configurations";
@@ -13,7 +13,12 @@ const char SDKLocationsKey[] = "Harmony.SDKLocations";
 const char DefaultSDKLocationKey[] = "Harmony.DefaultSDKLocation";
 const char OHOS_SDK_ENV_VAR[] = "OHOS_SDK_PATH";
 const char OHOS_SDK_VERSION[] = "OHOS_SDK_VERSION";
+const char OHOS_ARCH[] = "OHOS_ARCH";
 const char Q_CONFIG_H[] = "QtCore/qconfig.h";
+const char Q_DEVICE_PRI[] = "qdevice.pri";
+
+const char HARMONY_KIT_NDK[] = "Harmony.NDK";
+const char HARMONY_KIT_SDK[] = "Harmony.SDK";
 
 const char HarmonySerialNumber[] = "HarmonySerialNumber";
 const char HarmonyCpuAbi[] = "HarmonyCpuAbi";

@@ -1,6 +1,3 @@
-﻿// #include "ohosconstants.h"
-// #include "ohostr.h"
-
 #include <coreplugin/actionmanager/actioncontainer.h>
 #include <coreplugin/actionmanager/actionmanager.h>
 #include <coreplugin/actionmanager/command.h>
@@ -9,6 +6,7 @@
 #include <coreplugin/icore.h>
 #include <projectexplorer/kitmanager.h>
 #include <extensionsystem/iplugin.h>
+#include <qtsupport/qtversionmanager.h>
 
 #include <QTranslator>
 #include "harmonysettingswidget.h"
@@ -48,6 +46,13 @@ public:
         // Add code here to handle kits being restored
         HarmonyConfigurations::registerNewToolchains();
         HarmonyConfigurations::registerQtVersions();
+        HarmonyConfigurations::updateAutomaticKitList();
+        connect(QtSupport::QtVersionManager::instance(), &QtSupport::QtVersionManager::qtVersionsChanged,
+                HarmonyConfigurations::instance(), [] {
+                    HarmonyConfigurations::registerNewToolchains();
+                    HarmonyConfigurations::updateAutomaticKitList();
+                });
+
     }
     void loadTranslations() {
         QTranslator *translator = new QTranslator();
