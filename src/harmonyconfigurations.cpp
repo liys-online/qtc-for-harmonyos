@@ -430,11 +430,11 @@ bool hasExistingVersion(const QtVersion *qtVersion) {
 }
 
 // 匹配Kit与工具链Bundle的辅助函数
-static bool matchKit(const ToolchainBundle &bundle, const Kit &kit)
+static bool matchKit(const ToolchainBundle &bundle, const Kit *kit)
 {
     using namespace ProjectExplorer::Constants;
     for (const Id lang : {Id(C_LANGUAGE_ID), Id(CXX_LANGUAGE_ID)}) {
-        const Toolchain * const tc = ToolchainKitAspect::toolchain(&kit, lang);
+        const Toolchain * tc = ToolchainKitAspect::toolchain(kit, lang);
         if (!tc || tc->typeId() != Constants::HARMONY_TOOLCHAIN_TYPEID
             || tc->targetAbi() != bundle.targetAbi()) {
             return false;
@@ -549,11 +549,14 @@ void HarmonyConfigurations::updateAutomaticKitList()
                         .arg(ohQt->displayName(), ohQt->supportOhVersion().toString(), tcApiVersion.toString()));
                 continue;
             }
-            // 查找是否已存在匹配的Kit
-            Kit *existingKit = Utils::findOrDefault(existingKits, [&](const Kit *k) {
-                if (ohQt != QtKitAspect::qtVersion(k))
-                    return false;
-                return matchKit(bundle, *k);
+
+            /*
+             * 查找是否已存在匹配的Kit
+             * 目前暂时只支持一个Harmony Qt版本对应一个Kit
+             */
+            Kit *existingKit = Utils::findOrDefault(existingKits, [qt, bundle](const Kit *k) {
+                return (qt == QtKitAspect::qtVersion(k));
+                // return matchKit(bundle, k);
             });
 
             // Kit初始化函数

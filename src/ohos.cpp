@@ -45,7 +45,7 @@ public:
     {
         // Add code here to handle kits being restored
         HarmonyConfigurations::registerNewToolchains();
-        HarmonyConfigurations::registerQtVersions();
+        // HarmonyConfigurations::registerQtVersions();
         HarmonyConfigurations::updateAutomaticKitList();
         connect(QtSupport::QtVersionManager::instance(), &QtSupport::QtVersionManager::qtVersionsChanged,
                 HarmonyConfigurations::instance(), [] {
