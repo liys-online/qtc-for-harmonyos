@@ -58,6 +58,7 @@ add_qtc_plugin(Harmony
     QtCreator::Core
     QtCreator::ProjectExplorer
     QtCreator::QtSupport
+    QtCreator::CMakeProjectManager
   DEPENDS
     Qt::Widgets
     QtCreator::ExtensionSystem

@@ -14,6 +14,7 @@ const char DefaultSDKLocationKey[] = "Harmony.DefaultSDKLocation";
 const char OHOS_SDK_ENV_VAR[] = "OHOS_SDK_PATH";
 const char OHOS_SDK_VERSION[] = "OHOS_SDK_VERSION";
 const char OHOS_ARCH[] = "OHOS_ARCH";
+const char OHOS_TOOLCHAIN_FILE[] = "ohos.toolchain.cmake";
 const char Q_CONFIG_H[] = "QtCore/qconfig.h";
 const char Q_DEVICE_PRI[] = "qdevice.pri";
 

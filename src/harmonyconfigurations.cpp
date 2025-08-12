@@ -10,6 +10,7 @@
 #include <projectexplorer/kitmanager.h>
 #include <projectexplorer/projectexplorerconstants.h>
 #include <projectexplorer/toolchainkitaspect.h>
+#include <cmakeprojectmanager/cmakekitaspect.h>
 #include <projectexplorer/abi.h>
 
 #include <qtsupport/qtversionfactory.h>
@@ -57,6 +58,7 @@ static QString getDeviceProperty(const QString &device, const QString &property)
         return hdcParam.allOutput();
     return {};
 }
+
 namespace HarmonyConfig {
 struct HarmonyConfigData{
     void load(const QtcSettings &settings);
@@ -341,6 +343,12 @@ QStringList &getQmakeList()
     return config().m_qmakeList;
 }
 
+FilePath toolchainFilePath(const Utils::FilePath &ndkLocation)
+{
+    FilePath toolchainFile = ndkLocation / "build" / "cmake" / Constants::OHOS_TOOLCHAIN_FILE;
+    return toolchainFile;
+}
+
 } // namespace HarmonyConfig
 
 
@@ -403,7 +411,7 @@ void HarmonyConfigurations::applyConfig()
     registerQtVersions();
     updateAutomaticKitList();
     removeOldToolchains();
-    emit m_instance->updated();
+    // emit m_instance->updated();
 }
 
 void HarmonyConfigurations::registerNewToolchains()
@@ -550,14 +558,31 @@ void HarmonyConfigurations::updateAutomaticKitList()
 
             // Kit初始化函数
             const auto initializeKit = [&bundle, expectedNdkPath, ohQt](Kit *k) {
+
+                using namespace CMakeProjectManager;
+                auto cmakeConfig = CMakeConfigurationKitAspect::defaultConfiguration(k);
+                cmakeConfig.append(CMakeConfigItem("CMAKE_TOOLCHAIN_FILE", CMakeConfigItem::FILEPATH,
+                                            HarmonyConfig::toolchainFilePath(expectedNdkPath).toUserOutput().toUtf8()));
+                cmakeConfig.append(CMakeConfigItem("CMAKE_FIND_ROOT_PATH", CMakeConfigItem::PATH,
+                                            "%{Qt:QT_INSTALL_PREFIX}"));
+                cmakeConfig.append(CMakeConfigItem("CMAKE_C_COMPILER_EXTERNAL_TOOLCHAIN", CMakeConfigItem::PATH, ""));
+                cmakeConfig.append(CMakeConfigItem("CMAKE_CXX_COMPILER_EXTERNAL_TOOLCHAIN", CMakeConfigItem::PATH, ""));
+                cmakeConfig.append(CMakeConfigItem("OHOS_STL", CMakeConfigItem::STRING, "c++_shared"));
+                cmakeConfig.append(CMakeConfigItem("OHOS_ARCH", CMakeConfigItem::STRING,
+                                            QByteArray(HarmonyConfig::displayName(ohQt->targetAbi()))));
+                cmakeConfig.append(CMakeConfigItem("OHOS_PLATFORM", CMakeConfigItem::STRING,"OHOS"));
+
+
                 k->setAutoDetected(true);
                 k->setAutoDetectionSource("HarmonyConfiguration");
                 RunDeviceTypeKitAspect::setDeviceTypeId(k, Constants::HARMONY_DEVICE_TYPE);
                 ToolchainKitAspect::setBundle(k, bundle);
                 QtKitAspect::setQtVersion(k, ohQt);
-                
+
                 // 设置构建设备为默认桌面设备
                 BuildDeviceKitAspect::setDeviceId(k, DeviceManager::defaultDesktopDevice()->id());
+
+                CMakeConfigurationKitAspect::setConfiguration(k, cmakeConfig);
                 
                 // 设置粘性属性，防止用户意外修改关键设置
                 k->setSticky(QtKitAspect::id(), true);

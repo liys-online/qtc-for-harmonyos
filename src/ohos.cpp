@@ -69,14 +69,6 @@ public:
     {
         return SynchronousShutdown;
     }
-
-// private:
-//     void triggerAction()
-//     {
-//         QMessageBox::information(Core::ICore::mainWindow(),
-//                                  Tr::tr("Action Triggered"),
-//                                  Tr::tr("This is an action from Ohos."));
-//     }
 };
 
 } // namespace Ohos::Internal

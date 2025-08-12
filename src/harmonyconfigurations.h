@@ -159,6 +159,7 @@ namespace Ohos::Internal {
          * 从NDK获取clang路径
          */
         Utils::FilePath clangPathFromNdk(const Utils::FilePath &ndkLocation);
+        Utils::FilePath toolchainFilePath(const Utils::FilePath &ndkLocation);
         /**
          * @brief displayName
          * @param abi
