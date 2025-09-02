@@ -37,9 +37,9 @@ HarmonyDevice::HarmonyDevice()
     setDeviceState(DeviceDisconnected);
     DeviceAction refreshAction;
     refreshAction.display = Tr::tr("Refresh");
-    // refreshAction.execute = [](const IDevice::Ptr &device) {
-    //     updateDeviceState(device);
-    // };
+    refreshAction.execute = [](const IDevice::Ptr &device) {
+        updateDeviceState(device);
+    };
     addDeviceAction(refreshAction);
 }
 
