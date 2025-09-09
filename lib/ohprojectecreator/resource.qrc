@@ -1,14 +1,10 @@
 <RCC>
     <qresource prefix="/ohprojectecreator">
         <file>project_tree.json</file>
-        <file>ohpro/.clangd</file>
-        <file>ohpro/.clang-format</file>
-        <file>ohpro/.clang-tidy</file>
         <file>ohpro/.gitignore</file>
         <file>ohpro/build-profile.json5</file>
         <file>ohpro/code-linter.json5</file>
         <file>ohpro/hvigorfile.ts</file>
-        <file>ohpro/local.properties</file>
         <file>ohpro/oh-package.json5</file>
         <file>ohpro/AppScope/resources/base/media/background.png</file>
         <file>ohpro/AppScope/resources/base/media/foreground.png</file>
