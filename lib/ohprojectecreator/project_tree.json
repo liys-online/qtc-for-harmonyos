@@ -1,0 +1,125 @@
+{
+    "dir": {
+        "AppScope": {
+            "dir": {
+                "resources": {
+                    "dir": {
+                        "base": {
+                            "dir": {
+                                "element": {
+                                    "file": [
+                                        "string.json"
+                                    ]
+                                },
+                                "media": {
+                                    "file": [
+                                        "background.png",
+                                        "foreground.png",
+                                        "layered_image.json"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "file": [
+                "app.json5"
+            ]
+        },
+        "entry": {
+            "dir": {
+                "src": {
+                    "dir": {
+                        "main": {
+                            "dir": {
+                                "ets": {
+                                    "dir": {
+                                        "abilitystage": {
+                                            "file": [
+                                                "EntryAbilityStage.ets"
+                                            ]
+                                        },
+                                        "entryability": {
+                                            "file": [
+                                                "EntryAbility.ets"
+                                            ]
+                                        },
+                                        "pages": {
+                                            "file": [
+                                                "Index.ets"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "resources": {
+                                    "dir": {
+                                        "base": {
+                                            "dir": {
+                                                "element": {
+                                                    "file": [
+                                                        "color.json",
+                                                        "float.json",
+                                                        "string.json"
+                                                    ]
+                                                },
+                                                "media": {
+                                                    "file": [
+                                                        "background.png",
+                                                        "foreground.png",
+                                                        "layered_image.json",
+                                                        "startIcon.png"
+                                                    ]
+                                                },
+                                                "profile": {
+                                                    "file": [
+                                                        "main_pages.json"
+                                                    ]
+                                                }
+                                            }
+                                        },
+                                        "dark": {
+                                            "dir": {
+                                                "element": {
+                                                    "file": [
+                                                        "color.json"
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "file": [
+                                "module.json5"
+                            ]
+                        }
+                    }
+                }
+            },
+            "file": [
+                ".gitignore",
+                "build-profile.json5",
+                "hvigorfile.ts",
+                "obfuscation-rules.txt",
+                "oh-package.json5"
+            ]
+        },
+        "hvigor": {
+            "file": [
+                "hvigor-config.json5"
+            ]
+        }
+    },
+    "file": [
+        ".clang-format",
+        ".clang-tidy",
+        ".clangd",
+        ".gitignore",
+        "build-profile.json5",
+        "code-linter.json5",
+        "hvigorfile.ts",
+        "local.properties",
+        "oh-package.json5"
+    ]
+}

@@ -1,0 +1,32 @@
+<RCC>
+    <qresource prefix="/ohprojectecreator">
+        <file>project_tree.json</file>
+        <file>ohpro/.clangd</file>
+        <file>ohpro/.clang-format</file>
+        <file>ohpro/.clang-tidy</file>
+        <file>ohpro/.gitignore</file>
+        <file>ohpro/build-profile.json5</file>
+        <file>ohpro/code-linter.json5</file>
+        <file>ohpro/hvigorfile.ts</file>
+        <file>ohpro/local.properties</file>
+        <file>ohpro/oh-package.json5</file>
+        <file>ohpro/AppScope/resources/base/media/background.png</file>
+        <file>ohpro/AppScope/resources/base/media/foreground.png</file>
+        <file>ohpro/AppScope/resources/base/media/layered_image.json</file>
+        <file>ohpro/entry/src/main/resources/base/element/color.json</file>
+        <file>ohpro/entry/src/main/resources/base/element/float.json</file>
+        <file>ohpro/entry/src/main/resources/base/element/string.json</file>
+        <file>ohpro/entry/src/main/resources/base/media/startIcon.png</file>
+        <file>ohpro/entry/src/main/resources/base/profile/main_pages.json</file>
+        <file>ohpro/entry/src/main/resources/dark/element/color.json</file>
+        <file>ohpro/entry/src/main/module.json5</file>
+        <file>ohpro/entry/.gitignore</file>
+        <file>ohpro/entry/build-profile.json5</file>
+        <file>ohpro/entry/hvigorfile.ts</file>
+        <file>ohpro/entry/obfuscation-rules.txt</file>
+        <file>ohpro/entry/oh-package.json5</file>
+        <file>ohpro/hvigor/hvigor-config.json5</file>
+        <file>ohpro/AppScope/resources/base/element/string.json</file>
+        <file>ohpro/AppScope/app.json5</file>
+    </qresource>
+</RCC>
