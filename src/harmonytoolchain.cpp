@@ -16,7 +16,7 @@
 using namespace Utils;
 using namespace ProjectExplorer;
 namespace Ohos::Internal {
-static Q_LOGGING_CATEGORY(harmonyTCLog, "qtc.android.toolchainmanagement", QtWarningMsg);
+static Q_LOGGING_CATEGORY(harmonyTCLog, "qtc.harmony.toolchainmanagement", QtWarningMsg);
 using ClangTargetsType = QHash<QString, Abi>;
 
 class WarningFlagAdder

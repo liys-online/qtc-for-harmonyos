@@ -555,10 +555,10 @@ void HarmonyConfigurations::registerQtVersions()
 
 void HarmonyConfigurations::removeOldToolchains()
 {
-    const auto invalidAndroidTcs = ToolchainManager::toolchains([](const Toolchain *tc) {
+    const auto invalidHarmonyTcs = ToolchainManager::toolchains([](const Toolchain *tc) {
         return tc->id() == Constants::HARMONY_TOOLCHAIN_TYPEID && !tc->isValid();
     });
-    ToolchainManager::deregisterToolchains(invalidAndroidTcs);
+    ToolchainManager::deregisterToolchains(invalidHarmonyTcs);
 }
 
 void HarmonyConfigurations::updateAutomaticKitList()
