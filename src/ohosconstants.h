@@ -21,6 +21,9 @@ const char Q_DEVICE_PRI[] = "qdevice.pri";
 const char HARMONY_KIT_NDK[] = "Harmony.NDK";
 const char HARMONY_KIT_SDK[] = "Harmony.SDK";
 
+const char HARMONY_BUILDCONFIGURATION_ID[] = "Qt4ProjectManager.HarmonyBuildConfiguration";
+const char HARMONY_BUILD_HAP_ID[] = "Qt4ProjectManager.HarmonyBuildHapStep";
+
 const char HarmonySerialNumber[] = "HarmonySerialNumber";
 const char HarmonyCpuAbi[] = "HarmonyCpuAbi";
 const char HarmonySdk[] = "HarmonySdk";

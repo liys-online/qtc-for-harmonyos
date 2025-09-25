@@ -65,6 +65,7 @@ add_qtc_plugin(Harmony
     QtCreator::Utils
   SOURCES
     qrc.qrc
+    ../lib/ohprojectecreator/resource.qrc
     ohos.cpp
     harmonydevice.cpp
     harmonydevice.h
@@ -78,10 +79,13 @@ add_qtc_plugin(Harmony
     harmonyqtversion.h
     harmonydevicemanager.cpp
     harmonydevicemanager.h
+    harmonyutils.h harmonyutils.cpp
+    harmonybuildhapstep.h harmonybuildhapstep.cpp
+    harmonybuildconfiguration.h harmonybuildconfiguration.cpp
     ohosconstants.h
     ohostr.h
 )
 get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
 target_include_directories(Harmony PUBLIC ${PARENT_DIR}/lib)
 
-target_link_libraries(Harmony PUBLIC usbmonitor)
+target_link_libraries(Harmony PUBLIC usbmonitor ohprojectecreator)
