@@ -63,6 +63,32 @@ QVersionNumber HarmonyQtVersion::supportOhVersion() const
     return QVersionNumber();
 }
 
+static QString toOhosAbi(ProjectExplorer::Abi abi)
+{
+    if (abi.architecture() == ProjectExplorer::Abi::Architecture::ArmArchitecture) {
+        if (abi.wordWidth() == 32)
+            return Constants::HARMONY_ABI_ARMEABI_V7A;
+        if (abi.wordWidth() == 64)
+            return Constants::HARMONY_ABI_ARM64_V8A;
+    } else if (abi.architecture() == ProjectExplorer::Abi::Architecture::X86Architecture) {
+        if (abi.wordWidth() == 32)
+            return Constants::HARMONY_ABI_X86;
+        if (abi.wordWidth() == 64)
+            return Constants::HARMONY_ABI_X86_64;
+    }
+    return {};
+}
+const QStringList HarmonyQtVersion::ohosAbis() const
+{
+    auto abis = detectQtAbis();
+    QStringList result;
+    for(const auto &abi : std::as_const(abis))
+    {
+        result << toOhosAbi(abi);
+    }
+    return result;
+}
+
 ProjectExplorer::Abi HarmonyQtVersion::targetAbi() const
 {
     if (FilePath qdevicepri = mkspecsPath().pathAppended(Constants::Q_DEVICE_PRI); qdevicepri.exists())

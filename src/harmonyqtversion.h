@@ -51,6 +51,8 @@ public:
      */
     QVersionNumber supportOhVersion() const;
 
+    const QStringList ohosAbis() const;
+
     ProjectExplorer::Abi targetAbi() const;
 };
 void setupHarmonyQtVersion();
