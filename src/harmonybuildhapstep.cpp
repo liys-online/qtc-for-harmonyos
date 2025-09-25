@@ -221,6 +221,8 @@ public:
                 }
             }
             proInfo.deviceTypes = {"2in1"};
+            const QString buildKey = m_step->buildConfiguration()->activeBuildKey();
+            proInfo.entrylib = buildKey.isEmpty() ? "libentry.so" : QString("lib%1.so").arg(buildKey);
             ohPro->create(proInfo);
         });
         connect(m_step, &HarmonyBuildHapStep::createTemplates, createHarmonyTemplatesButton, &QPushButton::click);

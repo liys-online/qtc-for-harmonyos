@@ -3,6 +3,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QSaveFile>
 
 /**
  * @brief setJsonValue 递归设置 JSON 对象中的值，支持嵌套对象和数组
@@ -366,6 +367,23 @@ public:
         QString srcEtsPath = m_proInfo.qtHostPath + "/openharmony/qtbase";
         QString dstEtsPath = m_proInfo.projectPath + "/entry/src/main/ets";
         copyDir(srcEtsPath, dstEtsPath, true);
+
+        QString path = dstEtsPath + "/entryability/EntryAbility.ets";
+
+        QByteArray data;
+        {
+            QFile file(path);
+            if (file.open(QIODevice::ReadOnly | QIODevice::Text))
+                data = file.readAll();
+            else
+                return;
+        }
+        data.replace("libentry.so", m_proInfo.entrylib.toUtf8());
+        QSaveFile file(path);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            file.write(data);
+            file.commit();
+        }
     }
     static OhProjecteCreator *m_instance;
     OhProjecteCreator::ProjecteInfo m_proInfo;

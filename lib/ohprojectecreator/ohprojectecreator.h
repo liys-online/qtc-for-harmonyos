@@ -21,6 +21,7 @@ public:
         QString projectPath = "";
         QString appName = "MyApplication";
         QString bundleName = "com.example.myapplication";
+        QString entrylib = "libentry.so";
         int targetSdkVersion = 20;
         int compatibleSdkVersion = -1;
         RuntimeOS runtimeOS = HarmonyOS;
