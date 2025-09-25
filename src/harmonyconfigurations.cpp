@@ -238,7 +238,15 @@ QPair<QVersionNumber, QVersionNumber> getVersion(const Utils::FilePath &releaseF
 
 FilePath hdcToolPath()
 {
-    return config().m_defaultSdkLocation.pathAppended("default/openharmony/toolchains/hdc").withExecutableSuffix();
+    const QVector<FilePath> candidatePaths = {
+        defaultSdk() / "toolchains",
+        defaultSdk() / "default" / "openharmony" / "toolchains"
+    };
+    for (const FilePath &path : candidatePaths) {
+        if (FilePath hdcPath = path.pathAppended("hdc").withExecutableSuffix(); hdcPath.isExecutableFile())
+            return hdcPath;
+    }
+    return candidatePaths.first().pathAppended("hdc").withExecutableSuffix();
 }
 
 int getSDKVersion(const QString &device)
