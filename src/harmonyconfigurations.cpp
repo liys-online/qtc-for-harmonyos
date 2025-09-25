@@ -24,6 +24,9 @@
 #include <utils/qtcprocess.h>
 
 #include <coreplugin/messagemanager.h>
+
+#include <ohprojectecreator/ohprojectecreator.h>
+
 using namespace Utils;
 
 using namespace ProjectExplorer;
@@ -347,6 +350,72 @@ FilePath toolchainFilePath(const Utils::FilePath &ndkLocation)
 {
     FilePath toolchainFile = ndkLocation / "build" / "cmake" / Constants::OHOS_TOOLCHAIN_FILE;
     return toolchainFile;
+}
+
+FilePath devecoToolsLocation()
+{
+    return devecoStudioLocation() / "tools";
+}
+
+FilePath hvigorwJsLocation()
+{
+    return devecoToolsLocation() / "hvigor" / "bin" / "hvigorw.js";
+}
+
+FilePath nodeLocation()
+{
+    return FilePath(devecoToolsLocation() / "node" / "node").withExecutableSuffix();
+}
+
+FilePath ohpmJsLocation()
+{
+    return devecoToolsLocation() / "ohpm" / "bin" / "pm-cli.js";
+}
+
+FilePath javaLocation()
+{
+    return devecoStudioLocation() / "jbr";
+}
+
+QPair<int, QVersionNumber> devecoStudioVersion()
+{
+    QString sdkPkgJson = FilePath{devecoStudioLocation() / "sdk" / "default" / "sdk-pkg.json"}.toUserOutput();
+    if (!QFile::exists(sdkPkgJson))
+        return { -1, QVersionNumber() };
+    QFile file(sdkPkgJson);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return { -1, QVersionNumber() };
+    QByteArray rawData = file.readAll();
+    file.close();
+    QJsonDocument doc = QJsonDocument::fromJson(rawData);
+    if (doc.isNull() || !doc.isObject()) {
+        qWarning() << "Invalid JSON data!";
+        return { -1, QVersionNumber() };
+    }
+    QJsonObject rootObj = doc.object();
+    QJsonObject dataObj = rootObj.value("data").toObject();
+    QString versionStr = dataObj.value("apiVersion").toString();
+    QString platformVersionStr = dataObj.value("platformVersion").toString();
+    return { versionStr.toInt(), QVersionNumber::fromString(platformVersionStr) };
+}
+
+FilePath devecostudioExeLocation()
+{
+    return FilePath(devecoStudioLocation() / "bin" / "devecostudio64").withExecutableSuffix();
+}
+
+QStringList apiLevelNamesFor(const QList<int> &apiLevels)
+{
+    return Utils::transform(apiLevels, HarmonyConfig::apiLevelNameFor);
+}
+
+QString apiLevelNameFor(const int apiLevel)
+{
+    if (apiLevel > 0) {
+        QString apiLevelName = OhProjecteCreator::versionForApiLevel(apiLevel);
+        return apiLevelName.append(QString("(%1)").arg(apiLevel));
+    }
+    return QString();
 }
 
 } // namespace HarmonyConfig

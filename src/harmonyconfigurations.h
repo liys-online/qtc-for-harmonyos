@@ -60,6 +60,8 @@ namespace Ohos::Internal {
     };
 
     namespace HarmonyConfig {
+    QStringList apiLevelNamesFor(const QList<int> &apiLevels);
+        QString apiLevelNameFor(const int apiLevel);
         /**
          * @brief makeLocation
          * @return
@@ -127,6 +129,14 @@ namespace Ohos::Internal {
          * 设置Deveco Studio路径
          */
         void setDevecoStudioLocation(const Utils::FilePath &devecoStudioLocation);
+
+        Utils::FilePath devecostudioExeLocation();
+        QPair<int, QVersionNumber> devecoStudioVersion();
+        Utils::FilePath devecoToolsLocation();
+        Utils::FilePath hvigorwJsLocation();
+        Utils::FilePath nodeLocation();
+        Utils::FilePath ohpmJsLocation();
+        Utils::FilePath javaLocation();
         /**
          * @brief getQmakeList
          * @return
