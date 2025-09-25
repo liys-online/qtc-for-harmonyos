@@ -645,8 +645,6 @@ void HarmonyConfigurations::updateAutomaticKitList()
                                             HarmonyConfig::toolchainFilePath(expectedNdkPath).toUserOutput().toUtf8()));
                 cmakeConfig.append(CMakeConfigItem("CMAKE_FIND_ROOT_PATH", CMakeConfigItem::PATH,
                                             "%{Qt:QT_INSTALL_PREFIX}"));
-                cmakeConfig.append(CMakeConfigItem("CMAKE_C_COMPILER_EXTERNAL_TOOLCHAIN", CMakeConfigItem::PATH, ""));
-                cmakeConfig.append(CMakeConfigItem("CMAKE_CXX_COMPILER_EXTERNAL_TOOLCHAIN", CMakeConfigItem::PATH, ""));
                 cmakeConfig.append(CMakeConfigItem("OHOS_STL", CMakeConfigItem::STRING, "c++_shared"));
                 cmakeConfig.append(CMakeConfigItem("OHOS_ARCH", CMakeConfigItem::STRING,
                                             QByteArray(HarmonyConfig::displayName(ohQt->targetAbi()))));
