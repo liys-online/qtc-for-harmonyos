@@ -23,11 +23,30 @@
 #include "harmonydevice.h"
 #include "harmonyqtversion.h"
 #include "harmonytoolchain.h"
+#include "harmonydeployqtstep.h"
 #include "ohosconstants.h"
+#include "ohostr.h"
 
 #include <QTranslator>
 
 namespace Ohos::Internal {
+
+class HarmonyDeployConfigurationFactory final : public DeployConfigurationFactory
+{
+public:
+    HarmonyDeployConfigurationFactory()
+    {
+        setConfigBaseId("Qt4ProjectManager.HarmonyDeployConfiguration2");
+        addSupportedTargetDeviceType(Constants::HARMONY_DEVICE_TYPE);
+        setDefaultDisplayName(Tr::tr("Deploy to HarmonyOS Device"));
+        addInitialStep(Constants::HARMONY_DEPLOY_QT_ID);
+    }
+};
+
+void setupHarmonyDeployConfiguration()
+{
+    static HarmonyDeployConfigurationFactory theHarmonyDeployConfigurationFactory;
+}
 
 class OhosPlugin final : public ExtensionSystem::IPlugin
 {
@@ -53,6 +72,9 @@ public:
         setupHarmonyBuildConfiguration();
         setupHarmonyToolchain();
         setupHarmonyBuildHapStep();
+
+        setupHarmonyDeployConfiguration();
+        setupHarmonyDeployQtStep();
 
         connect(KitManager::instance(), &KitManager::kitsLoaded, this, &OhosPlugin::kitsRestored,
                 Qt::SingleShotConnection);

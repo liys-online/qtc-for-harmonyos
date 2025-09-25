@@ -4,6 +4,11 @@ namespace Ohos::Constants {
 const char HARMONY_SETTINGS_ID[] = "LL.Harmony Configurations";
 const char HARMONY_TOOLCHAIN_TYPEID[] = "Qt4ProjectManager.ToolChain.Harmony";
 const char HARMONY_QT_TYPE[] = "Qt4ProjectManager.QtVersion.Harmony";
+
+const char HARMONY_AA_START_ARGS[] = "Harmony.AaStartArgs";
+const char HARMONY_PRESTARTSHELLCMDLIST[] = "Harmony.PreStartShellCmdList";
+const char HARMONY_POSTFINISHSHELLCMDLIST[] = "Harmony.PostFinishShellCmdList";
+
 const char HARMONY_DEVICE_ID[] = "Harmony Device";
 const char HARMONY_DEVICE_TYPE[] = "Harmony.Device.Type";
 
@@ -31,6 +36,14 @@ const char HARMONY_KIT_SDK[] = "Harmony.SDK";
 
 const char HARMONY_BUILDCONFIGURATION_ID[] = "Qt4ProjectManager.HarmonyBuildConfiguration";
 const char HARMONY_BUILD_HAP_ID[] = "Qt4ProjectManager.HarmonyBuildHapStep";
+const char HARMONY_DEPLOY_QT_ID[] = "Qt4ProjectManager.HarmonyDeployQtStep";
+
+const char HARMONY_BUILD_DIRECTORY[] = "ohpro";
+const char HarmonyApplicationArgs[] = "HarmonyApplicationArgs"; // QString
+
+const char HarmonyDeploySettingsFile[] = "HarmonyDeploySettingsFile"; // QString
+const char HarmonyBuildTargetDirSupport[] = "HarmonyBuildTargetDirSupport"; // bool
+const char UseHarmonyBuildTargetDir[] = "UseHarmonyBuildTargetDir"; // bool
 
 const char HarmonyAbis[] = "HarmonyAbis"; // QStringList
 
