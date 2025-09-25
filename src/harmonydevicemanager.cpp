@@ -4,6 +4,7 @@
 #include "harmonydevice.h"
 #include "ohosconstants.h"
 #include <projectexplorer/devicesupport/devicemanager.h>
+#include <coreplugin/messagemanager.h>
 #include <utils/qtcprocess.h>
 #include <usbmonitor/usbmonitor.h>
 #include <QLoggingCategory>
@@ -104,6 +105,7 @@ static void handleDevicesListChange(const QString &serialNumber)
 }
 void HarmonyDeviceManager::queryDevice()
 {
+    Core::MessageManager::writeSilently(tr("Querying HarmonyOS devices..."));
     Process process;
     const CommandLine command{HarmonyConfig::hdcToolPath(), {"list", "targets", "-v"}};
     process.setCommand(command);
@@ -118,8 +120,7 @@ void HarmonyDeviceManager::setupDevicesWatcher()
     qDebug() << Q_FUNC_INFO;
     if (!HarmonyConfig::hdcToolPath().exists())
     {
-        qCDebug(harmonyDeviceLog) << "Cannot start HDC device watcher"
-                                  <<  "because hdc path does not exist.";
+        Core::MessageManager::writeSilently("Cannot start HDC device watcher, because hdc path does not exist.");
         return;
     }
     if (UsbMonitor::instance()->isRunning()) {
