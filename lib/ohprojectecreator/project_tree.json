@@ -52,6 +52,8 @@
                                         }
                                     }
                                 },
+                                "cpp": {
+                                },
                                 "resources": {
                                     "dir": {
                                         "base": {

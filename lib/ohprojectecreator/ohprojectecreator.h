@@ -32,6 +32,10 @@ public:
 
     static OhProjecteCreator *instance();
     void create(const ProjecteInfo &projectPath);
+    static QString versionForApiLevel(int apiLevel);
+    static int apiLevelForVersion(const QString &version);
+    static int latestApiLevel();
+    static int defaultApiLevel();
     static void destroy();
 Q_SIGNALS:
     void signalCreateFinished(bool success, const QString &msg);

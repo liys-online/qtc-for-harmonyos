@@ -248,6 +248,16 @@ public:
          */
         return createFromResource(":/ohprojectecreator/ohpro",":/ohprojectecreator/ohpro");
     }
+    bool updateModelVersion() const
+    {
+        QMap<QString, QJsonValue> changeModelVersion =
+            {{"modelVersion", sdkVersionMap.value(m_proInfo.targetSdkVersion, "6.0.0")}};
+        bool res = modifyJsonFile(m_proInfo.projectPath + "/oh-package.json5", changeModelVersion);
+        if (!res) {
+            return false;
+        }
+        return modifyJsonFile(m_proInfo.projectPath + "/hvigor/hvigor-config.json5", changeModelVersion);
+    }
     bool createBuildProfile()
     {
         /*
@@ -263,8 +273,10 @@ public:
         defaultProduct["name"] = "default";
         defaultProduct["signingConfig"] = "default";
         if (m_proInfo.runtimeOS == OhProjecteCreator::HarmonyOS) {
-            defaultProduct["targetSdkVersion"] = sdkVersionMap.value(m_proInfo.targetSdkVersion, "6.0.0(20)");
-            defaultProduct["compatibleSdkVersion"] = sdkVersionMap.value(m_proInfo.compatibleSdkVersion, "6.0.0(20)");
+            defaultProduct["targetSdkVersion"] = sdkVersionMap.value(m_proInfo.targetSdkVersion, "6.0.0")
+                                                 + QString("(%1)").arg(m_proInfo.targetSdkVersion);
+            defaultProduct["compatibleSdkVersion"] = sdkVersionMap.value(m_proInfo.compatibleSdkVersion, "6.0.0")
+                                                     + QString("(%1)").arg(m_proInfo.compatibleSdkVersion);
             defaultProduct["runtimeOS"] = "HarmonyOS";
         } else {
             defaultProduct["targetSdkVersion"] = m_proInfo.targetSdkVersion;
@@ -313,7 +325,7 @@ public:
         QMap<QString, QJsonValue> changes;
         QStringList arguments;
         if(!m_proInfo.qtHostPath.isEmpty()){
-            arguments.append(QString("-DCMAKE_PREFIX_PATH=%1").arg(m_proInfo.qtHostPath));
+            arguments.append(QString("-DCMAKE_FIND_ROOT_PATH=%1").arg(m_proInfo.qtHostPath));
         }
         if (!m_proInfo.cmakeListPath.isEmpty()) {
             m_proInfo.externalNativeOptions.insert("path", m_proInfo.cmakeListPath);
@@ -358,15 +370,15 @@ public:
     static OhProjecteCreator *m_instance;
     OhProjecteCreator::ProjecteInfo m_proInfo;
     const QMap<int, QString> sdkVersionMap = {
-        {20, "6.0.0(20)"},
-        {19, "5.1.1(19)"},
-        {18, "5.1.0(18)"},
-        {17, "5.0.5(17)"},
-        {16, "5.0.4(16)"},
-        {15, "5.0.3(15)"},
-        {14, "5.0.2(14)"},
-        {13, "5.0.1(13)"},
-        {12, "5.0.0(12)"}
+        {20, "6.0.0"},
+        {19, "5.1.1"},
+        {18, "5.1.0"},
+        {17, "5.0.5"},
+        {16, "5.0.4"},
+        {15, "5.0.3"},
+        {14, "5.0.2"},
+        {13, "5.0.1"},
+        {12, "5.0.0"}
     };
 };
 
@@ -388,6 +400,14 @@ void OhProjecteCreator::create(const ProjecteInfo &projectPath)
     }
     if (!m_p->initProjectFile()) {
         emit signalCreateFinished(false, "Failed to initialize project files.");
+        return;
+    }
+    /*
+     * 设置oh-package.json5、hvigor/hvigor-config.json5的modelVersion字段
+     */
+    if (!m_p->updateModelVersion())
+    {
+        emit signalCreateFinished(false, "Failed to update entry/build-profile.json5.");
         return;
     }
     if (!m_p->createBuildProfile()) {
@@ -416,6 +436,35 @@ void OhProjecteCreator::create(const ProjecteInfo &projectPath)
         break;
     }
 }
+
+QString OhProjecteCreator::versionForApiLevel(int apiLevel)
+{
+    return OhProjecteCreator::instance()->m_p->sdkVersionMap.value(apiLevel, "6.0.0");
+}
+
+int OhProjecteCreator::apiLevelForVersion(const QString &version)
+{
+    auto it = OhProjecteCreator::instance()->m_p->sdkVersionMap.constBegin();
+    while (it != OhProjecteCreator::instance()->m_p->sdkVersionMap.constEnd()) {
+        if (it.value() == version) {
+            return it.key();
+        }
+        ++it;
+    }
+    return defaultApiLevel();
+}
+
+int OhProjecteCreator::latestApiLevel()
+{
+    auto keys = OhProjecteCreator::instance()->m_p->sdkVersionMap.keys();
+    return keys.first();
+}
+
+int OhProjecteCreator::defaultApiLevel()
+{
+    return 15;
+}
+
 void OhProjecteCreator::destroy()
 {
     if (OhProjecteCreatorPrivate::m_instance) {
