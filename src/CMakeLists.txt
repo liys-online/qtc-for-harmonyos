@@ -82,6 +82,7 @@ add_qtc_plugin(Harmony
     harmonyutils.h harmonyutils.cpp
     harmonybuildhapstep.h harmonybuildhapstep.cpp
     harmonybuildconfiguration.h harmonybuildconfiguration.cpp
+    harmonydeviceinfo.h harmonydeviceinfo.cpp
     ohosconstants.h
     ohostr.h
 )

@@ -6,6 +6,14 @@ const char HARMONY_TOOLCHAIN_TYPEID[] = "Qt4ProjectManager.ToolChain.Harmony";
 const char HARMONY_QT_TYPE[] = "Qt4ProjectManager.QtVersion.Harmony";
 const char HARMONY_DEVICE_ID[] = "Harmony Device";
 const char HARMONY_DEVICE_TYPE[] = "Harmony.Device.Type";
+
+// Harmony ABIs
+const char HARMONY_ABI_ARMEABI[] = "armeabi";
+const char HARMONY_ABI_ARMEABI_V7A[] = "armeabi-v7a";
+const char HARMONY_ABI_ARM64_V8A[] = "arm64-v8a";
+const char HARMONY_ABI_X86[] = "x86";
+const char HARMONY_ABI_X86_64[] = "x86_64";
+
 const char MakeLocationKey[] = "Harmony.MakeLocation";
 const char DevecoStudioLocationKey[] = "Harmony.DevecoStudioPath";
 const char QmakeLocationKey[] = "Harmony.QmakeLocations";
@@ -23,6 +31,8 @@ const char HARMONY_KIT_SDK[] = "Harmony.SDK";
 
 const char HARMONY_BUILDCONFIGURATION_ID[] = "Qt4ProjectManager.HarmonyBuildConfiguration";
 const char HARMONY_BUILD_HAP_ID[] = "Qt4ProjectManager.HarmonyBuildHapStep";
+
+const char HarmonyAbis[] = "HarmonyAbis"; // QStringList
 
 const char HarmonySerialNumber[] = "HarmonySerialNumber";
 const char HarmonyCpuAbi[] = "HarmonyCpuAbi";

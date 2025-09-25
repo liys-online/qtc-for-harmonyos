@@ -1,6 +1,8 @@
 #ifndef HARMONYDEVICE_H
 #define HARMONYDEVICE_H
 
+#include "harmonydeviceinfo.h"
+
 #include <projectexplorer/devicesupport/idevice.h>
 namespace Ohos::Internal {
 class HarmonyDevice : public ProjectExplorer::IDevice
@@ -9,7 +11,12 @@ public:
     HarmonyDevice();
 
     static ProjectExplorer::IDevicePtr create();
+    static HarmonyDeviceInfo harmonyDeviceInfoFromDevice(const ConstPtr &device);
 
+    QStringList supportedAbis() const;
+    bool canSupportAbis(const QStringList &abis) const;
+
+    bool canHandleDeployments() const;
     ProjectExplorer::IDeviceWidget *createWidget() override;
 };
 /**
