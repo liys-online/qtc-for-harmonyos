@@ -87,6 +87,11 @@ add_qtc_plugin(Harmony
     ohosconstants.h
     ohostr.h
 )
+
+target_sources(Harmony
+  PRIVATE
+    harmonyrunconfiguration.h harmonyrunconfiguration.cpp
+)
 get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
 target_include_directories(Harmony PUBLIC ${PARENT_DIR}/lib)
 

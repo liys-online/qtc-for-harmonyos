@@ -38,6 +38,7 @@ const char HARMONY_BUILDCONFIGURATION_ID[] = "Qt4ProjectManager.HarmonyBuildConf
 const char HARMONY_BUILD_HAP_ID[] = "Qt4ProjectManager.HarmonyBuildHapStep";
 const char HARMONY_DEPLOY_QT_ID[] = "Qt4ProjectManager.HarmonyDeployQtStep";
 
+const char HARMONY_RUNCONFIG_ID[] = "Qt4ProjectManager.HarmonyRunConfiguration";
 const char HARMONY_BUILD_DIRECTORY[] = "ohpro";
 const char HarmonyApplicationArgs[] = "HarmonyApplicationArgs"; // QString
 

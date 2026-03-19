@@ -23,6 +23,7 @@
 #include "harmonydevice.h"
 #include "harmonyqtversion.h"
 #include "harmonytoolchain.h"
+#include "harmonyrunconfiguration.h"
 #include "harmonydeployqtstep.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
@@ -76,6 +77,7 @@ public:
         setupHarmonyDeployConfiguration();
         setupHarmonyDeployQtStep();
 
+        setupHarmonyRunConfiguration();
         connect(KitManager::instance(), &KitManager::kitsLoaded, this, &OhosPlugin::kitsRestored,
                 Qt::SingleShotConnection);
         connect(ProjectManager::instance(), &ProjectManager::activeBuildConfigurationChanged,
