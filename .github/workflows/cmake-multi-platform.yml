@@ -37,7 +37,17 @@ jobs:
             -o qtcreator_dev.7z \
             "${{ env.QTC_DEV_URL }}"
           mkdir -p qtcreator-dev
-          7zz x qtcreator_dev.7z -oqtcreator-dev -y
+          # Homebrew p7zip 提供的是 7z/7za；部分环境为 7zz（sevenzip 公式）
+          if command -v 7zz >/dev/null 2>&1; then
+            7zz x qtcreator_dev.7z -oqtcreator-dev -y
+          elif command -v 7z >/dev/null 2>&1; then
+            7z x qtcreator_dev.7z -oqtcreator-dev -y
+          elif command -v 7za >/dev/null 2>&1; then
+            7za x qtcreator_dev.7z -oqtcreator-dev -y
+          else
+            echo "No 7-Zip CLI (7zz/7z/7za) on PATH after brew install p7zip" >&2
+            exit 1
+          fi
 
       - name: Locate Qt Creator CMake prefix
         id: qtc
