@@ -90,7 +90,7 @@ bool HarmonyDevice::canSupportAbis(const QStringList &abis) const
 
 bool HarmonyDevice::canHandleDeployments() const
 {
-    // If hardware and disconned, it wouldn't be possilbe to start it, unlike an emulator
+    // If hardware and disconnected, it would not be possible to start it, unlike an emulator.
     if (machineType() == Hardware && deviceState() == DeviceDisconnected)
         return false;
     return true;

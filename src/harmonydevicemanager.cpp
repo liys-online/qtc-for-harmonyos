@@ -4,7 +4,6 @@
 #include "harmonydevice.h"
 #include "ohosconstants.h"
 #include <projectexplorer/devicesupport/devicemanager.h>
-#include <coreplugin/messagemanager.h>
 #include <utils/qtcprocess.h>
 #include <usbmonitor/usbmonitor.h>
 #include <QLoggingCategory>
@@ -49,7 +48,7 @@ static void handleDevicesListChange(const QString &serialNumber)
     }
     QString displayName = HarmonyConfig::getDeviceName(dirtySerial);
     if (displayName.contains("[Fail][E000004]")) {
-        qDebug() << Q_FUNC_INFO << "Failed to query device list, retrying in 1 second.";
+        qCWarning(harmonyDeviceLog) << "Failed to query device list, retrying in 1 second.";
         QTimer::singleShot(1000, instance(), &HarmonyDeviceManager::queryDevice);
         return;
     }
@@ -61,11 +60,12 @@ static void handleDevicesListChange(const QString &serialNumber)
         state = IDevice::DeviceConnected;
     else
         state = IDevice::DeviceDisconnected;
-    qDebug() << Q_FUNC_INFO << displayName;
+    qCDebug(harmonyDeviceLog) << "Detected device:" << displayName;
     const bool isEmulator = displayName.startsWith("emulator");
     if (isEmulator) {
         // TODO: Implement emulator support
-        qDebug() << Q_FUNC_INFO << QString("The simulator is not yet supported \"%1\".").arg(dirtySerial);
+        qCDebug(harmonyDeviceLog) << QString("The simulator is not yet supported \"%1\".")
+                                         .arg(dirtySerial);
     }
     else{
         const Id id = Id(Constants::HARMONY_DEVICE_ID).withSuffix(":").withSuffix(dirtySerial);
@@ -105,7 +105,7 @@ static void handleDevicesListChange(const QString &serialNumber)
 }
 void HarmonyDeviceManager::queryDevice()
 {
-    Core::MessageManager::writeSilently(tr("Querying HarmonyOS devices..."));
+    qCDebug(harmonyDeviceLog) << "Querying HarmonyOS devices...";
     Process process;
     const CommandLine command{HarmonyConfig::hdcToolPath(), {"list", "targets", "-v"}};
     process.setCommand(command);
@@ -117,10 +117,11 @@ void HarmonyDeviceManager::queryDevice()
 
 void HarmonyDeviceManager::setupDevicesWatcher()
 {
-    qDebug() << Q_FUNC_INFO;
+    qCDebug(harmonyDeviceLog) << "Setting up HDC device watcher.";
     if (!HarmonyConfig::hdcToolPath().exists())
     {
-        Core::MessageManager::writeSilently("Cannot start HDC device watcher, because hdc path does not exist.");
+        qCWarning(harmonyDeviceLog)
+            << "Cannot start HDC device watcher, because hdc path does not exist.";
         return;
     }
     if (UsbMonitor::instance()->isRunning()) {

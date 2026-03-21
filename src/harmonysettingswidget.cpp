@@ -124,11 +124,9 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     auto downloadmake = new QToolButton;
     downloadmake->setIcon(downloadIcon);
     downloadmake->setToolTip(Tr::tr("Open mingw download URL in the system's browser."));
-#ifdef Q_OS_WIN
     m_devecoStudioPathChooser = new PathChooser;
     m_devecoStudioPathChooser->setFilePath(HarmonyConfig::devecoStudioLocation());
     m_devecoStudioPathChooser->setPromptDialogTitle(Tr::tr("Select Deveco Studio Folder"));
-#endif
 
     auto downloadSdkToolButton = new QToolButton;
     downloadSdkToolButton->setIcon(downloadIcon);
@@ -173,9 +171,7 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     auto qtForHarmonyDetailsWidget = new DetailsWidget;
     auto harmonyDetailsWidget = new DetailsWidget;
     const QMap<int, QString> harmonyValidationPoints = {
-#ifdef Q_OS_WIN
         {DevecoPathExistsAndWritableRow, Tr::tr("Deveco Studio path exists and is writable")},
-#endif
         {SdkPathExistsAndWritableRow, Tr::tr("SDK path exists and is writable")},
         {SdkToolsInstalledRow, Tr::tr("SDK tools installed")},
         {AllEssentialsInstalledRow, Tr::tr("All essentials installed")},
@@ -199,12 +195,10 @@ HarmonySettingsWidget::HarmonySettingsWidget()
                 m_makePathChooser,
                 downloadmake,
                 br,
-#ifdef Q_OS_WIN
                 Tr::tr("Deveco studio location:"),
                 m_devecoStudioPathChooser,
                 downloadDevecoStudio,
                 br,
-#endif
                 Column { Tr::tr("OpenHarmony SDK list:"), st },
                 m_sdkListWidget,
                 Column {
@@ -236,10 +230,8 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         st
     }.attachTo(this);
 
-#ifdef Q_OS_WIN
     connect(m_devecoStudioPathChooser, &PathChooser::rawPathChanged,
         this, &HarmonySettingsWidget::onDevecoStudioPathChanged);
-#endif
     connect(m_sdkListWidget, &QListWidget::currentTextChanged,
             this, [this, removeSDKButton](const QString &sdk) {
                 setAllOk();
@@ -329,7 +321,7 @@ void HarmonySettingsWidget::addQmakeItem()
     const QString homePath = QStandardPaths::standardLocations(QStandardPaths::HomeLocation)
     .constFirst();
     const QString qmakePath = QFileDialog::getOpenFileName(this, Tr::tr("Select Qt for Harmony qmake"),
-                                                           homePath, Tr::tr("qmake.exe"));
+                                                           homePath, Tr::tr("qmake*"));
     checkQmakeItem(qmakePath);
 }
 
@@ -362,8 +354,8 @@ void HarmonySettingsWidget::checkSdkItem(QString sdkLocation)
             Tr::tr("Add Custom SDK"),
             Tr::tr("The selected path has an invalid SDK. This might mean that the path contains space "
                    "characters, or that it does not have a \"toolchains\" sub-directory, or that the "
-                   "NDK version could not be retrieved because of a missing \"source.properties\" or "
-                   "\"RELEASE.TXT\" file"));
+                   "SDK metadata could not be retrieved because of a missing "
+                   "\"oh-uni-package.json\" file."));
         m_harmonySummary->setPointValid(SdkToolsInstalledRow, false
                                         , Tr::tr("SDK tools are not installed"));
         setAllOk();
@@ -425,11 +417,12 @@ void HarmonySettingsWidget::setAllOk()
 
 void HarmonySettingsWidget::onDevecoStudioPathChanged()
 {
-#ifdef Q_OS_WIN
     const FilePath devecoStudioPath = m_devecoStudioPathChooser->filePath().cleanPath();
-    FilePath devecoStudioExe = devecoStudioPath.pathAppended("bin/devecostudio64.exe");
+    const FilePath devecoStudioExe = FilePath(devecoStudioPath / "bin" / "devecostudio64")
+                                         .withExecutableSuffix();
 
-    if (devecoStudioExe.isExecutableFile()) {
+    if (devecoStudioExe.isExecutableFile()
+        || HarmonyConfig::devecoToolsLocation().isReadableDir()) {
         m_harmonySummary->setPointValid(DevecoPathExistsAndWritableRow, true);
         HarmonyConfig::setDevecoStudioLocation(devecoStudioPath);
     } else {
@@ -437,7 +430,6 @@ void HarmonySettingsWidget::onDevecoStudioPathChanged()
                                         Tr::tr("Deveco Studio path does not exist or is not writable"));
     }
     setAllOk();
-#endif
 }
 
 void HarmonySettingsWidget::onMakePathChanged()
@@ -448,9 +440,7 @@ void HarmonySettingsWidget::onMakePathChanged()
 
 void HarmonySettingsWidget::validateSdk()
 {
-#ifdef Q_OS_WIN
     onDevecoStudioPathChanged();
-#endif
     onMakePathChanged();
     for(const QString &qmake : qAsConst(HarmonyConfig::getQmakeList()))
     {

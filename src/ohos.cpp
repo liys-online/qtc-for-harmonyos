@@ -26,11 +26,17 @@
 #include "harmonyqtversion.h"
 #include "harmonytoolchain.h"
 #include "harmonyrunconfiguration.h"
+#include "harmonyrunner.h"
 #include "harmonydeployqtstep.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
 
 #include <QTranslator>
+#include <QLoggingCategory>
+
+namespace {
+static Q_LOGGING_CATEGORY(harmonyPluginLog, "qtc.harmony.plugin", QtWarningMsg)
+}
 
 namespace Ohos::Internal {
 
@@ -80,6 +86,7 @@ public:
         setupHarmonyDeployQtStep();
 
         setupHarmonyRunConfiguration();
+        setupHarmonyRunWorker();
         connect(KitManager::instance(), &KitManager::kitsLoaded, this, &OhosPlugin::kitsRestored,
                 Qt::SingleShotConnection);
         connect(ProjectManager::instance(), &ProjectManager::activeBuildConfigurationChanged,
@@ -108,8 +115,8 @@ public:
             auto *ohQt = dynamic_cast<const HarmonyQtVersion *>(QtKitAspect::qtVersion(buildsystem->kit()));
             if(ohQt && ohQt->isHarmonyQtVersion())
             {
-                Core::MessageManager::writeSilently(QString("Add Harmony Build Hap Step to BuildConfiguration: %1")
-                                                   .arg(ohQt->displayName()));
+                qCDebug(harmonyPluginLog) << "Add Harmony Build Hap Step to BuildConfiguration:"
+                                          << ohQt->displayName();
                 if(auto *steps = bc->buildSteps(); !steps->contains(Constants::HARMONY_BUILD_HAP_ID))
                     steps->appendStep(Constants::HARMONY_BUILD_HAP_ID);
             }

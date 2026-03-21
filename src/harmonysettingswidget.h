@@ -1,4 +1,4 @@
-﻿#ifndef HARMONYSETTINGSWIDGET_H
+#ifndef HARMONYSETTINGSWIDGET_H
 #define HARMONYSETTINGSWIDGET_H
 #include <coreplugin/dialogs/ioptionspage.h>
 #include <projectexplorer/toolchainmanager.h>
@@ -133,9 +133,7 @@ private Q_SLOTS:
 
 };
 enum HarmonyValidation {
-#ifdef Q_OS_WIN
     DevecoPathExistsAndWritableRow,
-#endif
     SdkPathExistsAndWritableRow,
     SdkToolsInstalledRow,
     QMakeToolsInstalledRow,

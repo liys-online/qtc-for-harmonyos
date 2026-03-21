@@ -467,11 +467,11 @@ void HarmonyConfigurations::updateHarmonyDevice()
     /*
      * Add a deault Harmony device
      */
-    HarmonyDevice *deaultDevice = new HarmonyDevice();
-    deaultDevice->setupId(IDevice::AutoDetected, Constants::HARMONY_DEVICE_ID);
-    deaultDevice->setMachineType(IDevice::Emulator);
-    deaultDevice->setDeviceState(IDevice::DeviceStateUnknown);
-    devMgr->addDevice(IDevicePtr(deaultDevice));
+    HarmonyDevice *defaultDevice = new HarmonyDevice();
+    defaultDevice->setupId(IDevice::AutoDetected, Constants::HARMONY_DEVICE_ID);
+    defaultDevice->setMachineType(IDevice::Emulator);
+    defaultDevice->setDeviceState(IDevice::DeviceStateUnknown);
+    devMgr->addDevice(IDevicePtr(defaultDevice));
     setupDevicesWatcher();
 }
 

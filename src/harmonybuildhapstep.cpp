@@ -18,6 +18,7 @@
 #include <utils/algorithm.h>
 #include <utils/layoutbuilder.h>
 #include <utils/qtcprocess.h>
+#include <QLoggingCategory>
 
 #include <qtsupport/qtkitaspect.h>
 
@@ -29,6 +30,9 @@
 using namespace Utils;
 
 namespace Ohos::Internal {
+namespace {
+static Q_LOGGING_CATEGORY(harmonyBuildHapLog, "qtc.harmony.build.hap", QtWarningMsg)
+}
 [[maybe_unused]] static void createOhPro(ProjectExplorer::BuildSystem *buildsystem, const QString &path)
 {
     using namespace QtSupport;
@@ -63,7 +67,7 @@ public:
         : QWidget{},
         m_step{step}
     {
-        Core::MessageManager::writeSilently("HarmonyBuildHapWidget setup");
+        qCDebug(harmonyBuildHapLog) << "HarmonyBuildHapWidget setup";
         QSizePolicy sizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
         sizePolicy.setHorizontalStretch(0);
         sizePolicy.setVerticalStretch(0);
@@ -260,7 +264,7 @@ const char BuildToolsVersionKey[] = "BuildToolsVersion";
 HarmonyBuildHapStep::HarmonyBuildHapStep(ProjectExplorer::BuildStepList *bc, Utils::Id id)
     : AbstractProcessStep(bc, id)
 {
-    Core::MessageManager::writeSilently("HarmonyBuildHapStep setup");
+    qCDebug(harmonyBuildHapLog) << "HarmonyBuildHapStep setup";
 }
 
 void HarmonyBuildHapStep::fromMap(const Utils::Store &map)
@@ -318,11 +322,11 @@ QtTaskTree::GroupItem HarmonyBuildHapStep::syncProjectTask()
                     process.setUtf8StdOutCodec();
 
                 process.setStdOutCallback([this](const QString &s){
-                    emit addOutput(s + "\033[0m", OutputFormat::Stdout, DontAppendNewline);
+                    emit addOutput(s, OutputFormat::Stdout, DontAppendNewline);
                 });
 
                 process.setStdErrCallback([this](const QString &s){
-                    emit addOutput(s + "\033[0m", OutputFormat::Stderr, DontAppendNewline);
+                    emit addOutput(s, OutputFormat::Stderr, DontAppendNewline);
                 });
 
                 connect(&process, &Process::started, this, [this, &process] {
@@ -384,11 +388,11 @@ QtTaskTree::GroupItem HarmonyBuildHapStep::ohpmInstallTask()
                     process.setUtf8StdOutCodec();
 
                 process.setStdOutCallback([this](const QString &s){
-                    emit addOutput(s + "\033[0m", OutputFormat::Stdout, DontAppendNewline);
+                    emit addOutput(s, OutputFormat::Stdout, DontAppendNewline);
                 });
 
                 process.setStdErrCallback([this](const QString &s){
-                    emit addOutput(s + "\033[0m", OutputFormat::Stderr, DontAppendNewline);
+                    emit addOutput(s, OutputFormat::Stderr, DontAppendNewline);
                 });
 
                 connect(&process, &Process::started, this, [&process, this] {
@@ -440,7 +444,7 @@ bool HarmonyBuildHapStep::setupProcess(Utils::Process &process)
     // PWD can be different from getcwd in case of symbolic links (getcwd resolves symlinks).
     // For example Clang uses PWD for paths in debug info, see QTCREATORBUG-23788
     Environment envWithPwd = params->environment();
-    Core::MessageManager::writeSilently("Environment: PATH" + Environment::valueFromPathList(envWithPwd.path(),OsType::OsTypeWindows));
+    qCDebug(harmonyBuildHapLog) << "Environment PATH prepared";
     envWithPwd.set("PWD", workingDir.path());
     process.setProcessMode(params->processMode());
     // if (const auto runAsRoot = aspect<RunAsRootAspect>(); runAsRoot && runAsRoot->value()) {
@@ -455,11 +459,11 @@ bool HarmonyBuildHapStep::setupProcess(Utils::Process &process)
         process.setUtf8StdOutCodec();
 
     process.setStdOutCallback([this](const QString &s){
-        emit addOutput(s + "\033[0m", OutputFormat::Stdout, DontAppendNewline);
+        emit addOutput(s, OutputFormat::Stdout, DontAppendNewline);
     });
 
     process.setStdErrCallback([this](const QString &s){
-        emit addOutput(s + "\033[0m", OutputFormat::Stderr, DontAppendNewline);
+        emit addOutput(s, OutputFormat::Stderr, DontAppendNewline);
     });
 
     connect(&process, &Process::started, this, [params, this] {
@@ -518,7 +522,8 @@ bool HarmonyBuildHapStep::init()
             evn.set("JAVA_HOME", HarmonyConfig::javaLocation().toFSPathString());
             evn.appendOrSetPath({HarmonyConfig::javaLocation() / "bin"});
             params->setEnvironment(evn);
-            Core::MessageManager::writeSilently(Tr::tr("Step in directory: %1").arg(params->workingDirectory().toUserOutput()));
+            qCDebug(harmonyBuildHapLog) << "Step in directory:"
+                                        << params->workingDirectory().toUserOutput();
             // params->setCommandLine({node, {hvigorwJs.toUserOutput(), "--help"}});
             params->setCommandLine({node, {hvigorwJs.toUserOutput(),
                                            "--mode",
@@ -531,11 +536,13 @@ bool HarmonyBuildHapStep::init()
                                            "--incremental",
                                            "--no_daemon",
                                           }});
-            auto OhProPath = params->workingDirectory().toUserOutput();
-            !QFile::exists(OhProPath + "/build-profile.json5") ?
-                // createOhPro(buildSystem(), OhProPath) :
-                emit createTemplates():
-                Core::MessageManager::writeSilently(Tr::tr("OhPro already exists in %1").arg(OhProPath));
+            const auto ohProPath = params->workingDirectory().toUserOutput();
+            if (!QFile::exists(ohProPath + "/build-profile.json5")) {
+                // createOhPro(buildSystem(), ohProPath);
+                emit createTemplates();
+            } else {
+                qCDebug(harmonyBuildHapLog) << Tr::tr("OhPro already exists in %1").arg(ohProPath);
+            }
 
         }
         else
@@ -584,4 +591,4 @@ void setupHarmonyBuildHapStep()
     static HarmonyBuildHapStepFactory theHarmonyBuildHapStepFactory;
 }
 
-} // namespace Harmony::Internal
+} // namespace Ohos::Internal

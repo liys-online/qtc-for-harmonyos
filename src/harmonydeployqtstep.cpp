@@ -34,6 +34,7 @@
 #include <QLoggingCategory>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QDirIterator>
 using namespace ProjectExplorer;
 using namespace Utils;
 using namespace QtTaskTree;
@@ -74,6 +75,28 @@ static DeployErrorFlags parseDeployErrors(const QString &deployOutputLine)
         errorCode |= VersionDowngrade;
 
     return errorCode;
+}
+
+static FilePath detectHapPath(const FilePath &ohBuildDirectory)
+{
+    const FilePath defaultPath = ohBuildDirectory.pathAppended(
+        "entry/build/default/outputs/default/entry-default-signed.hap");
+    if (defaultPath.exists())
+        return defaultPath;
+
+    const FilePath outputDir = ohBuildDirectory.pathAppended("entry/build/default/outputs/default");
+    if (outputDir.exists()) {
+        const FilePaths haps = outputDir.dirEntries({{"*.hap"}, QDir::Files});
+        if (!haps.isEmpty())
+            return haps.first();
+    }
+
+    QDirIterator it(ohBuildDirectory.toUserOutput(), {"*.hap"}, QDir::Files,
+                    QDirIterator::Subdirectories);
+    if (it.hasNext())
+        return FilePath::fromString(it.next());
+
+    return {};
 }
 
 class HarmonyDeployQtStep final : public BuildStep
@@ -216,10 +239,15 @@ bool HarmonyDeployQtStep::init()
         reportWarningOrError(Tr::tr("The deployment step's project node is invalid."), Task::Error);
         return false;
     }
-    auto ohbuildDirectory = harmonyBuildDirectory(buildConfiguration());
-    m_hapPath = ohbuildDirectory.pathAppended("entry/build/default/outputs/default/entry-default-signed.hap");
+    const FilePath ohbuildDirectory = harmonyBuildDirectory(buildConfiguration());
+    m_hapPath = detectHapPath(ohbuildDirectory);
     if (!m_hapPath.isEmpty()) {
         m_command = HarmonyConfig::hdcToolPath();
+    } else {
+        reportWarningOrError(Tr::tr("Cannot find generated HAP package under \"%1\".")
+                                 .arg(ohbuildDirectory.toUserOutput()),
+                             Task::Error);
+        return false;
     } /*else {
         FilePath jsonFile = HarmonyQtVersion::harmonyDeploymentSettings(buildConfiguration());
         if (jsonFile.isEmpty()) {

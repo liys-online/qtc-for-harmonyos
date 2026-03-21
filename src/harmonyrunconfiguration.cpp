@@ -1,4 +1,6 @@
 #include "harmonyrunconfiguration.h"
+#include "harmonyconfigurations.h"
+#include "harmonyutils.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
 #include <projectexplorer/runconfiguration.h>
@@ -8,6 +10,7 @@
 #include <projectexplorer/project.h>
 #include <projectexplorer/runconfigurationaspects.h>
 #include <projectexplorer/target.h>
+#include <utils/commandline.h>
 using namespace ProjectExplorer;
 using namespace Utils;
 namespace Ohos::Internal {
@@ -67,6 +70,43 @@ public:
             const ProjectExplorer::BuildTargetInfo bti = buildTargetInfo();
             setDisplayName(bti.displayName);
             setDefaultDisplayName(bti.displayName);
+        });
+
+        setCommandLineGetter([this, bc] {
+            CommandLine cmd;
+            const FilePath hdc = HarmonyConfig::hdcToolPath();
+            if (hdc.isEmpty() || !hdc.exists())
+                return cmd;
+
+            const QString pkgName = packageName(bc);
+            cmd.setExecutable(hdc);
+            cmd.addArg("shell");
+
+            QString startCommand;
+            const QString userArgs = amStartArgs();
+            if (!userArgs.trimmed().isEmpty()) {
+                startCommand = "aa start " + userArgs.trimmed();
+            } else {
+                startCommand = "aa start";
+                if (!pkgName.isEmpty()) {
+                    startCommand += " -b " + pkgName + " -a EntryAbility";
+                }
+            }
+
+            const QStringList preCmds = preStartShellCmd().split('\n', Qt::SkipEmptyParts);
+            QStringList allDeviceCommands;
+            for (const QString &pre : preCmds) {
+                const QString trimmed = pre.trimmed();
+                if (!trimmed.isEmpty())
+                    allDeviceCommands << trimmed;
+            }
+            allDeviceCommands << startCommand;
+
+            // NOTE: postStartShellCmd requires a dedicated run worker lifecycle hook.
+            // Here we only execute pre-commands and launch command in one shell session.
+            cmd.addArg(allDeviceCommands.join(" ; "));
+
+            return cmd;
         });
     }
 

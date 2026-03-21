@@ -68,6 +68,7 @@ add_qtc_plugin(Harmony
     QtCreator::ExtensionSystem
     QtCreator::Utils
   SOURCES
+    Harmony.json.in
     qrc.qrc
     ../lib/ohprojectecreator/resource.qrc
     ohos.cpp
@@ -89,6 +90,7 @@ add_qtc_plugin(Harmony
     harmonydeviceinfo.h harmonydeviceinfo.cpp
     harmonydeployqtstep.h harmonydeployqtstep.cpp
     harmonyrunconfiguration.h harmonyrunconfiguration.cpp
+    harmonyrunner.h harmonyrunner.cpp
     ohosconstants.h
     ohostr.h
     harmonyqtcdefs.h
