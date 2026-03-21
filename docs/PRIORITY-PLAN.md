@@ -40,7 +40,7 @@
 | P0-02 | P0 | 运行 | `postStartShellCmd` 生命周期 | 进程结束后或用户 Stop 时执行设备侧命令（与 Android 行为对齐） | P0-01 选型（自定义 RunWorker） | 同上 | 完全对齐需自定义 RunControl Recipe；纯一条 `hdc shell` 难以覆盖 | 待开始 |
 | P0-03 | P0 | 运行 | 默认 Ability / Bundle 可配置 | UI 或从 `module.json5` 读取默认 `-a/-b`，避免写死 `EntryAbility` | 工程模板约定 | `AndroidRunConfiguration` aspects | 多 Ability 工程需用户选择或解析配置 | 待开始 |
 | P0-04 | P0 | 部署 | HAP 路径策略固化 | 从 `build-profile`/hvigor 输出约定解析优先；再 fallback 扫描；无产物时明确报错 | 已部分实现扫描 | `androiddeployqtstep.cpp` | 不同 hvigor 版本输出路径变更时需持续适配 | 部分完成 |
-| P0-05 | P0 | 部署 | 部署前校验 hdc / 设备 / 产物 | `init()` 中统一 `reportWarningOrError` | — | 同上 | — | 待开始 |
+| P0-05 | P0 | 部署 | 部署前校验 hdc / 设备 / 产物 | `init()` 中统一 `reportWarningOrError` | — | 同上 | — | 已完成 |
 | P0-06 | P0 | 构建 | `HarmonyBuildHapStep` 失败路径用户可见 | 配置缺失、ohpm/hvigor 失败进入 TaskHub + 输出面板 | — | `androidbuildapkstep.cpp` | — | 待开始 |
 | P0-07 | P0 | 工具链 | `makeCommand()` 非 Windows | macOS/Linux 返回 `make`/`ninja`，不写死 `mingw32-make` | — | `androidtoolchain.cpp` | — | 待开始 |
 | P0-08 | P0 | 工具链 | 父工具链同步非 Windows | `syncAutodetectedWithParentToolchains` 覆盖 Unix 宿主 | P0-07 | 同上 | — | 待开始 |
@@ -48,8 +48,8 @@
 | P0-10 | P0 | 配置 | `registerQtVersions()` 策略 | 恢复调用或删除死代码并文档说明 | — | `androidconfigurations.cpp` | 若与当前 Kit 策略冲突需产品决策 | 待开始 |
 | P1-01 | P1 | 日志 | 全模块 `QLoggingCategory` | config/device/build/deploy/run 分类；环境变量或 Qt 日志规则可开关 | — | 各 `qCDebug` 用法 | — | 部分完成 |
 | P1-02 | P1 | 日志 | 移除调试向 `writeSilently` | 仅保留用户必须感知的 Disrupting/输出面板 | P1-01 | — | — | 待开始 |
-| P1-03 | P1 | 错误 | Deploy/Run 对话框父窗口 | `Core::ICore::dialogParent()` | — | — | — | 待开始 |
-| P1-04 | P1 | 错误 | Deploy 自定义 HAP 按钮 early return | 每条 return 前有 Message/Task | — | `androiddeployqtstep.cpp` | — | 待开始 |
+| P1-03 | P1 | 错误 | Deploy/Run 对话框父窗口 | `Core::ICore::dialogParent()` | — | — | — | 已完成 |
+| P1-04 | P1 | 错误 | Deploy 自定义 HAP 按钮 early return | 每条 return 前有 Message/Task | — | `androiddeployqtstep.cpp` | — | 已完成 |
 | P1-05 | P1 | 设备 | `HarmonyDeviceWidget::updateDeviceFromUi` | 可编辑项写回 `IDevice`（若需要） | — | `androiddevice.cpp` | 若无可编辑字段可标为 N/A 已搁置 | 待开始 |
 | P1-06 | P1 | 设备 | `updateDeviceState` / Refresh | 调用 hdc 刷新单设备状态 | — | 同上 | hdc 无单设备 query 时需全量 list | 待开始 |
 | P1-07 | P1 | 设备 | 设备图标资源 | 独立 Harmony 图标，移除 Android 资源引用 | 资源文件 | `androiddevice` 工厂 | — | 待开始 |

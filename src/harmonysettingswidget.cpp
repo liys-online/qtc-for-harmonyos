@@ -1,6 +1,7 @@
 #include "harmonysettingswidget.h"
 #include "ohostr.h"
 #include "ohosconstants.h"
+#include <coreplugin/icore.h>
 #include <projectexplorer/projectexplorerconstants.h>
 #include <utils/utilsicons.h>
 #include <utils/layoutbuilder.h>
@@ -311,7 +312,9 @@ void HarmonySettingsWidget::addSdkItem()
 {
     const QString homePath = QStandardPaths::standardLocations(QStandardPaths::HomeLocation)
     .constFirst();
-    const QString sdkPath = QFileDialog::getExistingDirectory(this, Tr::tr("Select an NDK"), homePath);
+    const QString sdkPath = QFileDialog::getExistingDirectory(Core::ICore::dialogParent(),
+                                                              Tr::tr("Select an NDK"),
+                                                              homePath);
 
     checkSdkItem(sdkPath);
 }
@@ -320,8 +323,10 @@ void HarmonySettingsWidget::addQmakeItem()
 {
     const QString homePath = QStandardPaths::standardLocations(QStandardPaths::HomeLocation)
     .constFirst();
-    const QString qmakePath = QFileDialog::getOpenFileName(this, Tr::tr("Select Qt for Harmony qmake"),
-                                                           homePath, Tr::tr("qmake*"));
+    const QString qmakePath = QFileDialog::getOpenFileName(Core::ICore::dialogParent(),
+                                                           Tr::tr("Select Qt for Harmony qmake"),
+                                                           homePath,
+                                                           Tr::tr("qmake*"));
     checkQmakeItem(qmakePath);
 }
 
@@ -350,7 +355,7 @@ void HarmonySettingsWidget::checkSdkItem(QString sdkLocation)
         setAllOk();
     } else if (!sdkLocation.isEmpty()) {
         QMessageBox::warning(
-            this,
+            Core::ICore::dialogParent(),
             Tr::tr("Add Custom SDK"),
             Tr::tr("The selected path has an invalid SDK. This might mean that the path contains space "
                    "characters, or that it does not have a \"toolchains\" sub-directory, or that the "

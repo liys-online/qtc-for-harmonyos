@@ -6,6 +6,7 @@
 #include "ohosconstants.h"
 #include "ohostr.h"
 
+#include <coreplugin/icore.h>
 #include <coreplugin/messagemanager.h>
 
 #include <projectexplorer/buildconfiguration.h>
@@ -181,7 +182,12 @@ bool HarmonyDeployQtStep::init()
     //     selectedAbis = bs->extraData(buildKey, Constants::HarmonyAbis).toStringList();
 
     if (selectedAbis.isEmpty()) {
-        selectedAbis.append(bs->extraData(buildKey, Constants::OHOS_ARCH).toString());}
+        const QString arch = bs->extraData(buildKey, Constants::OHOS_ARCH).toString().trimmed();
+        if (!arch.isEmpty())
+            selectedAbis.append(arch);
+    }
+    selectedAbis.removeAll(QString());
+    selectedAbis.removeDuplicates();
 
     const auto dev = std::dynamic_pointer_cast<const HarmonyDevice>(RunDeviceKitAspect::device(kit()));
     if (!dev) {
@@ -198,7 +204,7 @@ bool HarmonyDeployQtStep::init()
         return false;
     }
 
-    if (!dev->canSupportAbis(selectedAbis)) {
+    if (!selectedAbis.isEmpty() && !dev->canSupportAbis(selectedAbis)) {
         const QString error = Tr::tr("The deployment device \"%1\" does not support the "
                                      "architectures used by the kit.\n"
                                      "The kit supports \"%2\", but the device uses \"%3\".")
@@ -223,8 +229,17 @@ bool HarmonyDeployQtStep::init()
     }
 
     // m_avdName = info.avdName;
-    m_serialNumber = info.serialNumber;
+    m_serialNumber = info.serialNumber.trimmed();
     qCDebug(deployStepLog) << "Selected device info:" << info;
+
+    if (m_serialNumber.isEmpty()) {
+        reportWarningOrError(
+            Tr::tr("No device serial number is available for \"%1\". Connect a device, refresh the "
+                   "device list, or select another kit/run device in Projects.")
+                .arg(dev->displayName()),
+            Task::Error);
+        return false;
+    }
 
     Internal::setDeviceSerialNumber(buildConfiguration(), m_serialNumber);
     Internal::setDeviceApiLevel(buildConfiguration(), info.sdk);
@@ -239,57 +254,44 @@ bool HarmonyDeployQtStep::init()
         reportWarningOrError(Tr::tr("The deployment step's project node is invalid."), Task::Error);
         return false;
     }
-    const FilePath ohbuildDirectory = harmonyBuildDirectory(buildConfiguration());
-    m_hapPath = detectHapPath(ohbuildDirectory);
-    if (!m_hapPath.isEmpty()) {
-        m_command = HarmonyConfig::hdcToolPath();
-    } else {
-        reportWarningOrError(Tr::tr("Cannot find generated HAP package under \"%1\".")
-                                 .arg(ohbuildDirectory.toUserOutput()),
-                             Task::Error);
+    m_hdcPath = HarmonyConfig::hdcToolPath();
+    if (!m_hdcPath.isExecutableFile()) {
+        reportWarningOrError(
+            Tr::tr("The hdc tool is missing or not executable.\n"
+                   "Expected path: %1\n"
+                   "Install the Harmony/OpenHarmony SDK toolchains, set the default SDK in "
+                   "**Preferences → HarmonyOS**, and ensure \"hdc\" exists under the SDK toolchains directory.")
+                .arg(m_hdcPath.toUserOutput()),
+            Task::Error);
         return false;
-    } /*else {
-        FilePath jsonFile = HarmonyQtVersion::harmonyDeploymentSettings(buildConfiguration());
-        if (jsonFile.isEmpty()) {
-            reportWarningOrError(Tr::tr("Cannot find the harmonydeployqt input JSON file."),
-                                 Task::Error);
-            return false;
-        }
-        m_command = qtVersion->hostBinPath();
-        if (m_command.isEmpty()) {
-            reportWarningOrError(Tr::tr("Cannot find the harmonydeployqt tool."), Task::Error);
-            return false;
-        }
-        m_command = m_command.pathAppended("harmonydeployqt").withExecutableSuffix();
+    }
 
-        m_workingDirectory = harmonyBuildDirectory(buildConfiguration());
+    const FilePath ohbuildDirectory = harmonyBuildDirectory(buildConfiguration());
+    if (!ohbuildDirectory.isReadableDir()) {
+        reportWarningOrError(
+            Tr::tr("The Harmony application directory does not exist or is not readable: \"%1\".\n"
+                   "Build the project first (including the \"Build Harmony HAP\" step) so that the "
+                   "\"%2\" folder is generated.")
+                .arg(ohbuildDirectory.toUserOutput(),
+                     QString::fromLatin1(Constants::HARMONY_BUILD_DIRECTORY)),
+            Task::Error);
+        return false;
+    }
 
-        // clang-format off
-        m_harmonydeployqtArgs.addArgs({"--verbose",
-                                       "--output", m_workingDirectory.path(),
-                                       "--no-build",
-                                       "--input", jsonFile.path()});
-        // clang-format on
+    m_hapPath = detectHapPath(ohbuildDirectory);
+    if (m_hapPath.isEmpty() || !m_hapPath.isReadableFile()) {
+        reportWarningOrError(
+            Tr::tr("Cannot find a readable HAP package under \"%1\".\n"
+                   "Expected a path such as "
+                   "\"entry/build/default/outputs/default/*.hap\" after a successful HAP build.")
+                .arg(ohbuildDirectory.toUserOutput()),
+            Task::Error);
+        return false;
+    }
 
-        m_harmonydeployqtArgs.addArg("--gradle");
-
-        if (buildType() == BuildConfiguration::Release)
-            m_harmonydeployqtArgs.addArgs({"--release"});
-
-        const auto harmonyBuildHapStep =
-            buildConfiguration()->buildSteps()->firstOfType<HarmonyBuildHapStep>();
-        if (harmonyBuildHapStep && harmonyBuildHapStep->signPackage()) {
-            // The harmonydeployqt tool is not really written to do stand-alone installations.
-            // This hack forces it to use the correct filename for the apk file when installing
-            // as a temporary fix until harmonydeployqt gets the support. Since the --sign is
-            // only used to get the correct file name of the apk, its parameters are ignored.
-            m_harmonydeployqtArgs.addArgs({"--sign", "foo", "bar"});
-        }
-    }*/
+    m_command = m_hdcPath;
 
     m_environment = buildConfiguration()->environment();
-
-    m_hdcPath = HarmonyConfig::hdcToolPath();
     return true;
 }
 
@@ -314,9 +316,10 @@ Group HarmonyDeployQtStep::deployRecipe()
         const QString packageName = Internal::packageName(buildConfiguration());
         if (packageName.isEmpty()) {
             reportWarningOrError(
-                Tr::tr("Cannot find the package name from app.json5 nor "
-                       "build.gradle files at \"%1\".")
-                    .arg(harmonyBuildDirectory(buildConfiguration()).toUserOutput() + "/AppScope/app.json5"),
+                Tr::tr("Cannot read the application bundle name from \"%1\".\n"
+                       "Ensure AppScope/app.json5 exists and contains app.bundleName.")
+                    .arg((harmonyBuildDirectory(buildConfiguration()) / "AppScope" / "app.json5")
+                             .toUserOutput()),
                 Task::Error);
             return SetupResult::StopWithError;
         }
@@ -330,7 +333,8 @@ Group HarmonyDeployQtStep::deployRecipe()
         return SetupResult::Continue;
     };
     const auto onUninstallDone = [this](const Process &process) {
-        reportWarningOrError(process.exitMessage(), Task::Error);
+        if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0)
+            reportWarningOrError(process.exitMessage(), Task::Warning);
     };
 
     const auto onInstallSetup = [this, storage](Process &process) {
@@ -415,7 +419,7 @@ Group HarmonyDeployQtStep::deployRecipe()
         uninstallMsg.append(Tr::tr("Uninstalling the installed package may solve the issue.") + '\n');
         uninstallMsg.append(Tr::tr("Do you want to uninstall the existing package?"));
 
-        if (QMessageBox::critical(nullptr, Tr::tr("Install failed"), uninstallMsg,
+        if (QMessageBox::critical(Core::ICore::dialogParent(), Tr::tr("Install failed"), uninstallMsg,
                                   QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes) {
             m_uninstallPreviousPackageRun = true;
             return SetupResult::Continue;
@@ -443,74 +447,128 @@ QWidget *HarmonyDeployQtStep::createConfigWidget()
 {
     auto widget = new QWidget;
     auto installCustomApkButton = new QPushButton(widget);
-    installCustomApkButton->setText(Tr::tr("Install a HAP File"));
+    installCustomApkButton->setText(Tr::tr("Install a HAP File…"));
+    installCustomApkButton->setToolTip(
+        Tr::tr("Install a .hap package on the run device selected in the active kit using hdc."));
 
     connect(installCustomApkButton, &QAbstractButton::clicked, this, [this] {
+        QWidget *const dlgParent = Core::ICore::dialogParent();
+
         const FilePath packagePath
-            = FileUtils::getOpenFilePath(Tr::tr("Qt HarmonyOS Installer"),
+            = FileUtils::getOpenFilePath(Tr::tr("Select HAP Package"),
                                          FileUtils::homePath(),
                                          Tr::tr("HarmonyOS package (*.hap)"));
         if (packagePath.isEmpty())
-            return;
+            return; // user cancelled
 
-        // TODO: Write error messages on all the early returns below.
+        if (!packagePath.isReadableFile()) {
+            QMessageBox::warning(
+                dlgParent,
+                Tr::tr("Install HAP"),
+                Tr::tr("The selected file cannot be read:\n%1").arg(packagePath.toUserOutput()));
+            return;
+        }
+
+        const FilePath hdcPath = HarmonyConfig::hdcToolPath();
+        if (!hdcPath.isExecutableFile()) {
+            QMessageBox::warning(
+                dlgParent,
+                Tr::tr("Install HAP"),
+                Tr::tr("The hdc tool is missing or not executable:\n%1\n\n"
+                       "Configure the Harmony/OpenHarmony SDK and default SDK path under "
+                       "Edit → Preferences → HarmonyOS.")
+                    .arg(hdcPath.toUserOutput()));
+            return;
+        }
 
         const QStringList appAbis = applicationAbis(kit());
-        if (appAbis.isEmpty())
+        if (appAbis.isEmpty()) {
+            QMessageBox::warning(
+                dlgParent,
+                Tr::tr("Install HAP"),
+                Tr::tr("No HarmonyOS ABIs are defined for the current kit.\n"
+                       "Add a Qt for Harmony version to the kit and check the project configuration."));
+            TaskHub::addTask(DeploymentTask(
+                Task::Warning,
+                Tr::tr("Install HAP: kit has no Harmony ABIs.")));
             return;
+        }
 
         const IDevice::ConstPtr device = RunDeviceKitAspect::device(kit());
-        const HarmonyDeviceInfo info = HarmonyDevice::harmonyDeviceInfoFromDevice(device);
-        if (!info.isValid()) // aborted
+        if (!device) {
+            QMessageBox::warning(
+                dlgParent,
+                Tr::tr("Install HAP"),
+                Tr::tr("No run device is selected.\n"
+                       "Select a HarmonyOS device in Projects → Run or in the kit settings."));
             return;
+        }
 
-        const Storage<QString> serialNumberStorage;
+        const HarmonyDeviceInfo info = HarmonyDevice::harmonyDeviceInfoFromDevice(device);
+        if (!info.isValid()) {
+            QMessageBox::warning(
+                dlgParent,
+                Tr::tr("Install HAP"),
+                Tr::tr("The current device is not valid for deployment.\n"
+                       "Refresh the device list (Devices) and ensure the device is connected."));
+            return;
+        }
 
-        const auto onSetup = [serialNumberStorage, info] {
-            if (info.type == IDevice::Emulator)
-                return SetupResult::Continue;
-            if (info.serialNumber.isEmpty())
-                return SetupResult::StopWithError;
-            *serialNumberStorage = info.serialNumber;
-            return SetupResult::StopWithSuccess;
-        };
-        const auto onDone = [serialNumberStorage, info](DoneWith result) {
-            if (info.type == IDevice::Emulator && serialNumberStorage->isEmpty()) {
-                Core::MessageManager::writeDisrupting(Tr::tr("Starting HarmonyOS virtual device failed."));
-                return false;
-            }
-            return result == DoneWith::Success;
-        };
+        if (info.type == IDevice::Emulator) {
+            QMessageBox::information(
+                dlgParent,
+                Tr::tr("Install HAP"),
+                Tr::tr("Installing a HAP onto a HarmonyOS emulator from this dialog is not supported yet.\n"
+                       "Use a physical device, or install from DevEco Studio."));
+            return;
+        }
 
-        const auto onHdcSetup = [serialNumberStorage, packagePath](Process &process) {
-            const CommandLine cmd{HarmonyConfig::hdcToolPath(),
-                                  {hdcSelector(*serialNumberStorage),
-                                   "install", packagePath.toUserOutput()}};
+        const QString serialNumber = info.serialNumber.trimmed();
+        if (serialNumber.isEmpty()) {
+            QMessageBox::warning(
+                dlgParent,
+                Tr::tr("Install HAP"),
+                Tr::tr("The selected device has no serial number.\n"
+                       "Reconnect the device, run \"hdc list targets\", and refresh devices in Qt Creator."));
+            return;
+        }
+
+        if (device->deviceState() != IDevice::DeviceReadyToUse) {
+            QMessageBox::warning(
+                dlgParent,
+                Tr::tr("Install HAP"),
+                Tr::tr("The device \"%1\" is not ready (state: not connected or busy).\n"
+                       "Wait until the device is ready, then try again.")
+                    .arg(device->displayName()));
+            return;
+        }
+
+        const auto onHdcSetup = [serialNumber, packagePath, hdcPath](Process &process) {
+            QStringList args = hdcSelector(serialNumber);
+            args << QLatin1String("install") << packagePath.toUserOutput();
+            const CommandLine cmd(hdcPath, args);
             process.setCommand(cmd);
-            Core::MessageManager::writeSilently(
-                Tr::tr("HarmonyOS package installation started with command \"%1\".")
-                    .arg(cmd.toUserOutput()));
+            qCDebug(deployStepLog).noquote() << "Manual HAP install:" << cmd.toUserOutput();
         };
-        const auto onHdcDone = [](const Process &process, DoneWith result) {
+        const auto onHdcDone = [dlgParent](const Process &process, DoneWith result) {
             if (result == DoneWith::Success) {
-                Core::MessageManager::writeSilently(
-                    Tr::tr("HarmonyOS package installation finished with success."));
+                Core::MessageManager::writeFlashing(
+                    Tr::tr("HarmonyOS package was installed successfully."));
             } else {
-                Core::MessageManager::writeDisrupting(Tr::tr("HarmonyOS package installation failed.")
-                                                      + '\n' + process.cleanedStdErr());
+                const QString detail = process.cleanedStdErr().trimmed();
+                QMessageBox::warning(
+                    dlgParent,
+                    Tr::tr("Install HAP"),
+                    Tr::tr("Installation failed.\n\n%1")
+                        .arg(detail.isEmpty() ? process.exitMessage() : detail));
+                TaskHub::addTask(DeploymentTask(
+                    Task::Error,
+                    Tr::tr("HAP installation failed: %1")
+                        .arg(detail.isEmpty() ? process.exitMessage() : detail)));
             }
         };
 
-        const Group recipe {
-            serialNumberStorage,
-            Group {
-                onGroupSetup(onSetup),
-            //     startAvdRecipe(info.avdName, serialNumberStorage),
-                onGroupDone(onDone)
-            },
-            ProcessTask(onHdcSetup, onHdcDone)
-        };
-
+        const Group recipe{ProcessTask(onHdcSetup, onHdcDone)};
         m_taskTreeRunner.start(recipe);
     });
 
