@@ -65,13 +65,14 @@ namespace Ohos::Internal {
         /**
          * @brief makeLocation
          * @return
-         * 获取make路径
+         * Windows：MinGW 安装根目录（其下 \c bin/mingw32-make.exe）。非 Windows 下为空，构建时使用
+         * 当前 Kit/环境的 \c PATH 中的 \c make（与 Qt Creator GCC 工具链行为一致）。
          */
         Utils::FilePath makeLocation();
         /**
          * @brief setMakeLocation
          * @param makeLocation
-         * 设置make路径
+         * 设置 make 路径（仅 Windows MinGW 根目录有意义）
          */
         void setMakeLocation(const Utils::FilePath &makeLocation);
         /**
@@ -87,12 +88,35 @@ namespace Ohos::Internal {
          */
         void setdefaultSdk(const Utils::FilePath &sdkLocation);
         /**
+         * @brief ohosSdkRoot
+         * HarmonyOS SDK root for SDK Manager: `.temp/` for downloads, `<api_version>/` for unpack.
+         */
+        Utils::FilePath ohosSdkRoot();
+        void setOhosSdkRoot(const Utils::FilePath &path);
+        /**
+         * Primary catalog URL: non-empty \c QT_OH_BINARY_CATALOG_URL overrides the built-in
+         * GitCode default (see \c Constants::QtOhBinaryCatalogDefaultGitcodeUrl).
+         */
+        QString effectiveQtOhBinaryCatalogUrl();
+        /** Default SDK root if none stored (env, then same pattern as Android: Library/... on macOS, etc.). */
+        Utils::FilePath defaultOhosSdkPath();
+        /** Stored path, or default when empty — for SDK Manager without opening settings first. */
+        Utils::FilePath effectiveOhosSdkRoot();
+        /**
+         * Scan @p sdkRoot: register each immediate subdirectory (skips `.temp` and hidden names)
+         * that passes isValidSdk(); if @p sdkRoot itself is a valid SDK, register it too.
+         * @return Number of paths newly appended to the SDK list.
+         */
+        int registerDownloadedSdksUnder(const Utils::FilePath &sdkRoot);
+        /**
          * @brief isValidSdk
          * @param sdkLocation
          * @return
          * 是否是有效的SDK
          */
         bool isValidSdk(const QString &sdkLocation);
+        /** \overload 使用 FilePath，避免从磁盘枚举到的路径经 QString 往返时解析不一致。 */
+        bool isValidSdk(const Utils::FilePath &sdkLocation);
         /**
          * @brief sdkLocations
          * @return
@@ -120,7 +144,8 @@ namespace Ohos::Internal {
         /**
          * @brief devecoStudioLocation
          * @return
-         * 获取Deveco Studio路径
+         * 获取 DevEco Studio 路径。在 macOS 上为 \c *.app 包路径（例如 \c /Applications/DevEco-Studio.app），
+         * 不再要求选到 \c Contents；访问 tools/jbr/sdk 时在实现内解析到 \c Contents。
          */
         Utils::FilePath devecoStudioLocation();
         /**
@@ -129,6 +154,14 @@ namespace Ohos::Internal {
          * 设置Deveco Studio路径
          */
         void setDevecoStudioLocation(const Utils::FilePath &devecoStudioLocation);
+        /** Valid if \c Contents/tools exists or IDE launcher under \c bin/ or \c MacOS/ (accepts macOS \c *.app or \c Contents). */
+        bool isValidDevecoStudioRoot(const Utils::FilePath &root);
+        /**
+         * If stored Deveco path is empty: try \c DEVECO_STUDIO_HOME, then on macOS scan
+         * \c /Applications etc. for \c *DevEco*.app (stores the \c .app path, not \c Contents).
+         * @return true if a path was detected and stored (caller may persist settings).
+         */
+        bool tryAutoDetectDevecoStudio();
 
         Utils::FilePath devecostudioExeLocation();
         QPair<int, QVersionNumber> devecoStudioVersion();

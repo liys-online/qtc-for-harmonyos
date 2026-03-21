@@ -25,6 +25,11 @@ private:
      */
     void updateSdkList();
     /**
+     * @brief reloadQmakeListFromConfig
+     * 从 HarmonyConfig 重新填充 Qt for Harmony qmake 列表（供外部 applyConfig 后刷新 UI）
+     */
+    void reloadQmakeListFromConfig();
+    /**
      * @brief openDownloadUrl
      * 打开Harmony Sdk下载链接
      */
@@ -89,6 +94,7 @@ private Q_SLOTS:
      * 当Make路径改变时
      */
     void onMakePathChanged();
+    void onOhosSdkRootChanged();
 
     /**
      * @brief m_makePathChooser
@@ -100,6 +106,7 @@ private Q_SLOTS:
      * Deveco Studio路径选择器
      */
     PathChooser *m_devecoStudioPathChooser = nullptr;
+    PathChooser *m_ohosSdkRootChooser = nullptr;
     /**
      * @brief m_makeDefaultSdkButton
      * 设置默认SDK按钮
@@ -134,6 +141,7 @@ private Q_SLOTS:
 };
 enum HarmonyValidation {
     DevecoPathExistsAndWritableRow,
+    OhosSdkManagerRootRow,
     SdkPathExistsAndWritableRow,
     SdkToolsInstalledRow,
     QMakeToolsInstalledRow,

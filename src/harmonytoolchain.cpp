@@ -9,6 +9,7 @@
 #include <projectexplorer/clangparser.h>
 #include <coreplugin/messagemanager.h>
 
+#include <utils/hostosinfo.h>
 #include <utils/qtcprocess.h>
 
 #include <QLoggingCategory>
@@ -857,11 +858,16 @@ FilePath HarmonyToolchain::ndkLocation() const
 
 FilePath HarmonyToolchain::makeCommand(const Utils::Environment &environment) const
 {
-    Q_UNUSED(environment);
+    if (!HostOsInfo::isWindowsHost()) {
+        FilePath make = environment.searchInPath("make");
+        if (!make.isEmpty())
+            return make;
+        return FilePath("make");
+    }
     const FilePath makePath = HarmonyConfig::makeLocation();
     if (makePath.isEmpty())
-        return FilePath();
-    FilePath makeExecutable = makePath / "bin" / "mingw32-make.exe";
+        return {};
+    const FilePath makeExecutable = makePath / "bin" / "mingw32-make.exe";
     if (makeExecutable.isExecutableFile())
         return makeExecutable;
     return {};

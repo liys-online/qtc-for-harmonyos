@@ -21,7 +21,8 @@ void HarmonyQtVersion::addToBuildEnvironment(const ProjectExplorer::Kit *k, Util
     {
         for(const QString &sdk : sdkList)
         {
-            FilePath releaseFile = HarmonyConfig::releaseFile(HarmonyConfig::ndkLocation(FilePath::fromString(sdk)));
+            FilePath releaseFile = HarmonyConfig::releaseFile(
+                HarmonyConfig::ndkLocation(FilePath::fromUserInput(sdk).cleanPath()));
             if(HarmonyConfig::getVersion(releaseFile).first == supportOhVersion())
             {
                 env.set(Constants::OHOS_SDK_ENV_VAR, sdk);

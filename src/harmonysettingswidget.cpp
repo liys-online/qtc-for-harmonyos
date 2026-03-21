@@ -5,11 +5,16 @@
 #include <projectexplorer/projectexplorerconstants.h>
 #include <utils/utilsicons.h>
 #include <utils/layoutbuilder.h>
+#include <utils/hostosinfo.h>
 #include <utils/pathchooser.h>
 #include <utils/detailswidget.h>
+#include <utils/guiutils.h>
+#include <QLabel>
 #include <QToolButton>
 #include <QDesktopServices>
 #include "harmonyconfigurations.h"
+#include "harmonysdkmanagerdialog.h"
+#include "harmonyqttsdkmanagerdialog.h"
 #include <QMessageBox>
 #include <QVBoxLayout>
 #include <QTimer>
@@ -119,15 +124,34 @@ HarmonySettingsWidget::HarmonySettingsWidget()
 {
     setWindowTitle(Tr::tr("Harmony Configuration"));
     const QIcon downloadIcon = Icons::ONLINE.icon();
+    const bool showMakeControls = HostOsInfo::isWindowsHost();
+
+    auto *makeLocationLabel = new QLabel(Tr::tr("Make location:"));
+    makeLocationLabel->setVisible(showMakeControls);
+
     m_makePathChooser = new PathChooser;
     m_makePathChooser->setFilePath(HarmonyConfig::makeLocation());
     m_makePathChooser->setPromptDialogTitle(Tr::tr("Select Make Location"));
+    m_makePathChooser->setVisible(showMakeControls);
     auto downloadmake = new QToolButton;
     downloadmake->setIcon(downloadIcon);
     downloadmake->setToolTip(Tr::tr("Open mingw download URL in the system's browser."));
+    downloadmake->setVisible(showMakeControls);
     m_devecoStudioPathChooser = new PathChooser;
+    if (HarmonyConfig::devecoStudioLocation().isEmpty())
+        HarmonyConfig::tryAutoDetectDevecoStudio();
     m_devecoStudioPathChooser->setFilePath(HarmonyConfig::devecoStudioLocation());
     m_devecoStudioPathChooser->setPromptDialogTitle(Tr::tr("Select Deveco Studio Folder"));
+
+    m_ohosSdkRootChooser = new PathChooser;
+    m_ohosSdkRootChooser->setExpectedKind(PathChooser::Directory);
+    if (HarmonyConfig::ohosSdkRoot().isEmpty())
+        HarmonyConfig::setOhosSdkRoot(HarmonyConfig::defaultOhosSdkPath());
+    m_ohosSdkRootChooser->setFilePath(HarmonyConfig::ohosSdkRoot());
+    m_ohosSdkRootChooser->setPromptDialogTitle(Tr::tr("Select HarmonyOS SDK Folder"));
+    m_ohosSdkRootChooser->setToolTip(
+        Tr::tr("Root directory for SDK Manager: archives download to .temp/ here, and unpack to "
+               "<API version>/ subfolders (same layout idea as the Android SDK location)."));
 
     auto downloadSdkToolButton = new QToolButton;
     downloadSdkToolButton->setIcon(downloadIcon);
@@ -139,6 +163,11 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     auto removeSDKButton = new QPushButton(Tr::tr("Remove"));
     removeSDKButton->setEnabled(false);
     removeSDKButton->setToolTip(Tr::tr("Remove the selected SDK if it has been added manually."));
+
+    auto manageSdkPackagesBtn = new QPushButton(Tr::tr("Manage SDK Packages…"));
+    manageSdkPackagesBtn->setToolTip(
+        Tr::tr("Download OpenHarmony SDK components using the official package index (same API as the "
+               "Qt for OHOS build scripts)."));
 
     m_makeDefaultSdkButton = new QPushButton;
 
@@ -169,10 +198,15 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     auto downloadQtForHarmony = new QToolButton;
     downloadQtForHarmony->setIcon(downloadIcon);
     downloadQtForHarmony->setToolTip(Tr::tr("Open Qt for Harmony download URL in the system's browser."));
+    auto manageQtOhSdkBtn = new QPushButton(Tr::tr("Manage Qt for OpenHarmony SDK…"));
+    manageQtOhSdkBtn->setToolTip(
+        Tr::tr("Browse Qt for OpenHarmony packages from the binary catalog JSON "
+               "(qt-oh-binary-catalog.v1.json), loaded from GitCode with GitHub fallback."));
     auto qtForHarmonyDetailsWidget = new DetailsWidget;
     auto harmonyDetailsWidget = new DetailsWidget;
     const QMap<int, QString> harmonyValidationPoints = {
         {DevecoPathExistsAndWritableRow, Tr::tr("Deveco Studio path exists and is writable")},
+        {OhosSdkManagerRootRow, Tr::tr("HarmonyOS SDK location exists and is writable")},
         {SdkPathExistsAndWritableRow, Tr::tr("SDK path exists and is writable")},
         {SdkToolsInstalledRow, Tr::tr("SDK tools installed")},
         {AllEssentialsInstalledRow, Tr::tr("All essentials installed")},
@@ -192,7 +226,7 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         Group {
             title(Tr::tr("Harmony Settings")),
             Grid {
-                Tr::tr("Make location:"),
+                makeLocationLabel,
                 m_makePathChooser,
                 downloadmake,
                 br,
@@ -200,12 +234,17 @@ HarmonySettingsWidget::HarmonySettingsWidget()
                 m_devecoStudioPathChooser,
                 downloadDevecoStudio,
                 br,
+                Tr::tr("HarmonyOS SDK location:"),
+                m_ohosSdkRootChooser,
+                st,
+                br,
                 Column { Tr::tr("OpenHarmony SDK list:"), st },
                 m_sdkListWidget,
                 Column {
                     addSDKButton,
                     removeSDKButton,
-                    m_makeDefaultSdkButton
+                    m_makeDefaultSdkButton,
+                    manageSdkPackagesBtn,
                 },
                 downloadSdkToolButton,
                 br,
@@ -220,7 +259,8 @@ HarmonySettingsWidget::HarmonySettingsWidget()
                 m_qmakeListWidget,
                 Column {
                     addQmakeButton,
-                    removeQmakeButton
+                    removeQmakeButton,
+                    manageQtOhSdkBtn,
                 },
                 downloadQtForHarmony,
                 br,
@@ -233,6 +273,8 @@ HarmonySettingsWidget::HarmonySettingsWidget()
 
     connect(m_devecoStudioPathChooser, &PathChooser::rawPathChanged,
         this, &HarmonySettingsWidget::onDevecoStudioPathChanged);
+    connect(m_ohosSdkRootChooser, &PathChooser::rawPathChanged,
+            this, &HarmonySettingsWidget::onOhosSdkRootChanged);
     connect(m_sdkListWidget, &QListWidget::currentTextChanged,
             this, [this, removeSDKButton](const QString &sdk) {
                 setAllOk();
@@ -246,6 +288,7 @@ HarmonySettingsWidget::HarmonySettingsWidget()
             HarmonyConfig::setdefaultSdk({});
         HarmonyConfig::removeSdkList(m_sdkListWidget->currentItem()->text());
         m_sdkListWidget->takeItem(m_sdkListWidget->currentRow());
+        Utils::markSettingsDirty();
     });
     connect(m_makeDefaultSdkButton, &QPushButton::clicked, this, [this] {
         const FilePath defaultSdk = isDefaultSdkSelected()
@@ -253,6 +296,7 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         : FilePath::fromUserInput(m_sdkListWidget->currentItem()->text());
         HarmonyConfig::setdefaultSdk(defaultSdk);
         setAllOk();
+        Utils::markSettingsDirty();
     });
 
     connect(m_qmakeListWidget, &QListWidget::currentTextChanged,
@@ -266,6 +310,7 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     connect(removeQmakeButton, &QPushButton::clicked, this, [this, removeQmakeButton] {
         HarmonyConfig::removeQmake(m_qmakeListWidget->currentItem()->text());
         m_qmakeListWidget->takeItem(m_qmakeListWidget->currentRow());
+        Utils::markSettingsDirty();
     });
 
     connect(m_makePathChooser, &PathChooser::rawPathChanged, this, &HarmonySettingsWidget::onMakePathChanged);
@@ -273,7 +318,19 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     connect(downloadmake, &QAbstractButton::clicked, this, &HarmonySettingsWidget::openMakeDownloadUrl);
     connect(downloadDevecoStudio, &QAbstractButton::clicked, this, &HarmonySettingsWidget::openDownloadUrl);
     connect(downloadSdkToolButton, &QAbstractButton::clicked, this, &HarmonySettingsWidget::openDownloadUrl);
+    connect(manageSdkPackagesBtn, &QPushButton::clicked, this, [] {
+        executeHarmonySdkManagerDialog(Core::ICore::dialogParent());
+    });
+    connect(manageQtOhSdkBtn, &QPushButton::clicked, this, [] {
+        executeHarmonyQtOhSdkManagerDialog(Core::ICore::dialogParent());
+    });
     setOnApply([] { HarmonyConfigurations::applyConfig(); });
+
+    connect(HarmonyConfigurations::instance(), &HarmonyConfigurations::updated, this, [this] {
+        reloadQmakeListFromConfig();
+        updateSdkList();
+        setAllOk();
+    }, Qt::QueuedConnection);
 }
 
 void HarmonySettingsWidget::showEvent(QShowEvent *event)
@@ -294,6 +351,27 @@ void HarmonySettingsWidget::updateSdkList()
     for (const QString &sdk : sdkList) {
         m_sdkListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), sdk));
     }
+}
+
+void HarmonySettingsWidget::reloadQmakeListFromConfig()
+{
+    m_qmakeListWidget->clear();
+    for (const QString &qmake : HarmonyConfig::getQmakeList()) {
+        if (!qmake.isEmpty())
+            m_qmakeListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), qmake));
+    }
+
+    bool hasValid = false;
+    for (const QString &qmake : HarmonyConfig::getQmakeList()) {
+        if (!qmake.isEmpty() && FilePath::fromString(qmake).isExecutableFile()) {
+            hasValid = true;
+            break;
+        }
+    }
+    qtForHarmonySummary->setPointValid(
+        QMakeToolsInstalledRow,
+        hasValid,
+        hasValid ? QString() : Tr::tr("Qt for Harmony qmake does not exist"));
 }
 
 void HarmonySettingsWidget::openDownloadUrl()
@@ -350,6 +428,7 @@ void HarmonySettingsWidget::checkSdkItem(QString sdkLocation)
             if (HarmonyConfig::defaultSdk().isEmpty()) {
                 HarmonyConfig::setdefaultSdk(FilePath::fromString(sdkLocation));
             }
+            Utils::markSettingsDirty();
         }
         m_harmonySummary->setPointValid(SdkToolsInstalledRow, true);
         setAllOk();
@@ -375,6 +454,7 @@ void HarmonySettingsWidget::checkQmakeItem(QString qmakeLocation)
         HarmonyConfig::addQmake(qmakeLocation);
         if (m_qmakeListWidget->findItems(qmakeLocation, Qt::MatchExactly).size() == 0) {
             m_qmakeListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), qmakeLocation));
+            Utils::markSettingsDirty();
         }
     }
     else
@@ -423,34 +503,83 @@ void HarmonySettingsWidget::setAllOk()
 void HarmonySettingsWidget::onDevecoStudioPathChanged()
 {
     const FilePath devecoStudioPath = m_devecoStudioPathChooser->filePath().cleanPath();
-    const FilePath devecoStudioExe = FilePath(devecoStudioPath / "bin" / "devecostudio64")
-                                         .withExecutableSuffix();
 
-    if (devecoStudioExe.isExecutableFile()
-        || HarmonyConfig::devecoToolsLocation().isReadableDir()) {
+    if (HarmonyConfig::isValidDevecoStudioRoot(devecoStudioPath)) {
         m_harmonySummary->setPointValid(DevecoPathExistsAndWritableRow, true);
         HarmonyConfig::setDevecoStudioLocation(devecoStudioPath);
     } else {
-        m_harmonySummary->setPointValid(DevecoPathExistsAndWritableRow, false,
-                                        Tr::tr("Deveco Studio path does not exist or is not writable"));
+        QString hint;
+        if (HostOsInfo::isMacHost()) {
+            hint = Tr::tr("\n\nOn macOS, select the application bundle (e.g. DevEco-Studio.app under "
+                          "/Applications), or set DEVECO_STUDIO_HOME to that .app path.");
+        }
+        m_harmonySummary->setPointValid(
+            DevecoPathExistsAndWritableRow,
+            false,
+            Tr::tr("Deveco Studio path is not valid (expect \"tools\" or IDE launcher under bin/ or "
+                   "MacOS/).%1")
+                .arg(hint));
     }
     setAllOk();
+    Utils::markSettingsDirty();
 }
 
 void HarmonySettingsWidget::onMakePathChanged()
 {
+    if (!HostOsInfo::isWindowsHost())
+        return;
     const FilePath makePath = m_makePathChooser->filePath().cleanPath();
     HarmonyConfig::setMakeLocation(makePath);
+    Utils::markSettingsDirty();
+}
+
+void HarmonySettingsWidget::onOhosSdkRootChanged()
+{
+    const FilePath p = m_ohosSdkRootChooser->filePath().cleanPath();
+    if (p.isEmpty()) {
+        HarmonyConfig::setOhosSdkRoot({});
+        m_harmonySummary->setPointValid(
+            OhosSdkManagerRootRow,
+            false,
+            Tr::tr("Set HarmonyOS SDK location for SDK Manager (.temp/ downloads and <API>/ unpack)."));
+        setAllOk();
+        Utils::markSettingsDirty();
+        return;
+    }
+    if (!p.exists()) {
+        if (!p.createDir()) {
+            m_harmonySummary->setPointValid(OhosSdkManagerRootRow, false,
+                                            Tr::tr("Cannot create HarmonyOS SDK directory"));
+            setAllOk();
+            Utils::markSettingsDirty();
+            return;
+        }
+    }
+    if (p.isWritableDir()) {
+        HarmonyConfig::setOhosSdkRoot(p);
+        m_harmonySummary->setPointValid(OhosSdkManagerRootRow, true);
+        if (HarmonyConfig::registerDownloadedSdksUnder(HarmonyConfig::effectiveOhosSdkRoot()) > 0)
+            HarmonyConfigurations::applyConfig();
+        Utils::markSettingsDirty();
+    } else {
+        m_harmonySummary->setPointValid(OhosSdkManagerRootRow, false,
+                                        Tr::tr("HarmonyOS SDK directory is not writable"));
+        Utils::markSettingsDirty();
+    }
+    setAllOk();
 }
 
 void HarmonySettingsWidget::validateSdk()
 {
     onDevecoStudioPathChanged();
+    onOhosSdkRootChanged();
     onMakePathChanged();
     for(const QString &qmake : qAsConst(HarmonyConfig::getQmakeList()))
     {
         checkQmakeItem(qmake);
     }
+    if (HarmonyConfig::registerDownloadedSdksUnder(HarmonyConfig::effectiveOhosSdkRoot()) > 0)
+        HarmonyConfigurations::applyConfig();
     updateSdkList();
     for(const QString &sdk : qAsConst(HarmonyConfig::getSdkList()))
     {

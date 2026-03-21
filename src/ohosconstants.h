@@ -24,7 +24,19 @@ const char DevecoStudioLocationKey[] = "Harmony.DevecoStudioPath";
 const char QmakeLocationKey[] = "Harmony.QmakeLocations";
 const char SDKLocationsKey[] = "Harmony.SDKLocations";
 const char DefaultSDKLocationKey[] = "Harmony.DefaultSDKLocation";
+/** Root for SDK Manager: downloads in .temp/, extracts to <api_version>/ (same idea as Android SDK location). */
+const char OhosSdkRootKey[] = "Harmony.OhosSdkRoot";
+/** Default catalog: GitCode raw \c qt-oh-binary-catalog.v1.json (primary source). */
+const char QtOhBinaryCatalogDefaultGitcodeUrl[] =
+    "https://raw.gitcode.com/Li-Yaosong/qtc-for-harmonyos/raw/main/docs/qt-oh-binary-catalog.v1.json";
+/** Default catalog: GitHub raw (used when primary fails). */
+const char QtOhBinaryCatalogDefaultGithubUrl[] =
+    "https://raw.githubusercontent.com/liys-online/qtc-for-harmonyos/refs/heads/main/docs/qt-oh-binary-catalog.v1.json";
 const char OHOS_SDK_ENV_VAR[] = "OHOS_SDK_PATH";
+/** Optional; checked before OHOS_SDK_PATH for default HarmonyOS SDK root (SDK Manager layout). */
+const char OHOS_SDK_HOME_ENV_VAR[] = "OHOS_SDK_HOME";
+/** Optional; when Harmony.DevecoStudioPath is empty, used for DevEco Studio auto-detection (all platforms). */
+const char DEVECO_STUDIO_HOME_ENV_VAR[] = "DEVECO_STUDIO_HOME";
 const char OHOS_SDK_VERSION[] = "OHOS_SDK_VERSION";
 const char OHOS_ARCH[] = "OHOS_ARCH";
 const char OHOS_TOOLCHAIN_FILE[] = "ohos.toolchain.cmake";

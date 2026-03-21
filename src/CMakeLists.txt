@@ -34,7 +34,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # find_package(QtCreator REQUIRED COMPONENTS Core)
-find_package(Qt6 COMPONENTS Widgets REQUIRED)
+find_package(Qt6 COMPONENTS Widgets Network REQUIRED)
 
 # Add a CMake option that enables building your plugin with tests.
 # You don't want your released plugin binaries to contain tests,
@@ -51,6 +51,8 @@ if(WITH_TESTS)
 
   # Enable ctest for auto tests.
   enable_testing()
+
+  add_subdirectory(../test/qt_oh_binary_catalog_generator qt_oh_binary_catalog_generator)
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS LinguistTools)
@@ -65,6 +67,7 @@ add_qtc_plugin(Harmony
     QtCreator::CMakeProjectManager
   DEPENDS
     Qt::Widgets
+    Qt::Network
     QtCreator::ExtensionSystem
     QtCreator::Utils
   SOURCES
@@ -85,6 +88,11 @@ add_qtc_plugin(Harmony
     harmonydevicemanager.cpp
     harmonydevicemanager.h
     harmonyutils.h harmonyutils.cpp
+    harmonysdkdownloader.h harmonysdkdownloader.cpp
+    harmonysdkmanagerdialog.h harmonysdkmanagerdialog.cpp
+    harmonyqttreleasesdownloader.h harmonyqttreleasesdownloader.cpp
+    harmonyqttsdkmanagerdialog.h harmonyqttsdkmanagerdialog.cpp
+    harmonysdkarchiveutils.h harmonysdkarchiveutils.cpp
     harmonybuildhapstep.h harmonybuildhapstep.cpp
     harmonybuildconfiguration.h harmonybuildconfiguration.cpp
     harmonydeviceinfo.h harmonydeviceinfo.cpp

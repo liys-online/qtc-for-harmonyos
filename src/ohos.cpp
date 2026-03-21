@@ -96,6 +96,8 @@ public:
     void kitsRestored()
     {
         // Add code here to handle kits being restored
+        if (HarmonyConfig::registerDownloadedSdksUnder(HarmonyConfig::effectiveOhosSdkRoot()) > 0)
+            HarmonyConfigurations::applyConfig();
         HarmonyConfigurations::registerNewToolchains();
         // HarmonyConfigurations::registerQtVersions();
         HarmonyConfigurations::updateAutomaticKitList();
