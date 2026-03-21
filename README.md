@@ -1,48 +1,60 @@
-# Ohos
+# Qt Creator — Harmony / OpenHarmony 插件
 
-## 设计文档（对标 Android 插件）
+在 **Qt Creator** 中集成 **Qt for HarmonyOS / OpenHarmony** 开发能力：SDK 与工具链配置、CMake 工程、HAP 构建（hvigor / ohpm）、设备发现与 **hdc** 部署。能力划分对标 Qt Creator 内置 **Android** 插件，便于统一产品预期。
 
-- **概要设计**：[docs/DESIGN-OVERVIEW.md](docs/DESIGN-OVERVIEW.md)（目标、原则、总体架构、模块一览）  
-- **详细设计索引**：[docs/README.md](docs/README.md)（分文件：Android 映射、架构、子模块、构建/部署/运行、路线图）  
-- **与 Android 功能对比 + 进度**：[docs/COMPARISON-PROGRESS.md](docs/COMPARISON-PROGRESS.md)（✅🔄⬜➖）  
+---
 
-详细说明按主题拆成多个 `docs/DESIGN-DETAIL-*.md`，避免单文件过长。
+## 文档（对外）
 
-## Qt Creator version
+完整说明见 **[docs/README.md](docs/README.md)**，核心文档包括：
 
-**Minimum Qt Creator 19** (`QtTaskTree` baseline); **20+** supported via the same tree using version macros / optional sources. Details: **[VERSIONING.md](VERSIONING.md)**.
+| 文档 | 内容 |
+|------|------|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构与设计目标、扩展点、已知限制 |
+| [docs/MODULES.md](docs/MODULES.md) | 源码模块索引 |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | 构建 / 部署 / 运行与外部依赖 |
+| [docs/COMPARISON-PROGRESS.md](docs/COMPARISON-PROGRESS.md) | 与 Android 插件功能对标及进度 |
+| [docs/PRIORITY-PLAN.md](docs/PRIORITY-PLAN.md) | 按优先级的任务计划表 |
 
-## How to Build
+---
 
-Create a build directory and run
+## 版本要求
 
-    cmake -DCMAKE_PREFIX_PATH=<path_to_qtcreator> -DCMAKE_BUILD_TYPE=RelWithDebInfo <path_to_plugin_source>
-    cmake --build .
+- **最低 Qt Creator 19.x**（基于 `QtTaskTree` 等 API）。  
+- **20+**：通过版本宏与可选源码分岔兼容，详见 **[VERSIONING.md](VERSIONING.md)**。
 
-where `<path_to_qtcreator>` is the relative or absolute path to a Qt Creator build directory, or to a
-combined binary and development package (Windows / Linux), or to the `Qt Creator.app/Contents/Resources/`
-directory of a combined binary and development package (macOS), and `<path_to_plugin_source>` is the
-relative or absolute path to this plugin directory.
+---
 
-## How to Run
+## 构建
 
-Run a compatible Qt Creator with the additional command line argument
+在独立构建目录中执行：
 
-    -pluginpath <path_to_plugin>
+```bash
+cmake -DCMAKE_PREFIX_PATH=<path_to_qtcreator_build> -DCMAKE_BUILD_TYPE=RelWithDebInfo <path_to_this_plugin>/src
+cmake --build .
+```
 
-where `<path_to_plugin>` is the path to the resulting plugin library in the build directory
-(`<plugin_build>/lib/qtcreator/plugins` on Windows and Linux,
-`<plugin_build>/Qt Creator.app/Contents/PlugIns` on macOS).
+`<path_to_qtcreator_build>` 为已与 Qt Creator 匹配的构建目录或开发包路径（macOS 可为 `Qt Creator.app/Contents/Resources/`）。
 
-You might want to add `-temporarycleansettings` (or `-tcs`) to ensure that the opened Qt Creator
-instance cannot mess with your user-global Qt Creator settings.
+---
 
-When building and running the plugin from Qt Creator, you can use
+## 运行（加载插件）
 
-    -pluginpath "%{buildDir}/lib/qtcreator/plugins" -tcs
+启动兼容版本的 Qt Creator 并指定插件路径：
 
-on Windows and Linux, or
+```bash
+-pluginpath <path_to_built_plugin>
+```
 
-    -pluginpath "%{buildDir}/Qt Creator.app/Contents/PlugIns" -tcs
+常见输出路径：
 
-for the `Command line arguments` field in the run settings.
+- Windows / Linux：`<build>/lib/qtcreator/plugins`
+- macOS：`<build>/Qt Creator.app/Contents/PlugIns`
+
+建议使用 `-temporarycleansettings`（或 `-tcs`）避免污染全局用户配置。在 Qt Creator 内调试时可将上述参数填入运行配置的「命令行参数」。
+
+---
+
+## 许可证
+
+以本目录下 [LICENSE](LICENSE) 及 Qt Creator / Qt 相关条款为准；子模块若另有许可证声明，以子模块为准。

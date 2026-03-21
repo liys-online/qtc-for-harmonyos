@@ -1,25 +1,45 @@
-# Harmony 插件设计文档索引
+# Harmony 插件 — 文档中心
 
-本目录存放 **HarmonyOS 插件** 的设计说明，**对标 Qt Creator `android` 插件** 的能力边界与演进路线。文档按「概要 → 分主题详细」拆分，避免单文件过长。
+面向 **集成方、研发与项目管理** 的公开文档入口。设计与任务状态以本目录为准；版本与兼容策略见仓库根目录 [VERSIONING.md](../VERSIONING.md)。
 
-## 文档列表
+---
 
-| 文档 | 内容 |
+## 建议阅读路径
+
+| 角色 | 建议顺序 |
+|------|----------|
+| **产品 / 项目管理** | [ARCHITECTURE.md](ARCHITECTURE.md) → [COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md) → [PRIORITY-PLAN.md](PRIORITY-PLAN.md) |
+| **研发 / 代码评审** | [ARCHITECTURE.md](ARCHITECTURE.md) → [MODULES.md](MODULES.md) → [OPERATIONS.md](OPERATIONS.md) → [ANDROID-PARITY.md](ANDROID-PARITY.md) |
+| **技术支持 / 运维** | [OPERATIONS.md](OPERATIONS.md) → [VERSIONING.md](../VERSIONING.md) |
+
+---
+
+## 文档一览
+
+| 文档 | 说明 |
 |------|------|
-| [**DESIGN-OVERVIEW.md**](DESIGN-OVERVIEW.md) | **概要设计**：目标、原则、总体架构、模块全景、与 Android 对齐策略 |
-| [**DESIGN-DETAIL-ANDROID-MAPPING.md**](DESIGN-DETAIL-ANDROID-MAPPING.md) | **详细设计**：Android 源码模块 ↔ Harmony 实现/缺口对照 |
-| [**COMPARISON-PROGRESS.md**](COMPARISON-PROGRESS.md) | **功能对比清单**：与 Android 逐项对照 + 进度（✅🔄⬜➖） |
-| [**DESIGN-DETAIL-ARCHITECTURE.md**](DESIGN-DETAIL-ARCHITECTURE.md) | **详细设计**：分层架构、依赖、关键数据流、Qt Creator 扩展点 |
-| [**DESIGN-DETAIL-MODULES.md**](DESIGN-DETAIL-MODULES.md) | **详细设计**：子模块职责、主要类与文件路径 |
-| [**DESIGN-DETAIL-BUILD-DEPLOY-RUN.md**](DESIGN-DETAIL-BUILD-DEPLOY-RUN.md) | **详细设计**：构建 / 部署 / 运行链路及外部工具 |
-| [**DESIGN-DETAIL-ROADMAP.md**](DESIGN-DETAIL-ROADMAP.md) | **详细设计**：能力缺口、里程碑（P0–P2）、风险与假设 |
-| [**GAP-ANALYSIS.md**](GAP-ANALYSIS.md) | **源码分析**：逐文件对标 Android 插件的差距报告（量化、问题编号、严重度） |
-| [**ACTION-PLAN.md**](ACTION-PLAN.md) | **改进清单**：P0/P1/P2 分级可执行任务，含预估工作量与参考文件 |
+| [**ARCHITECTURE.md**](ARCHITECTURE.md) | **架构与设计**：目标、原则、分层、扩展点、数据流、已知限制 |
+| [**MODULES.md**](MODULES.md) | **源码模块**：主要文件职责与 `lib/` 说明 |
+| [**OPERATIONS.md**](OPERATIONS.md) | **构建 / 部署 / 运行**：外部依赖与主流程 |
+| [**ANDROID-PARITY.md**](ANDROID-PARITY.md) | **与 Android 插件模块映射**（概要） |
+| [**COMPARISON-PROGRESS.md**](COMPARISON-PROGRESS.md) | **功能对标矩阵与进度**（✅ 🔄 ⬜ ➖） |
+| [**PRIORITY-PLAN.md**](PRIORITY-PLAN.md) | **优先级任务计划表**（P0→P3，含状态与风险列） |
 
-## 相关仓库内文档
+---
 
-- 根目录 [**README.md**](../README.md)：构建、运行、版本要求入口  
-- [**VERSIONING.md**](../VERSIONING.md)：Qt Creator 版本策略（19+）  
-- [**src/compat/README.md**](../src/compat/README.md)：大版本分岔源码约定  
+## 仓库内其它说明
 
-阅读顺序建议：`DESIGN-OVERVIEW.md` → 按需打开各 `DESIGN-DETAIL-*.md`。
+| 路径 | 说明 |
+|------|------|
+| [../README.md](../README.md) | 插件简介、构建与运行命令 |
+| [../VERSIONING.md](../VERSIONING.md) | Qt Creator 19+ 版本策略与 CMake 宏 |
+| [../src/compat/README.md](../src/compat/README.md) | 大版本分岔源码约定 |
+
+---
+
+## 文档维护约定
+
+1. **功能进度**：更新 [COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md) 中的状态符号与备注。  
+2. **任务执行**：以 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) 为主表，完成项更新「状态」列。  
+3. **架构变更**：同步 [ARCHITECTURE.md](ARCHITECTURE.md) 与 [MODULES.md](MODULES.md)。  
+4. 已确认**不实现**的能力：在 [COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md) 与 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) 中注明原因，避免重复开任务。

@@ -1,10 +1,10 @@
-# Android 插件 vs Harmony 插件 — 功能对比与进度清单
+# 功能对标矩阵：Android 插件 vs Harmony 插件
 
 > **参照**：`src/plugins/android`  
 > **对象**：`src/plugins/harmonyos`  
 > **进度图例**：✅ 已完成（主路径可用） | 🔄 部分完成 / 简化实现 | ⬜ 未开始 | ➖ 不适用（Harmony 无对等或暂不规划）
 
-**文档维护**：每完成一项对齐工作，请更新本表对应行；大版本升级 Qt Creator 时复核 Android 侧文件路径。
+**维护**：每完成一项对齐，更新本表对应行；Qt Creator 大版本升级时复核 Android 侧路径。模块级文件映射见 [ANDROID-PARITY.md](ANDROID-PARITY.md)；架构与已知限制见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ---
 
@@ -190,4 +190,4 @@
 
 ---
 
-**相关文档**：[GAP-ANALYSIS.md](GAP-ANALYSIS.md)（问题级细节）、[ACTION-PLAN.md](ACTION-PLAN.md)（任务拆分）。
+**相关文档**：[PRIORITY-PLAN.md](PRIORITY-PLAN.md)（执行任务与风险列）、[ARCHITECTURE.md](ARCHITECTURE.md)（设计说明与已知限制）、[README.md](README.md)（文档索引）。

@@ -39,3 +39,9 @@ cmake -DCMAKE_PREFIX_PATH=/path/to/QtCreator -DIDE_VERSION=20.0.0 ...
 ## 运行
 
 插件 **必须与加载它的 Qt Creator 大版本匹配**（同一主版本 SDK 编出）。多版本并存时，各用各自的 `-pluginpath`。
+
+---
+
+## 相关文档
+
+- 插件说明与文档索引：[docs/README.md](docs/README.md)
