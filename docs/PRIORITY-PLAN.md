@@ -63,7 +63,7 @@
 | P1-15 | P1 | Qt 版本 | `supportsMultipleQtAbis` 去硬编码 | 按版本范围或特性检测 | — | `androidqtversion.cpp` | — | 待开始 |
 | P2-01 | P2 | 调试 | `HarmonyDebugWorkerFactory` | LLDB/GDB 远程或官方调试桥（若存在） | Run 稳定 | `androiddebugsupport.cpp` | **可能无法实现**：官方调试协议、权限、与 Qt Creator Debugger 插件耦合深 | 待开始 |
 | P2-02 | P2 | 分析 | QML Profiler / Preview RunWorker | 若 Qt for Harmony 支持 QML 远程调试 | P2-01 | `androidqmltoolingsupport.cpp` | **可能无法实现**：取决于 Qt Harmony 运行时是否暴露同等端口 | 待开始 |
-| P2-03 | P2 | SDK | SDK 包管理 UI | 安装/更新 API 包（若 CLI 可用） | — | `androidsdkmanager*.cpp` | **可能无法实现**：OpenHarmony/DevEco CLI 与 Google sdkmanager 不对等 | 待开始 |
+| P2-03 | P2 | SDK | SDK 包管理 UI | 安装/更新 API 包；HTTP 列表 + 下载（见 SDK-PACKAGE-MANAGER.md） | 设置页「Manage SDK Packages…」对话框 | `androidsdkmanager*.cpp` | 解压/自动注册 SDK 待做；端点可后续改设置项 | 部分完成 |
 | P2-04 | P2 | SDK | SDK 下载向导 | 对标首次配置下载 | P2-03 | `androidsdkdownloader.cpp` | 分发策略与网络合规 | 待开始 |
 | P2-05 | P2 | 模拟器 | 枚举与启动 | hdc 或厂商模拟器命令 | — | `avdmanager`/`avdcreatordialog` | **可能无法实现**：无统一 CLI 或需 DevEco 独占 | 待开始 |
 | P2-06 | P2 | 设备 | DeviceFileAccess（hdc file） | 浏览/推送文件（可选） | — | `AndroidFileAccess` | 性能与大文件限制 | 待开始 |

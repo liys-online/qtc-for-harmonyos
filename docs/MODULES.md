@@ -1,6 +1,7 @@
 # Harmony 插件 — 源码模块说明
 
-本文档说明 **`src/plugins/harmonyos/src/`** 下主要源文件的职责（路径省略时均相对该目录）。子库见 **`lib/`**。
+本文档说明 **`src/plugins/harmonyos/src/`** 下主要源文件的职责（路径省略时均相对该目录）。子库见 **`lib/`**。  
+**`test/`**：在 **`WITH_TESTS`** 下构建 **`qt-oh-binary-catalog-generator`**（GitCode → `qt-oh-binary-catalog.v1.json`），见 [test/README.md](../test/README.md)。
 
 ---
 
@@ -22,6 +23,11 @@
 |------|------|
 | `harmonyconfigurations.*` | 全局配置读写、SDK/DevEco 路径、与 Kit/工具链协作 |
 | `harmonysettingswidget.*` | 「选项」中的 Harmony 设置页 |
+| `harmonysdkdownloader.*` | OpenHarmony SDK **组件索引** HTTP 拉取与 JSON 解析（对标 Android `sdkmanager --list` 的数据层） |
+| `harmonysdkmanagerdialog.*` | **SDK 包管理**对话框：刷新列表、多选下载、SHA-256 校验、日志（入口在设置页「Manage SDK Packages…」） |
+| `harmonyqttreleasesdownloader.*` | **Qt for OpenHarmony** 发布列表：内置 GitCode/GitHub raw 双源拉取 [QT-OH-BINARY-CATALOG.md](QT-OH-BINARY-CATALOG.md) 清单（v1）；`QT_OH_BINARY_CATALOG_URL` 可覆盖主源 |
+| `harmonyqttsdkmanagerdialog.*` | **Qt OH SDK 管理**对话框：按 Release/资源树选包、下载、可选 `tar` 解压（设置页「Manage Qt for OpenHarmony SDK…」） |
+| `harmonysdkarchiveutils.*` | 系统 `tar` 解压（zip/tar.gz 等）；外层解压后自动继续解压**嵌套**包（解压根目录下及**一级子目录**内的压缩文件，按体积从大到小，解压到该文件所在目录后删除内层包，多轮直到无包或达上限）、探测 `isValidSdk`、查找 `bin/qmake` |
 
 ---
 

@@ -23,7 +23,7 @@
 | `androidrunner.*` / `androidrunnerworker.*` | `harmonyrunner.*`（及后续自定义 Worker，见 [PRIORITY-PLAN.md](PRIORITY-PLAN.md)） |
 | `androiddebugsupport.*` | （规划中） |
 | Manifest / Gradle 向导等 | `lib/ohprojectecreator`（OpenHarmony 工程结构） |
-| `androidsdkmanager*` 等 | （规划中，模型可能与 Android 不对等） |
+| `androidsdkmanager*` / `androidsdkdownloader*` | `harmonysdkdownloader.*`（HTTP JSON 列表）；UI 见 [SDK-PACKAGE-MANAGER.md](SDK-PACKAGE-MANAGER.md) |
 
 ---
 

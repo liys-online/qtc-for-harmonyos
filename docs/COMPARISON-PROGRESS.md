@@ -49,8 +49,8 @@
 |---|---------------------------|--------------|------|------|
 | 3.1 | SDK/NDK/JDK/OpenSSL 等完整表单 | `harmonysettingswidget.*` | 🔄 | 字段集合不同；Deveco/SDK/qmake/Make |
 | 3.2 | 全平台一致 UI | 同上 | 🔄 | Deveco 路径已扩展到非 Windows；仍需按平台验证可执行路径 |
-| 3.3 | SDK 下载 / 引导安装 | — | ⬜ | 对标 `AndroidSdkDownloader` |
-| 3.4 | SDK 包管理对话框 | — | ⬜ | 对标 `AndroidSdkManager` + Dialog |
+| 3.3 | SDK 下载 / 引导安装 | `HarmonySdkDownloader`（列表 JSON） | 🔄 | 见 [SDK-PACKAGE-MANAGER.md](SDK-PACKAGE-MANAGER.md)；直链下载与向导待接 |
+| 3.4 | SDK 包管理对话框 | `harmonysdkmanagerdialog` + 设置页入口 | 🔄 | 列表/下载/校验已有；解压与已安装检测待补 |
 | 3.5 | 校验摘要（Summary） | `SummaryWidget` | 🔄 | 已有，规则需与 OHOS 工具链一致 |
 | 3.6 | qmake 选择过滤器跨平台 | `addQmakeItem` | 🔄 | 已改为 `qmake*`，可再细化可执行后缀 |
 

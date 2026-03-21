@@ -2,6 +2,8 @@
 
 面向 **集成方、研发与项目管理** 的公开文档入口。设计与任务状态以本目录为准；版本与兼容策略见仓库根目录 [VERSIONING.md](../VERSIONING.md)。
 
+> **著作权**：本插件为 **Li-Yaosong** 的个人项目，**与 The Qt Company Ltd. 无隶属关系**；文档与源码归属以作者及仓库许可证为准。
+
 ---
 
 ## 建议阅读路径
@@ -24,6 +26,8 @@
 | [**ANDROID-PARITY.md**](ANDROID-PARITY.md) | **与 Android 插件模块映射**（概要） |
 | [**COMPARISON-PROGRESS.md**](COMPARISON-PROGRESS.md) | **功能对标矩阵与进度**（✅ 🔄 ⬜ ➖） |
 | [**PRIORITY-PLAN.md**](PRIORITY-PLAN.md) | **优先级任务计划表**（P0→P3，含状态与风险列） |
+| [**SDK-PACKAGE-MANAGER.md**](SDK-PACKAGE-MANAGER.md) | **OpenHarmony SDK 包管理器** + **Qt for OpenHarmony SDK 管理器**（Gitee API / [GitCode 发布页](https://gitcode.com/openharmony-sig/qt/releases)） |
+| [**QT-OH-BINARY-CATALOG.md**](QT-OH-BINARY-CATALOG.md) | **Qt for OH 二进制清单 JSON 协议**（设计稿 + 仓库内 `qt-oh-binary-catalog.v1.json`） |
 
 ---
 

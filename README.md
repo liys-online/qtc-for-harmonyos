@@ -2,6 +2,10 @@
 
 在 **Qt Creator** 中集成 **Qt for HarmonyOS / OpenHarmony** 开发能力：SDK 与工具链配置、CMake 工程、HAP 构建（hvigor / ohpm）、设备发现与 **hdc** 部署。能力划分对标 Qt Creator 内置 **Android** 插件，便于统一产品预期。
 
+## 作者与版权说明
+
+本插件为 **个人开源项目**，著作权与维护由 **Li-Yaosong（个人）** 负责，**并非** The Qt Company Ltd. 官方作品，也**不属于**其雇员职务成果。插件通过 Qt Creator / Qt 的公开 API 与之集成；除另有说明外，插件源码以仓库内 **LICENSE** 及各文件 SPDX 头注释为准。作者列表见 **[AUTHORS](AUTHORS)**。
+
 ---
 
 ## 文档（对外）
@@ -35,6 +39,8 @@ cmake --build .
 ```
 
 `<path_to_qtcreator_build>` 为已与 Qt Creator 匹配的构建目录或开发包路径（macOS 可为 `Qt Creator.app/Contents/Resources/`）。
+
+若需生成 **`docs/qt-oh-binary-catalog.v1.json`**（GitCode Release → 清单协议），可加 **`-DWITH_TESTS=ON`** 后编译目标 **`qt-oh-binary-catalog-generator`**，详见 **[test/README.md](test/README.md)**。
 
 ---
 
