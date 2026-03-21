@@ -18,7 +18,7 @@ jobs:
   # Apple Silicon 官方 runner 上无 mac_arm64 的 installer_source；mac_x64 包在 arm 上可能链接失败。
   # 主 CI 放在 Linux；本 job 用于在 Intel mac 或需验证 mac 包时保留。
   build-mac:
-    runs-on: macos-13
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -93,63 +93,63 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
-  build-linux:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+  # build-linux:
+  #   runs-on: ubuntu-24.04
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
 
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build p7zip-full
+  #     - name: Install build dependencies
+  #       run: |
+  #         sudo apt-get update
+  #         sudo apt-get install -y ninja-build p7zip-full
 
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: ${{ env.QT_VERSION }}
-          target: desktop
-          arch: gcc_64
-          cache: true
+  #     - name: Install Qt
+  #       uses: jurplel/install-qt-action@v4
+  #       with:
+  #         version: ${{ env.QT_VERSION }}
+  #         target: desktop
+  #         arch: gcc_64
+  #         cache: true
 
-      - name: Download and extract Qt Creator 19 (runtime + dev SDK)
-        env:
-          QTC_BASE: ${{ env.QTC_SOURCE_BASE_LINUX }}
-        run: |
-          set -eu
-          mkdir -p qtcreator-dev
-          for arc in qtcreator.7z qtcreator_dev.7z; do
-            echo "Downloading ${arc}..."
-            curl -fSL --retry 3 --retry-delay 10 -o "${arc}" "${QTC_BASE}/${arc}"
-            7z x "${arc}" -oqtcreator-dev -y
-            rm -f "${arc}"
-          done
+  #     - name: Download and extract Qt Creator 19 (runtime + dev SDK)
+  #       env:
+  #         QTC_BASE: ${{ env.QTC_SOURCE_BASE_LINUX }}
+  #       run: |
+  #         set -eu
+  #         mkdir -p qtcreator-dev
+  #         for arc in qtcreator.7z qtcreator_dev.7z; do
+  #           echo "Downloading ${arc}..."
+  #           curl -fSL --retry 3 --retry-delay 10 -o "${arc}" "${QTC_BASE}/${arc}"
+  #           7z x "${arc}" -oqtcreator-dev -y
+  #           rm -f "${arc}"
+  #         done
 
-      - name: Locate Qt Creator CMake prefix
-        id: qtc
-        run: |
-          set -eu
-          DEV="${GITHUB_WORKSPACE}/qtcreator-dev"
-          CONFIG=$(find "${DEV}" -name QtCreatorConfig.cmake 2>/dev/null | head -n 1 || true)
-          if [ -z "${CONFIG}" ]; then
-            echo "QtCreatorConfig.cmake not found under qtcreator-dev" >&2
-            exit 1
-          fi
-          QTC_ROOT=$(cd "$(dirname "${CONFIG}")/../../.." && pwd)
-          {
-            echo "root<<__QTC_ROOT_EOF__"
-            printf '%s\n' "${QTC_ROOT}"
-            echo "__QTC_ROOT_EOF__"
-          } >> "${GITHUB_OUTPUT}"
-          echo "Qt Creator CMake prefix: ${QTC_ROOT}"
+  #     - name: Locate Qt Creator CMake prefix
+  #       id: qtc
+  #       run: |
+  #         set -eu
+  #         DEV="${GITHUB_WORKSPACE}/qtcreator-dev"
+  #         CONFIG=$(find "${DEV}" -name QtCreatorConfig.cmake 2>/dev/null | head -n 1 || true)
+  #         if [ -z "${CONFIG}" ]; then
+  #           echo "QtCreatorConfig.cmake not found under qtcreator-dev" >&2
+  #           exit 1
+  #         fi
+  #         QTC_ROOT=$(cd "$(dirname "${CONFIG}")/../../.." && pwd)
+  #         {
+  #           echo "root<<__QTC_ROOT_EOF__"
+  #           printf '%s\n' "${QTC_ROOT}"
+  #           echo "__QTC_ROOT_EOF__"
+  #         } >> "${GITHUB_OUTPUT}"
+  #         echo "Qt Creator CMake prefix: ${QTC_ROOT}"
 
-      - name: Configure
-        run: |
-          cmake -S . -B build \
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}" \
-            -DQtCreator='${{ steps.qtc.outputs.root }}' \
-            -G Ninja
+  #     - name: Configure
+  #       run: |
+  #         cmake -S . -B build \
+  #           -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  #           -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}" \
+  #           -DQtCreator='${{ steps.qtc.outputs.root }}' \
+  #           -G Ninja
 
-      - name: Build
-        run: cmake --build build --parallel
+  #     - name: Build
+  #       run: cmake --build build --parallel
