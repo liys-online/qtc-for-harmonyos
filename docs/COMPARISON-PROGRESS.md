@@ -105,7 +105,7 @@
 | 8.1 | `AndroidPackageInstallationStep`（install 到 android-build） | ➖ / 部分由 CMake | ➖ | OHOS 侧工程结构不同 |
 | 8.2 | `AndroidBuildApkStep`（androiddeployqt + Gradle） | `HarmonyBuildHapStep`（hvigor/ohpm） | 🔄 | 签名 UI 大量注释；流程已串 sync→ohpm→assemble |
 | 8.3 | Keystore / 签名向导 | — / DevEco 按钮 | 🔄 | 对标 `KeystoreCertificateDialog` 未完整 |
-| 8.4 | 构建输出解析（错误进 Issues） | — | ⬜ | 对标 `JavaParser` / Gradle 解析 |
+| 8.4 | 构建输出解析（错误进 Issues） | `HarmonyBuildHapStep` 配置类失败 | 🔄 | node/hvigor/ohpm 缺失与 `init()` 失败已 `addOutput`+`BuildSystemTask`；hvigor 日志解析仍对标 `JavaParser`/Gradle |
 | 8.5 | 日志分类 `QLoggingCategory` | `harmonyBuildHapLog` 等 | 🔄 | 已部分引入，未全文件统一 |
 
 ---

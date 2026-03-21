@@ -3,10 +3,9 @@
 #include "ohosconstants.h"
 #include "ohostr.h"
 #include "harmonyutils.h"
-#include <coreplugin/messagemanager.h>
-
 #include <projectexplorer/projectexplorerconstants.h>
 #include <projectexplorer/buildstep.h>
+#include <projectexplorer/task.h>
 #include <projectexplorer/buildsteplist.h>
 #include <projectexplorer/projectmanager.h>
 #include <projectexplorer/processparameters.h>
@@ -28,6 +27,7 @@
 
 // 勿在此 using namespace QtTaskTree：会与 Layouting::Group（layoutbuilder）歧义。
 using namespace Utils;
+using ProjectExplorer::BuildSystemTask;
 
 namespace Ohos::Internal {
 namespace {
@@ -337,15 +337,19 @@ QtTaskTree::GroupItem HarmonyBuildHapStep::syncProjectTask()
             }
             else
             {
-                Core::MessageManager::writeSilently(Tr::tr("Could not find hvigorw.js file, "
-                                                           "please check your HarmonyOS SDK configuration."));
+                const QString err = Tr::tr("Could not find hvigorw.js file, "
+                                           "please check your HarmonyOS SDK configuration.");
+                emit addOutput(err, OutputFormat::ErrorMessage);
+                emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, err));
                 return QtTaskTree::SetupResult::StopWithError;
             }
         }
         else
         {
-            Core::MessageManager::writeSilently(Tr::tr("Could not find node executable, "
-                                                       "please check your HarmonyOS SDK configuration."));
+            const QString err = Tr::tr("Could not find node executable, "
+                                       "please check your HarmonyOS SDK configuration.");
+            emit addOutput(err, OutputFormat::ErrorMessage);
+            emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, err));
             return QtTaskTree::SetupResult::StopWithError;
         }
     };
@@ -403,15 +407,19 @@ QtTaskTree::GroupItem HarmonyBuildHapStep::ohpmInstallTask()
             }
             else
             {
-                Core::MessageManager::writeSilently(Tr::tr("Could not find ohpm executable, "
-                                                           "please check your HarmonyOS SDK configuration."));
+                const QString err = Tr::tr("Could not find ohpm executable, "
+                                           "please check your HarmonyOS SDK configuration.");
+                emit addOutput(err, OutputFormat::ErrorMessage);
+                emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, err));
                 return QtTaskTree::SetupResult::StopWithError;
             }
         }
         else
         {
-            Core::MessageManager::writeSilently(Tr::tr("Could not find node executable, "
-                                                       "please check your HarmonyOS SDK configuration."));
+            const QString err = Tr::tr("Could not find node executable, "
+                                       "please check your HarmonyOS SDK configuration.");
+            emit addOutput(err, OutputFormat::ErrorMessage);
+            emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, err));
             return QtTaskTree::SetupResult::StopWithError;
         }
     };
@@ -506,7 +514,9 @@ QWidget *HarmonyBuildHapStep::createConfigWidget()
 bool HarmonyBuildHapStep::init()
 {
     if (!AbstractProcessStep::init()) {
-        Core::MessageManager::writeSilently(Tr::tr("\"%1\" step failed initialization.").arg(displayName()));
+        const QString err = Tr::tr("\"%1\" step failed initialization.").arg(displayName());
+        emit addOutput(err, OutputFormat::ErrorMessage);
+        emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, err));
         return false;
     }
     if (auto node = HarmonyConfig::nodeLocation(); node.exists())
@@ -547,15 +557,19 @@ bool HarmonyBuildHapStep::init()
         }
         else
         {
-            Core::MessageManager::writeSilently(Tr::tr("Could not find hvigorw.js file, "
-                                                       "please check your HarmonyOS SDK configuration."));
+            const QString err = Tr::tr("Could not find hvigorw.js file, "
+                                       "please check your HarmonyOS SDK configuration.");
+            emit addOutput(err, OutputFormat::ErrorMessage);
+            emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, err));
             return false;
         }
     }
     else
     {
-        Core::MessageManager::writeSilently(Tr::tr("Could not find node executable, "
-                                                   "please check your HarmonyOS SDK configuration."));
+        const QString err = Tr::tr("Could not find node executable, "
+                                   "please check your HarmonyOS SDK configuration.");
+        emit addOutput(err, OutputFormat::ErrorMessage);
+        emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, err));
         return false;
     }
     return true;

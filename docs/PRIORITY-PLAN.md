@@ -41,7 +41,7 @@
 | P0-03 | P0 | 运行 | 默认 Ability / Bundle 可配置 | UI 或从 `module.json5` 读取默认 `-a/-b`，避免写死 `EntryAbility` | 工程模板约定 | `AndroidRunConfiguration` aspects | 多 Ability 工程需用户选择或解析配置 | 待开始 |
 | P0-04 | P0 | 部署 | HAP 路径策略固化 | 从 `build-profile`/hvigor 输出约定解析优先；再 fallback 扫描；无产物时明确报错 | 已部分实现扫描 | `androiddeployqtstep.cpp` | 不同 hvigor 版本输出路径变更时需持续适配 | 部分完成 |
 | P0-05 | P0 | 部署 | 部署前校验 hdc / 设备 / 产物 | `init()` 中统一 `reportWarningOrError` | — | 同上 | — | 已完成 |
-| P0-06 | P0 | 构建 | `HarmonyBuildHapStep` 失败路径用户可见 | 配置缺失、ohpm/hvigor 失败进入 TaskHub + 输出面板 | — | `androidbuildapkstep.cpp` | — | 待开始 |
+| P0-06 | P0 | 构建 | `HarmonyBuildHapStep` 失败路径用户可见 | 配置缺失、ohpm/hvigor 失败进入 TaskHub + 输出面板 | — | `androidbuildapkstep.cpp` | — | 已完成 |
 | P0-07 | P0 | 工具链 | `makeCommand()` 非 Windows | macOS/Linux 返回 `make`/`ninja`，不写死 `mingw32-make` | — | `androidtoolchain.cpp` | — | 待开始 |
 | P0-08 | P0 | 工具链 | 父工具链同步非 Windows | `syncAutodetectedWithParentToolchains` 覆盖 Unix 宿主 | P0-07 | 同上 | — | 待开始 |
 | P0-09 | P0 | 配置 | `kitsRestored` 未配置 SDK 引导 | InfoBar 跳转 Harmony 设置页（对标 Android） | 设置页 ID 稳定 | `androidplugin.cpp` | — | 待开始 |
