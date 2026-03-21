@@ -2,6 +2,8 @@
 
 本文档以 **Qt Creator `src/plugins/android`** 为参照，说明 Harmony 插件的 **能力对应、实现位置与完成度**。状态约定：**✓** 已有主路径，**△** 部分/简化，**○** 规划/缺口，**—** 平台差异不适用。
 
+> **细粒度功能对比 + 进度标注（✅🔄⬜➖）**：见 [**COMPARISON-PROGRESS.md**](COMPARISON-PROGRESS.md)。
+
 ---
 
 ## 1. 顶层与设置
@@ -20,7 +22,7 @@
 |---------|------|---------|------|
 | `androidqtversion.*` | Qt for Android 检测 | `harmonyqtversion.*` | △ |
 | `androidqtversionfactory.*` | 工厂注册 | 合入 `harmonyqtversion` 或等价 | △ |
-| KitAspect（Android 侧） | ABI、SDK、签名等 | `harmonykitaspect.*` | △ |
+| KitAspect（Android 侧） | ABI、SDK、签名等 | 未独立模块，合在配置/Kit 流程 | ○ |
 
 ---
 

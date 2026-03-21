@@ -4,6 +4,7 @@
 
 - **概要设计**：[docs/DESIGN-OVERVIEW.md](docs/DESIGN-OVERVIEW.md)（目标、原则、总体架构、模块一览）  
 - **详细设计索引**：[docs/README.md](docs/README.md)（分文件：Android 映射、架构、子模块、构建/部署/运行、路线图）  
+- **与 Android 功能对比 + 进度**：[docs/COMPARISON-PROGRESS.md](docs/COMPARISON-PROGRESS.md)（✅🔄⬜➖）  
 
 详细说明按主题拆成多个 `docs/DESIGN-DETAIL-*.md`，避免单文件过长。
 
