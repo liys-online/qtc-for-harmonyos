@@ -4,9 +4,6 @@
 #include <QObject>
 #include <QGlobalStatic>
 
-#include <solutions/tasking/tasktreerunner.h>
-
-using namespace Tasking;
 namespace Ohos::Internal {
 class HarmonyDeviceManager : public QObject
 {

@@ -20,9 +20,8 @@
 #include <qtsupport/baseqtversion.h>
 #include <qtsupport/qtkitaspect.h>
 
-#include <solutions/tasking/tasktree.h>
-#include <solutions/tasking/tasktreerunner.h>
-#include <solutions/tasking/conditional.h>
+#include <QtTaskTree/qconditional.h>
+#include <QtTaskTree/QSingleTaskTreeRunner>
 
 #include <utils/algorithm.h>
 #include <utils/async.h>
@@ -37,7 +36,7 @@
 #include <QPushButton>
 using namespace ProjectExplorer;
 using namespace Utils;
-using namespace Tasking;
+using namespace QtTaskTree;
 using namespace std::chrono_literals;
 namespace Ohos::Internal {
 
@@ -87,7 +86,7 @@ private:
     bool init() final;
 
 
-    Tasking::GroupItem runRecipe() final;
+    GroupItem runRecipe() final;
     Group deployRecipe();
     QWidget *createConfigWidget() final;
 
@@ -105,6 +104,8 @@ private:
     FilePath m_command;
     FilePath m_workingDirectory;
     Environment m_environment;
+
+    QSingleTaskTreeRunner m_taskTreeRunner;
 };
 
 HarmonyDeployQtStep::HarmonyDeployQtStep(BuildStepList *parent, Id id)
@@ -264,9 +265,9 @@ bool HarmonyDeployQtStep::init()
     return true;
 }
 
-Tasking::GroupItem HarmonyDeployQtStep::runRecipe()
+GroupItem HarmonyDeployQtStep::runRecipe()
 {
-    return Tasking::Group {
+    return Group {
         deployRecipe()
     };
 }
@@ -397,13 +398,13 @@ Group HarmonyDeployQtStep::deployRecipe()
     return Group {
         storage,
         Group {
-            ProcessTask(onUninstallSetup, onUninstallDone, CallDoneIf::Error).withTimeout(2min),
+            ProcessTask(onUninstallSetup, onUninstallDone, CallDone::OnError).withTimeout(2min),
             ProcessTask(onInstallSetup, onInstallDone),
             onGroupDone(DoneResult::Success)
         },
         If ([storage] { return *storage != NoError; }) >> Then {
             onGroupSetup(onAskForUninstallSetup),
-            ProcessTask(onUninstallSetup, onUninstallDone, CallDoneIf::Error).withTimeout(2min),
+            ProcessTask(onUninstallSetup, onUninstallDone, CallDone::OnError).withTimeout(2min),
             ProcessTask(onInstallSetup, onInstallDone),
             onGroupDone(DoneResult::Success)
         }
@@ -435,7 +436,7 @@ QWidget *HarmonyDeployQtStep::createConfigWidget()
         if (!info.isValid()) // aborted
             return;
 
-        const Tasking::Storage<QString> serialNumberStorage;
+        const Storage<QString> serialNumberStorage;
 
         const auto onSetup = [serialNumberStorage, info] {
             if (info.type == IDevice::Emulator)
@@ -445,7 +446,7 @@ QWidget *HarmonyDeployQtStep::createConfigWidget()
             *serialNumberStorage = info.serialNumber;
             return SetupResult::StopWithSuccess;
         };
-        const auto onDone = [serialNumberStorage, info](Tasking::DoneWith result) {
+        const auto onDone = [serialNumberStorage, info](DoneWith result) {
             if (info.type == IDevice::Emulator && serialNumberStorage->isEmpty()) {
                 Core::MessageManager::writeDisrupting(Tr::tr("Starting HarmonyOS virtual device failed."));
                 return false;
@@ -462,7 +463,7 @@ QWidget *HarmonyDeployQtStep::createConfigWidget()
                 Tr::tr("HarmonyOS package installation started with command \"%1\".")
                     .arg(cmd.toUserOutput()));
         };
-        const auto onHdcDone = [](const Process &process, Tasking::DoneWith result) {
+        const auto onHdcDone = [](const Process &process, DoneWith result) {
             if (result == DoneWith::Success) {
                 Core::MessageManager::writeSilently(
                     Tr::tr("HarmonyOS package installation finished with success."));
@@ -472,19 +473,17 @@ QWidget *HarmonyDeployQtStep::createConfigWidget()
             }
         };
 
-        const Tasking::Group recipe {
+        const Group recipe {
             serialNumberStorage,
-            Tasking::Group {
-                Tasking::onGroupSetup(onSetup),
+            Group {
+                onGroupSetup(onSetup),
             //     startAvdRecipe(info.avdName, serialNumberStorage),
-                Tasking::onGroupDone(onDone)
+                onGroupDone(onDone)
             },
             ProcessTask(onHdcSetup, onHdcDone)
         };
 
-        TaskTreeRunner *runner = new TaskTreeRunner;
-        runner->setParent(target());
-        runner->start(recipe);
+        m_taskTreeRunner.start(recipe);
     });
 
     using namespace Layouting;

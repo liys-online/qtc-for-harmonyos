@@ -425,20 +425,19 @@ void HarmonySettingsWidget::setAllOk()
 
 void HarmonySettingsWidget::onDevecoStudioPathChanged()
 {
+#ifdef Q_OS_WIN
     const FilePath devecoStudioPath = m_devecoStudioPathChooser->filePath().cleanPath();
     FilePath devecoStudioExe = devecoStudioPath.pathAppended("bin/devecostudio64.exe");
 
-    if (devecoStudioExe.isExecutableFile())
-    {
+    if (devecoStudioExe.isExecutableFile()) {
         m_harmonySummary->setPointValid(DevecoPathExistsAndWritableRow, true);
         HarmonyConfig::setDevecoStudioLocation(devecoStudioPath);
-    }
-    else
-    {
-        m_harmonySummary->setPointValid(DevecoPathExistsAndWritableRow, false
-            , Tr::tr("Deveco Studio path does not exist or is not writable"));
+    } else {
+        m_harmonySummary->setPointValid(DevecoPathExistsAndWritableRow, false,
+                                        Tr::tr("Deveco Studio path does not exist or is not writable"));
     }
     setAllOk();
+#endif
 }
 
 void HarmonySettingsWidget::onMakePathChanged()
@@ -449,7 +448,9 @@ void HarmonySettingsWidget::onMakePathChanged()
 
 void HarmonySettingsWidget::validateSdk()
 {
+#ifdef Q_OS_WIN
     onDevecoStudioPathChanged();
+#endif
     onMakePathChanged();
     for(const QString &qmake : qAsConst(HarmonyConfig::getQmakeList()))
     {

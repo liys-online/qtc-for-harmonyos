@@ -22,6 +22,10 @@ list(APPEND CMAKE_PREFIX_PATH ${QtCreator})
 
 project(Harmony)
 
+# Qt Creator 版本框架：最低 19+，可扩展 20+（见 ../VERSIONING.md）
+include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/QtCreatorVersion.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/HarmonyQtcOptionalSources.cmake")
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
@@ -29,7 +33,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(QtCreator REQUIRED COMPONENTS Core)
+# find_package(QtCreator REQUIRED COMPONENTS Core)
 find_package(Qt6 COMPONENTS Widgets REQUIRED)
 
 # Add a CMake option that enables building your plugin with tests.
@@ -84,15 +88,21 @@ add_qtc_plugin(Harmony
     harmonybuildconfiguration.h harmonybuildconfiguration.cpp
     harmonydeviceinfo.h harmonydeviceinfo.cpp
     harmonydeployqtstep.h harmonydeployqtstep.cpp
+    harmonyrunconfiguration.h harmonyrunconfiguration.cpp
     ohosconstants.h
     ohostr.h
+    harmonyqtcdefs.h
+    ${HARMONY_QTC_EXTRA_SOURCES}
 )
 
-target_sources(Harmony
-  PRIVATE
-    harmonyrunconfiguration.h harmonyrunconfiguration.cpp
-)
 get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
-target_include_directories(Harmony PUBLIC ${PARENT_DIR}/lib)
+target_include_directories(Harmony PRIVATE ${PARENT_DIR}/lib)
 
-target_link_libraries(Harmony PUBLIC usbmonitor ohprojectecreator)
+target_link_libraries(Harmony PRIVATE usbmonitor ohprojectecreator)
+
+target_compile_definitions(Harmony PRIVATE
+  QTC_IDE_VERSION_MAJOR=${HARMONY_IDE_VERSION_MAJOR}
+  QTC_IDE_VERSION_MINOR=${HARMONY_IDE_VERSION_MINOR}
+  QTC_IDE_VERSION_PATCH=${HARMONY_IDE_VERSION_PATCH}
+  HARMONY_QTC_USE_QTTASKTREE=1
+)

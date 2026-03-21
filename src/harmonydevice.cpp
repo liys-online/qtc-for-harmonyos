@@ -24,7 +24,7 @@ HarmonyDeviceWidget::HarmonyDeviceWidget(const IDevice::Ptr &device)
 
 static void updateDeviceState(const IDevice::ConstPtr &device)
 {
-
+    Q_UNUSED(device);
 }
 HarmonyDevice::HarmonyDevice()
 {
@@ -35,12 +35,9 @@ HarmonyDevice::HarmonyDevice()
     setMachineType(IDevice::Hardware);
     setOsType(OsType::OsTypeOtherUnix);
     setDeviceState(DeviceDisconnected);
-    DeviceAction refreshAction;
-    refreshAction.display = Tr::tr("Refresh");
-    refreshAction.execute = [](const IDevice::Ptr &device) {
-        updateDeviceState(device);
-    };
-    addDeviceAction(refreshAction);
+    addDeviceAction(DeviceAction(
+        Tr::tr("Refresh"),
+        [](const IDevice::Ptr &device) { updateDeviceState(device); }));
 }
 
 HarmonyDeviceInfo HarmonyDevice::harmonyDeviceInfoFromDevice(const ConstPtr &device)
@@ -134,7 +131,7 @@ void setupHarmonyDevice()
 
 void setupHarmonyDeviceManager(const QObject *guard)
 {
-
+    Q_UNUSED(guard);
 }
 
 void setupDevicesWatcher()

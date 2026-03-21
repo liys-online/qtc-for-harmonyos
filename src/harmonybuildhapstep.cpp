@@ -25,8 +25,11 @@
 
 #include "harmonyconfigurations.h"
 
+// 勿在此 using namespace QtTaskTree：会与 Layouting::Group（layoutbuilder）歧义。
+using namespace Utils;
+
 namespace Ohos::Internal {
-static void createOhPro(ProjectExplorer::BuildSystem *buildsystem, const QString &path)
+[[maybe_unused]] static void createOhPro(ProjectExplorer::BuildSystem *buildsystem, const QString &path)
 {
     using namespace QtSupport;
     if (!buildsystem)
@@ -278,21 +281,18 @@ void HarmonyBuildHapStep::toMap(Utils::Store &map) const
     map.insert(BuildToolsVersionKey, m_buildToolsVersion);
 }
 
-Tasking::GroupItem HarmonyBuildHapStep::defaultProcessTask()
+QtTaskTree::GroupItem HarmonyBuildHapStep::defaultProcessTask()
 {
-    using namespace Tasking;
-    using namespace Utils;
     const auto onSetup = [this](Process &process) {
-        return setupProcess(process) ? SetupResult::Continue : SetupResult::StopWithError;
+        return setupProcess(process) ? QtTaskTree::SetupResult::Continue
+                                     : QtTaskTree::SetupResult::StopWithError;
     };
     const auto onDone = [this](const Process &process) { handleProcessDone(process); };
     return ProcessTask(onSetup, onDone);
 }
 
-Tasking::GroupItem HarmonyBuildHapStep::syncProjectTask()
+QtTaskTree::GroupItem HarmonyBuildHapStep::syncProjectTask()
 {
-    using namespace Tasking;
-    using namespace Utils;
     const auto onSyncProject = [this] (Process &process){
         if (auto node = HarmonyConfig::nodeLocation(); node.exists())
         {
@@ -329,20 +329,20 @@ Tasking::GroupItem HarmonyBuildHapStep::syncProjectTask()
                     emit addOutput(Tr::tr("Starting: \"%1\"").arg(process.commandLine().toUserOutput()),
                                    OutputFormat::NormalMessage);
                 });
-                return Tasking::SetupResult::Continue;
+                return QtTaskTree::SetupResult::Continue;
             }
             else
             {
                 Core::MessageManager::writeSilently(Tr::tr("Could not find hvigorw.js file, "
                                                            "please check your HarmonyOS SDK configuration."));
-                return Tasking::SetupResult::StopWithError;
+                return QtTaskTree::SetupResult::StopWithError;
             }
         }
         else
         {
             Core::MessageManager::writeSilently(Tr::tr("Could not find node executable, "
                                                        "please check your HarmonyOS SDK configuration."));
-            return Tasking::SetupResult::StopWithError;
+            return QtTaskTree::SetupResult::StopWithError;
         }
     };
 
@@ -350,10 +350,8 @@ Tasking::GroupItem HarmonyBuildHapStep::syncProjectTask()
     return ProcessTask(onSyncProject, onSyncProjectDone);
 }
 
-Tasking::GroupItem HarmonyBuildHapStep::ohpmInstallTask()
+QtTaskTree::GroupItem HarmonyBuildHapStep::ohpmInstallTask()
 {
-    using namespace Tasking;
-    using namespace Utils;
     const auto onOhpmInstall = [this] (Process &process){
         if (auto node = HarmonyConfig::nodeLocation(); node.exists())
         {
@@ -397,20 +395,20 @@ Tasking::GroupItem HarmonyBuildHapStep::ohpmInstallTask()
                     emit addOutput(Tr::tr("Starting: \"%1\"").arg(process.commandLine().toUserOutput()),
                                    OutputFormat::NormalMessage);
                 });
-                return Tasking::SetupResult::Continue;
+                return QtTaskTree::SetupResult::Continue;
             }
             else
             {
                 Core::MessageManager::writeSilently(Tr::tr("Could not find ohpm executable, "
                                                            "please check your HarmonyOS SDK configuration."));
-                return Tasking::SetupResult::StopWithError;
+                return QtTaskTree::SetupResult::StopWithError;
             }
         }
         else
         {
             Core::MessageManager::writeSilently(Tr::tr("Could not find node executable, "
                                                        "please check your HarmonyOS SDK configuration."));
-            return Tasking::SetupResult::StopWithError;
+            return QtTaskTree::SetupResult::StopWithError;
         }
     };
 
@@ -556,15 +554,13 @@ bool HarmonyBuildHapStep::init()
     return true;
 }
 
-Tasking::GroupItem HarmonyBuildHapStep::runRecipe()
+QtTaskTree::GroupItem HarmonyBuildHapStep::runRecipe()
 {
-    using namespace Tasking;
-    return Group {
-        ignoreReturnValue() ? finishAllAndSuccess : stopOnError,
+    return QtTaskTree::Group{
+        ignoreReturnValue() ? QtTaskTree::finishAllAndSuccess : QtTaskTree::stopOnError,
         syncProjectTask(),
         ohpmInstallTask(),
-        defaultProcessTask()
-    };
+        defaultProcessTask()};
 }
 
 

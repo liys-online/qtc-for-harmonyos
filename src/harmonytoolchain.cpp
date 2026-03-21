@@ -3,6 +3,7 @@
 #include "ohostr.h"
 #include "harmonyconfigurations.h"
 #include <projectexplorer/projectexplorerconstants.h>
+#include <projectexplorer/kitaspect.h>
 #include <projectexplorer/toolchainmanager.h>
 #include <projectexplorer/toolchainconfigwidget.h>
 #include <projectexplorer/clangparser.h>
@@ -695,7 +696,7 @@ static const GccToolchain *mingwToolchainFromId(const QByteArray &id)
 void HarmonyToolchain::syncAutodetectedWithParentToolchains()
 {
     if (!HostOsInfo::isWindowsHost() || typeId() != ProjectExplorer::Constants::CLANG_TOOLCHAIN_TYPEID
-        || !isAutoDetected()) {
+        || !detectionSource().isAutoDetected()) {
         return;
     }
 
@@ -856,6 +857,7 @@ FilePath HarmonyToolchain::ndkLocation() const
 
 FilePath HarmonyToolchain::makeCommand(const Utils::Environment &environment) const
 {
+    Q_UNUSED(environment);
     const FilePath makePath = HarmonyConfig::makeLocation();
     if (makePath.isEmpty())
         return FilePath();
@@ -973,7 +975,7 @@ ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown,
 
                 if (auto gccTc = dynamic_cast<HarmonyToolchain*>(tc))
                     gccTc->resetToolchain(compilerCommand);
-                tc->setDetection(Toolchain::AutoDetectionFromSdk);
+                tc->setDetectionSource(DetectionSource(DetectionSource::FromSdk));
                 ++targetItr;
             }
         }

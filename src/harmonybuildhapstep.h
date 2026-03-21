@@ -20,9 +20,9 @@ public:
     QString buildToolsVersion() const;
     void setBuildToolsVersion(const QString &version);
 protected:
-    Tasking::GroupItem defaultProcessTask();
-    Tasking::GroupItem syncProjectTask();
-    Tasking::GroupItem ohpmInstallTask();
+    QtTaskTree::GroupItem defaultProcessTask();
+    QtTaskTree::GroupItem syncProjectTask();
+    QtTaskTree::GroupItem ohpmInstallTask();
     bool setupProcess(Utils::Process &process);
 
 Q_SIGNALS:
@@ -30,12 +30,12 @@ Q_SIGNALS:
 private:
     QWidget *createConfigWidget() override;
     bool init() override;
-    Tasking::GroupItem runRecipe() override;
+    QtTaskTree::GroupItem runRecipe() override;
     friend class HarmonyBuildHapWidget;
     QString m_buildTargetSdk;
     QString m_buildToolsVersion;
 };
 
 void setupHarmonyBuildHapStep();
-} // namespace Harmony::Internal
+} // namespace Ohos::Internal
 #endif // HARMONYBUILDHAPSTEP_H
