@@ -7,26 +7,59 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  QT_VERSION: "6.8.3"
+  # Qt Creator 19.0.0 插件开发包（x86_64）；需与 runs-on 架构一致
+  QTC_DEV_URL: "https://download.qt.io/official_releases/qtcreator/19.0/19.0.0/installer_source/mac_x64/qtcreator_dev.7z"
+
 jobs:
   build:
-    runs-on: windows-server
+    # 官方提供的 mac_x64 包为 Intel；若该镜像下线，可改为 macos-14+ 并换用 installer_source 下的 mac_arm64 包
+    runs-on: macos-13
     steps:
-      - name: Set up proxy for Git
-        run: |
-          git config --global http.proxy http://localhost:7890
-          git config --global https.proxy http://localhost:7890
-          
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
-        
-      - name: Build
-        shell: cmd
+
+      - name: Install Ninja and 7-Zip
+        run: brew install ninja p7zip
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          target: desktop
+          arch: clang_64
+          cache: true
+
+      - name: Download Qt Creator 19 dev (plugin SDK)
         run: |
-          set QTFRAMEWORK_BYPASS_LICENSE_CHECK=1
-          call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
-          call "C:\Qt\6.8.4\msvc2022_64\bin\qtenv2.bat"
-          cd /d ${{ github.workspace }}
-          cmake -S . -B ./build/ -DCMAKE_PREFIX_PATH=C:/Qt/6.8.4/msvc2022_64 -DCMAKE_BUILD_TYPE=RelWithDebInfo -G Ninja
-          cmake --build ./build/ --target all
-          
-    
+          curl -fSL --retry 3 --retry-delay 10 \
+            -o qtcreator_dev.7z \
+            "${{ env.QTC_DEV_URL }}"
+          mkdir -p qtcreator-dev
+          7zz x qtcreator_dev.7z -oqtcreator-dev -y
+
+      - name: Locate Qt Creator CMake prefix
+        id: qtc
+        run: |
+          set -e
+          CONFIG=$(find "${GITHUB_WORKSPACE}/qtcreator-dev" -name QtCreatorConfig.cmake | head -n 1)
+          if [ -z "${CONFIG}" ]; then
+            echo "QtCreatorConfig.cmake not found under qtcreator-dev" >&2
+            exit 1
+          fi
+          # .../lib/cmake/QtCreator/QtCreatorConfig.cmake -> prefix is two levels up from lib
+          QTC_ROOT=$(cd "$(dirname "${CONFIG}")/../.." && pwd)
+          echo "root=${QTC_ROOT}" >> "${GITHUB_OUTPUT}"
+          echo "Qt Creator CMake prefix: ${QTC_ROOT}"
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}" \
+            -DQtCreator="${{ steps.qtc.outputs.root }}" \
+            -G Ninja
+
+      - name: Build
+        run: cmake --build build --parallel

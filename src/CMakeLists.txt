@@ -2,9 +2,18 @@ cmake_minimum_required(VERSION 3.20)
 
 # Remove when sharing with others.
 
+# Qt Creator 路径：
+# - 命令行 -DQtCreator=... 指向含 lib/cmake/QtCreator 的根（如 CI 解压的 qtcreator_dev）
+# - 否则按「Qt 安装根/Tools/QtCreator」推断（与 Qt Maintenance Tool 布局一致）
 if(DEFINED QtCreator)
+  if(APPLE)
+    set(QtCreatorConfig ${QtCreator}/QtCreator/Contents/Resources/lib/cmake/QtCreator/QtCreatorConfig.cmake)
+  else()
     set(QtCreatorConfig ${QtCreator}/lib/cmake/QtCreator/QtCreatorConfig.cmake)
+  endif()
+    set(_HARMONY_QTC_FROM_CACHE TRUE)
 else()
+    set(_HARMONY_QTC_FROM_CACHE FALSE)
     set(QT_INSTALL_PATH ${CMAKE_PREFIX_PATH})
     get_filename_component(PARENT_DIR ${QT_INSTALL_PATH} DIRECTORY)
     get_filename_component(GRANDPARENT_DIR ${PARENT_DIR} DIRECTORY)
@@ -12,8 +21,10 @@ else()
 endif()
 
 if(EXISTS ${QtCreatorConfig})
-    set(QtCreator ${GRANDPARENT_DIR}/Tools/QtCreator)
-    message(STATUS "QtCreator API found at ${GRANDPARENT_DIR}/Tools/QtCreator")
+    if(NOT _HARMONY_QTC_FROM_CACHE)
+        set(QtCreator ${GRANDPARENT_DIR}/Tools/QtCreator)
+    endif()
+    message(STATUS "QtCreator API found at ${QtCreator}")
 else()
     message(WARNING "File ${QtCreatorConfig} does not exist.")
 endif()
