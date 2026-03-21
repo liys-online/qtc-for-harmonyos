@@ -52,15 +52,30 @@ jobs:
       - name: Locate Qt Creator CMake prefix
         id: qtc
         run: |
-          set -e
-          CONFIG=$(find "${GITHUB_WORKSPACE}/qtcreator-dev" -name QtCreatorConfig.cmake | head -n 1)
+          set -eu
+          DEV="${GITHUB_WORKSPACE}/qtcreator-dev"
+          # 优先主 .app 内的 SDK（避免命中包内嵌套的其它 QtCreatorConfig.cmake）
+          PREFERRED="${DEV}/Qt Creator.app/Contents/Resources/lib/cmake/QtCreator/QtCreatorConfig.cmake"
+          if [ -f "${PREFERRED}" ]; then
+            CONFIG="${PREFERRED}"
+          else
+            CONFIG=$(find "${DEV}" -path "*Qt Creator.app*" -name QtCreatorConfig.cmake 2>/dev/null | head -n 1 || true)
+            if [ -z "${CONFIG}" ]; then
+              CONFIG=$(find "${DEV}" -name QtCreatorConfig.cmake 2>/dev/null | head -n 1 || true)
+            fi
+          fi
           if [ -z "${CONFIG}" ]; then
             echo "QtCreatorConfig.cmake not found under qtcreator-dev" >&2
             exit 1
           fi
-          # .../lib/cmake/QtCreator/QtCreatorConfig.cmake -> prefix is two levels up from lib
-          QTC_ROOT=$(cd "$(dirname "${CONFIG}")/../.." && pwd)
-          echo "root=${QTC_ROOT}" >> "${GITHUB_OUTPUT}"
+          # .../PREFIX/lib/cmake/QtCreator/QtCreatorConfig.cmake -> PREFIX 在 lib/cmake/QtCreator 之上 3 级
+          QTC_ROOT=$(cd "$(dirname "${CONFIG}")/../../.." && pwd)
+          # 路径含空格（Qt Creator.app），必须用多行输出写入 GITHUB_OUTPUT
+          {
+            echo "root<<__QTC_ROOT_EOF__"
+            printf '%s\n' "${QTC_ROOT}"
+            echo "__QTC_ROOT_EOF__"
+          } >> "${GITHUB_OUTPUT}"
           echo "Qt Creator CMake prefix: ${QTC_ROOT}"
 
       - name: Configure
@@ -68,7 +83,7 @@ jobs:
           cmake -S . -B build \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}" \
-            -DQtCreator="${{ steps.qtc.outputs.root }}" \
+            -DQtCreator='${{ steps.qtc.outputs.root }}' \
             -G Ninja
 
       - name: Build

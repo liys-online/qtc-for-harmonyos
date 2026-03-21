@@ -2,34 +2,38 @@ cmake_minimum_required(VERSION 3.20)
 
 # Remove when sharing with others.
 
-# Qt Creator 路径：
-# - 命令行 -DQtCreator=... 指向含 lib/cmake/QtCreator 的根（如 CI 解压的 qtcreator_dev）
-# - 否则按「Qt 安装根/Tools/QtCreator」推断（与 Qt Maintenance Tool 布局一致）
+# Qt Creator 安装前缀（目录下应有 lib/cmake/QtCreator/，且含 QtCreatorConfig.cmake）：
+# - macOS .app：通常传 .../Qt Creator.app/Contents/Resources，或传 .app 根（下面会自动解析）
+# - 其它：SDK / Tools 根目录
+# - 未指定时：按 Qt 安装树 .../Tools/QtCreator 推断（与 Maintenance Tool 布局一致）
+
+set(_HARMONY_QTC_FROM_CACHE FALSE)
 if(DEFINED QtCreator)
-  if(APPLE)
-    set(QtCreatorConfig ${QtCreator}/QtCreator/Contents/Resources/lib/cmake/QtCreator/QtCreatorConfig.cmake)
+  set(_HARMONY_QTC_FROM_CACHE TRUE)
+  set(_qtc_user "${QtCreator}")
+  if(APPLE AND EXISTS "${_qtc_user}/Contents/Resources/lib/cmake/QtCreator/QtCreatorConfig.cmake")
+    set(QtCreator "${_qtc_user}/Contents/Resources")
+  elseif(EXISTS "${_qtc_user}/lib/cmake/QtCreator/QtCreatorConfig.cmake")
+    set(QtCreator "${_qtc_user}")
   else()
-    set(QtCreatorConfig ${QtCreator}/lib/cmake/QtCreator/QtCreatorConfig.cmake)
+    set(QtCreator "${_qtc_user}")
   endif()
-    set(_HARMONY_QTC_FROM_CACHE TRUE)
+  set(QtCreatorConfig "${QtCreator}/lib/cmake/QtCreator/QtCreatorConfig.cmake")
 else()
-    set(_HARMONY_QTC_FROM_CACHE FALSE)
-    set(QT_INSTALL_PATH ${CMAKE_PREFIX_PATH})
-    get_filename_component(PARENT_DIR ${QT_INSTALL_PATH} DIRECTORY)
-    get_filename_component(GRANDPARENT_DIR ${PARENT_DIR} DIRECTORY)
-    set(QtCreatorConfig ${GRANDPARENT_DIR}/Tools/QtCreator/lib/cmake/QtCreator/QtCreatorConfig.cmake)
+  set(QT_INSTALL_PATH "${CMAKE_PREFIX_PATH}")
+  get_filename_component(PARENT_DIR "${QT_INSTALL_PATH}" DIRECTORY)
+  get_filename_component(GRANDPARENT_DIR "${PARENT_DIR}" DIRECTORY)
+  set(QtCreator "${GRANDPARENT_DIR}/Tools/QtCreator")
+  set(QtCreatorConfig "${QtCreator}/lib/cmake/QtCreator/QtCreatorConfig.cmake")
 endif()
 
-if(EXISTS ${QtCreatorConfig})
-    if(NOT _HARMONY_QTC_FROM_CACHE)
-        set(QtCreator ${GRANDPARENT_DIR}/Tools/QtCreator)
-    endif()
-    message(STATUS "QtCreator API found at ${QtCreator}")
+if(EXISTS "${QtCreatorConfig}")
+  message(STATUS "QtCreator API found at ${QtCreator}")
+  list(APPEND CMAKE_PREFIX_PATH "${QtCreator}")
+  find_package(QtCreator REQUIRED)
 else()
-    message(WARNING "File ${QtCreatorConfig} does not exist.")
+  message(WARNING "File ${QtCreatorConfig} does not exist.")
 endif()
-
-list(APPEND CMAKE_PREFIX_PATH ${QtCreator})
 
 project(Harmony)
 
@@ -44,7 +48,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# find_package(QtCreator REQUIRED COMPONENTS Core)
 find_package(Qt6 COMPONENTS Widgets Network REQUIRED)
 
 # Add a CMake option that enables building your plugin with tests.
