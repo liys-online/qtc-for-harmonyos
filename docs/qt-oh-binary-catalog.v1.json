@@ -16,30 +16,6 @@
       "notesUrl": "https://gitcode.com/openharmony-sig/qt/releases/Alpha_v8",
       "assets": [
         {
-          "name": "Alpha_v8.zip",
-          "downloadUrl": "https://raw.gitcode.com/openharmony-sig/qt/archive/refs/heads/Alpha_v8.zip",
-          "kind": "metadata",
-          "contentType": "application/zip"
-        },
-        {
-          "name": "Alpha_v8.tar.gz",
-          "downloadUrl": "https://raw.gitcode.com/openharmony-sig/qt/archive/refs/heads/Alpha_v8.tar.gz",
-          "kind": "metadata",
-          "contentType": "application/gzip"
-        },
-        {
-          "name": "Alpha_v8.tar.bz2",
-          "downloadUrl": "https://raw.gitcode.com/openharmony-sig/qt/archive/refs/heads/Alpha_v8.tar.bz2",
-          "kind": "metadata",
-          "contentType": "application/x-bzip2"
-        },
-        {
-          "name": "Alpha_v8.tar",
-          "downloadUrl": "https://raw.gitcode.com/openharmony-sig/qt/archive/refs/heads/Alpha_v8.tar",
-          "kind": "metadata",
-          "contentType": "application/x-tar"
-        },
-        {
           "name": "Qt5.15.12_alpha_v8_arm64-v8a_openharmony_ndk_5.1.0.107_community_linux.zip",
           "downloadUrl": "https://gitcode.com/openharmony-sig/qt/releases/download/Alpha_v8/Qt5.15.12_alpha_v8_arm64-v8a_openharmony_ndk_5.1.0.107_community_linux.zip",
           "kind": "archive",
@@ -99,30 +75,6 @@
       "summary": "# 版本信息\n\n- 版本号：alpha_v7\n- Qt版本：[Qt5.15.12](https://code.qt.io/cgit/qt/qt5.git/tag/?h=v5.15.12-lts-lgpl)\n- OH API：[API 15](https://gitcode.com/openharmony/docs/blob/master/zh-cn/release-notes/OpenHarmony-v5.0.3-release.md)\n- 系统版本：[dayu200-arm64_5.0.3](https://cidownload.openharmony.cn/version/Master_Version/OpenHarmony_5.0.3.130/20250525_045041/version-Master_Version-OpenHarmony_5.0.3.130-20250525_045041-dayu200-arm64_5.0.3-Release_img.tar.gz)\n- SDK版本：[ohos-sdk-full 5.0.3.139](https://cidownload.openharmony.cn/version/Release_Version/OpenHarmony-5.0.3.139/20250525_033958/version-Release_Version-OpenHarmony-5.0.3.139-20250525_033958-ohos-sdk-full_5.0.3-Release.tar.gz)\n\n# 模块支持清单\n\n提供OpenHarmony系统额外模块**OH Extras**，详细能力参加更新说明\n\n## Qt5.15基础模块支持清单\n\n| 模块名称 | 支持情况 |\n|--|--|\n| Qt Core | 支持 |\n| Qt GUI | 支持 |\n| Qt Multimedia | 不支持 |\n| Qt Multimedia Widgets | 不支持 |\n| Qt Network | 支持 |\n| Qt QML | 支持 |\n| Qt Quick | 支持 |\n| Qt Quick Controls | 支持 |\n| Qt Quick Dialogs | 支持 |\n| Qt Quick Layouts | 支持 |\n| Qt Quick Test | 支持 |\n| Qt SQL | 支持 |\n| Qt Test | 支持 |\n| Qt Widgets | 支持 |\n\n## Qt5.15附件模块支持清单\n\n| 模块名称 | 支持情况 |\n|--|--|\n| Active Qt | 不支持 |\n| Qt 3D | 支持 |\n| Qt Android Extras | 不支持 |\n| Qt Bluetooth | 支持 |\n| Qt Concurrent | 支持 |\n| Qt D-Bus | 不支持 |\n| Qt Gamepad | 不支持 |\n| Qt Graphical Effects | 不支持 |\n| Qt Help | 不支持 |\n| Qt Image Formats | 支持 |\n| Qt Location | 不支持 |\n| Qt Mac Extras | 不支持 |\n| Qt NFC | 不支持 |\n| Qt OpenGL (Deprecated) | 不支持 |\n| Qt PDF | 支持 |\n| Qt Platform Headers | 不支持 |\n| Qt Positioning | 不支持 |\n| Qt Print Support | 不支持 |\n| Qt Purchasing | 不支持 |\n| Qt Quick Controls 1 (Deprecated) | 不支持 |\n| Qt Quick Extras | 不支持 |\n| Qt Quick Timeline | 不支持 |\n| Qt Quick Widgets | 支持 |\n| Qt Remote Objects | 不支持 |\n| Qt Script (Deprecated) | 不支持 |\n| Qt SCXML | 不支持 |\n| Qt Script Tools (Deprecated) | 不支持 |\n| Qt Sensors | 支持 |\n| Qt Serial Bus | 不支持 |\n| Qt Serial Port | 不支持 |\n| Qt Speech | 不支持 |\n| Qt SVG | 支持 |\n| Qt UI Tools | 支持 |\n| Qt WebChannel | 支持 |\n| Qt WebEngine | 不支持 |\n| Qt WebSockets | 支持 |\n| Qt WebView | 不支持 |\n| Qt Windows Extras | 不支持 |\n| Qt X11 Extras | 不支持 |\n| Qt XML | 支持 |\n| Qt XML Patterns (deprecated) | 不支持 |\n| Qt Charts | 支持 |\n| Qt Data Visualization | 支持 |\n| Qt Lottie Animation | 不支持 |\n| Qt Network Authorization | 不支持 |\n| Qt Virtual Keyboard | 不支持 |\n| Qt Wayland Compositor | 不支持 |\n| Qt for WebAssembly | 不支持 |\n| Qt Quick 3D | 不支持 |\n| Qt Quick WebGL | 不支持 |\n\n#  Qt For OpenHarmony 编译与构建\n\n参见[Qt For OpenHarmony Build仓库](https://gitcode.com/qtforohos/Build)\n\n# Qt For OpenHarmony 使用\n\n参见[Qt For OpenHarmony UserManual仓库](https://gitcode.com/qtforohos/UserManual)\n\n# 已知问题\n\n- QWindow：OpenHarmony 平台上 QWindow 显示时触发异步尺寸回调，初次显示阶段会出现两次 resize 事件，可能影响依赖单次调整的逻辑，预计alpha_v8版本修复\n- QDateTimeEdit：在“MMMM yyyy-MM-dd MMMM”格式下，Enter 后 Backspace 未按段清空前置月份文本，导致整体文本与期望不一致，预计alpha_v8版本修复\n- QDateTimeEdit：两位年份“yy”解析的世纪映射与 Qt 默认策略不一致，输入或调整年份时落入的世纪区间与预期不符，预计alpha_v8版本修复\n- QDateTimeEdit：在“dd.MMMM.yyyy”格式下，进入年份段按 Enter 未正确选中“yyyy”整段或选区异常，影响后续输入覆盖，预计alpha_v8版本修复\n- QWidget：窗口创建阶段的初始 geometry 计算不正确，子控件移动时出现偏移与期望不一致，预计alpha_v8版本修复\n- QWidget：OpenHarmony 使用全量重绘机制，导致与 Qt 局部更新策略不一致，遮罩更新的区域计算出现偏差，引发绘制区域不匹配,修复待定\n- QTransLator：在 OpenHarmony 环境中切换翻译器后，LanguageChange 事件未按预期分发,修复待定\n- Qt Mlutimedia：硬件驱动原因，在DAYU200上Qt Multimedia模块无法实现摄像头播放,修复待定\n\n\n# 更新说明\n\n## Qt OHExtras（非官方模块）\n\n- 应用上下文/主题适配：提供 QOhAppContext，支持暗色/亮色/跟随系统等配色模式切换与变更通知，便于全局主题一致性。\n- 文件共享持久化授权：提供 QOHFileShare，面向 URI 的读/写授权批量持久化、激活/撤销与校验，返回详细结果与错误码。\n- 系统权限请求封装：提供 QtOh::check/requestPermissions(…)/requestPermissionsOnSetting(…) 同步/异步接口，统一权限弹窗与结果回传。\n- 通知权限管理：提供 requestEnableNotification(…)/requestEnableNotificationSync、isNotificationEnabled、openNotificationSettings 等能力。\n- 窗口与部件增强：提供 QOhWidgetHelper，支持隐私模式、窗口尺寸自动保存、状态栏/装饰可见、圆角/阴影、分屏/浮窗/全屏、标题拖拽与按钮可见性等。\n- 标题按钮布局控制：提供装饰按钮配色与尺寸间距的结构化样式与变更监听，便于在 OHOS 窗管策略下自定义标题栏交互。\n- 屏幕常亮与背景：支持设置窗口常亮、背景色等运行时属性，贴合移动端与大屏设备的交互要求。\n- 平台能力封装：暴露 ohSdkVersion() 与能力判定，统一对 OpenHarmony 能力/差异的查询与调用路径（含 Widgets 集成与 -lohfileshare 能力）。\n\n## Qt Base\n\n- QJs模块加载增强：优化 QJsModule/QJsObject 加载与日志，UI线程执行更稳健。\n- 模块名设置支持：新增 QtOh::setModuleName，覆盖默认模块名获取。\n- 新原生窗口信号：QGuiApplication 增加 newNativeWindowCreated（OpenHarmony）。\n- 高DPI缩放修正：按屏幕统一计算，移除 nativePosition 搜索差异。\n- 应用终止/关闭回调：为 OHOS API15 提供带 resolve 的处理接口。\n- 可访问性健壮性：添加空指针与根节点判空，避免崩溃。\n- 输入法可见性去抖：键盘可见性变更去重并发 keyboardVisibleChanged。\n- 上下文颜色模式：QJsContext 新增 colorMode() 读取系统配色。\n- 平台工程扩展：引入 qohkeys 等文件，完善构建项与依赖。\n- 显示管理优化：QOhDisplay 增 position()；显示信息延时刷新。\n- 输入事件抽象：新增 InputEvent 基类，统一键盘/鼠标/触控。\n- 键盘处理统一：用 QOhKeys 管理修饰键与自重复判断、文本映射。\n- 非客户区鼠标修复：按压期间事件类型映射一致，减少误判。\n- 修饰键来源统一：触控/滚轮/手势等改用 QOhKeys::keyboardModifiers()。\n- Rawfile64 接口：原始资源改 64 位 API，支持大文件读取。\n- 路径与缓存：规范 rawfile: 前缀与清洗；新增目录/文件缓存与迭代器。\n- 文件引擎增强：精确区分文件/目录，提供高效 beginEntryList()。\n- 工程脚本更新：openharmony.pro 增加 qohkeys.cpp/h 编译与安装。\n\n## Qt Declarative\n\n- QML路径与插件适配：新增 qrc:/harmony_rcc_bundle/qml 导入；用 QT_HARMONY_QML_PLUGINS_PATH 配置插件；用 QT_HARMONY_QML_FILE_DIR 定位脚本。\n- 插件解析替换：在 resolvePlugin 中将 rawfile 路径按 QT_HARMONY_QML_FILE_DIR 替换为插件目录，绕过平台限制。\n- 关闭事件增强：为 OHOS API15 增加 QQuickCloseEvent::CloseReason，从 QCloseEvent 传递具体关闭原因。\n- 渲染尺寸修正：渲染线程同步时读取平台窗口 xcomponent 尺寸并覆盖，修复窗口尺寸不一致。\n\n## QtQuick Controls\n\n- QML路径环境变量调整：OpenHarmony 下改用 QT_HARMONY_QML_FILE_DIR，控件位置定位到 file:$DIR/QtQuick/Controls。\n- 资源加载与QRC支持：isLoadedFromResource 在 OpenHarmony 返回 true，Dialogs 资源优先用 qrc:/harmony_rcc_bundle/...。\n- Dialogs路径适配：将 QT_PLUGIN_PATH/qml 替换为 QT_HARMONY_QML_FILE_DIR，并将 openharmony 纳入平台分支控制。\n\n## Qt Multimedia\n\n- 新增图像捕获控制：引入 QOHCameraImageCaptureControl，打通 QCameraImageCapture 流程。\n- 预览输出重构：新增 createPreviewOutput()，按像素格式/分辨率择优选择 previewProfile。\n- 照片输出支持：新增 createPhotoOutput() 与回调，接入 OH_PhotoOutput_* 实现拍照。\n- 捕获流程完善：支持 CaptureToFile/Buffer，异步保存JPG，错误上报与 imageSaved 信号。\n- 帧构造统一：新增 imageNativeToVideoFrame()，支持 NV21/RGBA，集中映射与拷贝释放。\n- 就绪与驱动模式：补齐 readyForCapture、DriveMode，支持设置/查询与状态信号。\n- 捕获接口补全：实现 capture()/cancelCapture()，维护 captureId 与文件名。\n- 视图设置修正：presentFrame 使用实际像素格式与 mirrored，与 viewfinderSettings 对齐。\n- 会话加载整合：load() 同时配置 Preview/Photo 输出，提交到 CaptureSession。\n- 资源释放增强：卸载时释放 photoOutput_、重置捕获状态，避免资源泄露。\n- 存储路径适配：录制/拍照默认目录改为系统媒体目录，统一由 OPenHarmonyMultimediaUtils 提供。\n- 帧率与判定修复：默认帧率列表增 5/10fps；修正空列表条件下的帧率回退逻辑。\n- 渲染控件优化：视频窗口部件命名 _q_oh_videowidget，禁用Qt绘制仅创建 surface。\n- 构建脚本更新：mediacapture.pri 增加新头源文件，纳入编译链路。\n- 日志与依赖：移除 hilog/napi 直依，改用 QtConcurrent 处理异步与回调分发。\n\n## Qt Connectivity\n\n- 移除旧NAPI桥接：删除 lowenergynotificationhub 与 NAPI 回调，改用统一 QJs 模块调用，减少跨线程问题。\n- 新增JS封装层：加入 jsclass 目录，封装 @ohos.bluetooth.* 接口，提供 QJsAccess/QJsBle/QJsConnect/QJsDevice/QJsSocket。\n- 蓝牙开关与状态：QJsAccess 支持启用/禁用蓝牙与查询状态，线程安全地在 JS UI 线程执行。\n- BLE 扫描与广播：QJsBle 提供 startBLEScan/stopBLEScan、startAdvertising/stopAdvertising，并联动发现回调。\n- GATT 服务端：QJsGattServer 支持添加服务、设备管理、特征通知、远端信息查询。\n- GATT 客户端：QJsGattClientDevice 支持连接/断开、枚举服务、读写特征/描述符、查询包含服务。\n- 连接管理：QJsConnect 提供设备发现、扫描模式设置、配对/已配对设备获取、本地名与远端属性。\n- 数据接收精简：BluetoothDataReceiver 移除 NAPI 导出，仅保留缓冲与读取接口，配合新 JS 通道\n\n## Qt Sensors\n\n- JS回调迁移至JS线程：数据监听与字段读取统一通过 QtOh::runOnJsUIThread* 执行，避免线程跨域引发的不确定性与崩溃。\n- 移除NAPI导出与注册：删除 DataAcception 与 NAPI 模块注册逻辑，改由 JsSensor 内部回调驱动，简化链路。\n- 新增NAPI对象安全序列化：引入自定义序列化，处理字符串转义、超大整数、Buffer、undefined 等，确保JSON解析稳健。\n- 采样周期单位转换修正：实现 hertz2ns/ns2hertz，并对0与负值做保护，保证采样率与系统期望单位匹配。\n- 回调改为队列调用：数据回调通过 Qt::QueuedConnection 投递到后端对象，消除直接跨线程调用风险。\n- 传感器枚举改用C侧API：由JS侧列表获取改为 OH_Sensor_* 原生接口，提升可用性与性能，减少JS依赖。\n- JsSensor职责重构：改为继承 QJsModule 直接操控 @ohos.sensor，并持有后端指针，生命周期清晰。\n- 插件主文件精简：main.cpp 移除JS环境依赖与导出代码，仅保留插件注册与后端工厂，体量明显缩小。\n- 构建脚本增强：openharmony.pro 使用 QT = core-private sensors，并链接 -lohsensor，满足私有API与系统库需求。\n- 日志兼容处理：OpenHarmony 平台屏蔽 QLoggingCategory，统一改用 qDebug/qWarning，避免编译问题。\n- 子目录集成：src/src.pro 与 plugins/sensors/sensors.pro 新增 openharmony 子工程，纳入构建流水线。\n- 前端桥接模块加入：新增 JsSensor.ts/JsSensorManager.ts/JsSensorsModule.ts，负责加载原生插件与对象构建。",
       "notesUrl": "https://gitcode.com/openharmony-sig/qt/releases/Alpha_v7",
       "assets": [
-        {
-          "name": "Alpha_v7.zip",
-          "downloadUrl": "https://raw.gitcode.com/openharmony-sig/qt/archive/refs/heads/Alpha_v7.zip",
-          "kind": "metadata",
-          "contentType": "application/zip"
-        },
-        {
-          "name": "Alpha_v7.tar.gz",
-          "downloadUrl": "https://raw.gitcode.com/openharmony-sig/qt/archive/refs/heads/Alpha_v7.tar.gz",
-          "kind": "metadata",
-          "contentType": "application/gzip"
-        },
-        {
-          "name": "Alpha_v7.tar.bz2",
-          "downloadUrl": "https://raw.gitcode.com/openharmony-sig/qt/archive/refs/heads/Alpha_v7.tar.bz2",
-          "kind": "metadata",
-          "contentType": "application/x-bzip2"
-        },
-        {
-          "name": "Alpha_v7.tar",
-          "downloadUrl": "https://raw.gitcode.com/openharmony-sig/qt/archive/refs/heads/Alpha_v7.tar",
-          "kind": "metadata",
-          "contentType": "application/x-tar"
-        },
         {
           "name": "Qt5.15.12_alpha_v7_arm64-v8a_openharmony_ndk_5.0.3.135_community_linux.tar.gz",
           "downloadUrl": "https://gitcode.com/openharmony-sig/qt/releases/download/Alpha_v7/Qt5.15.12_alpha_v7_arm64-v8a_openharmony_ndk_5.0.3.135_community_linux.tar.gz",
