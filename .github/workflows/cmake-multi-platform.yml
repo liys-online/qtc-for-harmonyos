@@ -15,7 +15,7 @@ env:
 jobs:
   build:
     # 官方提供的 mac_x64 包为 Intel；若该镜像下线，可改为 macos-14+ 并换用 installer_source 下的 mac_arm64 包
-    runs-on: macos-13
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
