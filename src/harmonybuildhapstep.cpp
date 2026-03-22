@@ -1,4 +1,5 @@
 #include "harmonybuildhapstep.h"
+#include "harmonyhvigoroutputparser.h"
 #include "harmonyqtversion.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
@@ -17,6 +18,7 @@
 #include <utils/algorithm.h>
 #include <utils/layoutbuilder.h>
 #include <utils/qtcprocess.h>
+#include <utils/outputformatter.h>
 #include <QLoggingCategory>
 
 #include <qtsupport/qtkitaspect.h>
@@ -592,6 +594,18 @@ void HarmonyBuildHapStep::setBuildToolsVersion(const QString &version)
 QWidget *HarmonyBuildHapStep::createConfigWidget()
 {
     return new HarmonyBuildHapWidget(this);
+}
+
+void HarmonyBuildHapStep::setupOutputFormatter(OutputFormatter *formatter)
+{
+    if (auto *bc = buildConfiguration()) {
+        formatter->addSearchDir(harmonyBuildDirectory(bc));
+        formatter->addSearchDir(bc->buildDirectory());
+        if (ProjectExplorer::Project *proj = project())
+            formatter->addSearchDir(proj->projectDirectory());
+    }
+    formatter->addLineParser(new HarmonyHvigorOhpmOutputParser());
+    AbstractProcessStep::setupOutputFormatter(formatter);
 }
 
 bool HarmonyBuildHapStep::init()

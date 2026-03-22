@@ -44,7 +44,7 @@
 
 每步启动前会 **确保构建目录下的 `ohpro` 子目录已创建** 并采用 **规范绝对路径** 作为 cwd；与主步骤一致注入 **DevEco / Java** 相关环境变量（见 §1）。
 
-标准输出/错误回传至 Qt Creator **构建输出**；失败应可通过 **Issues** 与日志定位（**hvigor 日志解析进 Issues** 仍属 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) **P1-14**）。
+标准输出/错误回传至 Qt Creator **构建输出**；**hvigor / ohpm / ArkTS 风格错误行** 由 `HarmonyHvigorOhpmOutputParser` 解析进 **Issues**（可点击已解析的绝对路径跳转编辑器）；其它格式仍看原始日志。详见 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) **P1-14**（已完成）。
 
 ### 2.3 与 Android 的差异
 

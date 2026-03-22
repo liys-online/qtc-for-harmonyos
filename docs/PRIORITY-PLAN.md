@@ -59,7 +59,7 @@
 | P1-11 | P1 | 常量 | `ohosconstants.h` 瘦身 | 未用 `Parameter` 迁出或删除 | — | `androidconstants.h` | 删除前确认无外部引用 | 待开始 |
 | P1-12 | P1 | ID | 配置 ID 前缀统一与迁移 | `Harmony.*` + `fromMap` 读旧键 | — | — | 用户旧工程需迁移说明 | 待开始 |
 | P1-13 | P1 | CMake BC | `HarmonyCMakeBuildConfiguration` 实用页签 | 与 iOS/Android CMake 扩展对齐的最小集 | — | iOS CMake BC | — | 待开始 |
-| P1-14 | P1 | 解析 | hvigor/ohpm OutputTaskParser | Issues 可点击进源文件 | — | `javaparser.cpp` | 错误格式随工具升级变化 | 待开始 |
+| P1-14 | P1 | 解析 | hvigor/ohpm OutputTaskParser | Issues 可点击进源文件 | `harmonyhvigoroutputparser.*` + `HarmonyBuildHapStep::setupOutputFormatter` | `javaparser.cpp` | 错误格式随工具升级变化 | 已完成 |
 | P1-15 | P1 | Qt 版本 | `supportsMultipleQtAbis` 去硬编码 | 按版本范围或特性检测 | — | `androidqtversion.cpp` | — | 待开始 |
 | P2-01 | P2 | 调试 | `HarmonyDebugWorkerFactory` | LLDB/GDB 远程或官方调试桥（若存在） | Run 稳定 | `androiddebugsupport.cpp` | **可能无法实现**：官方调试协议、权限、与 Qt Creator Debugger 插件耦合深 | 待开始 |
 | P2-02 | P2 | 分析 | QML Profiler / Preview RunWorker | 若 Qt for Harmony 支持 QML 远程调试 | P2-01 | `androidqmltoolingsupport.cpp` | **可能无法实现**：取决于 Qt Harmony 运行时是否暴露同等端口 | 待开始 |
@@ -108,6 +108,7 @@
 |------|------|------|
 | 0.1 | （填写） | 初版：P0–P3 总表 + 状态约定 |
 | 0.2 | 2025-03-20 | P0-10→部分完成；新增 §7 近期落地；§4 标注下一阶段建议（P0-01～03、P1-14） |
+| 0.3 | 2026-03-20 | **P1-14**：`HarmonyHvigorOhpmOutputParser`（hvigor/ohpm/ArkTS 常见行）+ `ohpro`/工程目录 `addSearchDir` |
 
 ---
 
@@ -123,3 +124,4 @@
 | **Node / hvigor** | `nodeLocation()`：`tools/node/node`、`tools/node/bin/node`、系统 PATH；错误提示更明确 |
 | **Java / hvigor** | `javaLocation()`：macOS `jbr/Contents/Home`、`JAVA_HOME`、`/usr/libexec/java_home`、PATH；`HarmonyQtVersion::addToBuildEnvironment` 注入 `JAVA_HOME`；sync/ohpm/assemble 统一 `applyDevecoAndJavaEnv` |
 | **uv_cwd / EPERM** | `prepareOhProDirectory()` + 环境变量 `PWD` / `INIT_CWD`；主进程 cwd 规范化 |
+| **hvigor / ohpm → Issues** | `HarmonyBuildHapStep::setupOutputFormatter` 注册 `HarmonyHvigorOhpmOutputParser`；匹配 `*.ets`/`*.ts` 等 `path:line:col:`、`At file:`、`hvigor ERROR` / `ohpm ERROR` 等（详见源码注释） |

@@ -108,6 +108,7 @@ add_qtc_plugin(Harmony
     harmonyqttsdkmanagerdialog.h harmonyqttsdkmanagerdialog.cpp
     harmonysdkarchiveutils.h harmonysdkarchiveutils.cpp
     harmonybuildhapstep.h harmonybuildhapstep.cpp
+    harmonyhvigoroutputparser.h harmonyhvigoroutputparser.cpp
     harmonybuildconfiguration.h harmonybuildconfiguration.cpp
     harmonydeviceinfo.h harmonydeviceinfo.cpp
     harmonydeployqtstep.h harmonydeployqtstep.cpp

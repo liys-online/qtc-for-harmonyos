@@ -3,6 +3,10 @@
 
 #include <projectexplorer/abstractprocessstep.h>
 
+namespace Utils {
+class OutputFormatter;
+}
+
 namespace Ohos::Internal {
 
 class HarmonyBuildHapStep : public ProjectExplorer::AbstractProcessStep
@@ -32,6 +36,7 @@ Q_SIGNALS:
 private:
     QWidget *createConfigWidget() override;
     bool init() override;
+    void setupOutputFormatter(Utils::OutputFormatter *formatter) override;
     QtTaskTree::GroupItem runRecipe() override;
     friend class HarmonyBuildHapWidget;
     QString m_buildTargetSdk;
