@@ -61,13 +61,13 @@
 | P1-13 | P1 | CMake BC | `HarmonyCMakeBuildConfiguration` 实用页签 | 与 iOS/Android CMake 扩展对齐的最小集 | — | iOS CMake BC | — | 待开始 |
 | P1-14 | P1 | 解析 | hvigor/ohpm OutputTaskParser | Issues 可点击进源文件 | `harmonyhvigoroutputparser.*` + `HarmonyBuildHapStep::setupOutputFormatter` | `javaparser.cpp` | 错误格式随工具升级变化 | 已完成 |
 | P1-15 | P1 | Qt 版本 | `supportsMultipleQtAbis` 去硬编码 | 按版本范围或特性检测 | — | `androidqtversion.cpp` | — | 待开始 |
-| P2-01 | P2 | 调试 | `HarmonyDebugWorkerFactory` | LLDB/GDB 远程或官方调试桥（若存在） | Run 稳定；预研见 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md) | `androiddebugsupport.cpp` | **可能无法实现**：官方调试协议、权限、与 Qt Creator Debugger 插件耦合深 | 待开始 |
+| P2-01 | P2 | 调试 | `HarmonyDebugWorkerFactory` | LLDB/GDB 远程或官方调试桥（若存在） | Run 稳定；执行顺序见 [DEBUG-TASKS.md](DEBUG-TASKS.md)；协议见 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md) | `androiddebugsupport.cpp` | **可能无法实现**：官方调试协议、权限、与 Qt Creator Debugger 插件耦合深 | 待开始 |
 | P2-02 | P2 | 分析 | QML Profiler / Preview RunWorker | 若 Qt for Harmony 支持 QML 远程调试 | P2-01 | `androidqmltoolingsupport.cpp` | **可能无法实现**：取决于 Qt Harmony 运行时是否暴露同等端口 | 待开始 |
 | P2-03 | P2 | SDK | SDK 包管理 UI | 安装/更新 API 包；HTTP 列表 + 下载（见 SDK-PACKAGE-MANAGER.md） | 设置页「Manage SDK Packages…」对话框 | `androidsdkmanager*.cpp` | 解压/自动注册 SDK 待做；端点可后续改设置项 | 部分完成 |
 | P2-04 | P2 | SDK | SDK 下载向导 | 对标首次配置下载 | P2-03 | `androidsdkdownloader.cpp` | 分发策略与网络合规 | 待开始 |
 | P2-05 | P2 | 模拟器 | 枚举与启动 | hdc 或厂商模拟器命令 | — | `avdmanager`/`avdcreatordialog` | **可能无法实现**：无统一 CLI 或需 DevEco 独占 | 待开始 |
 | P2-06 | P2 | 设备 | DeviceFileAccess（hdc file） | 浏览/推送文件（可选） | — | `AndroidFileAccess` | 性能与大文件限制 | 待开始 |
-| P2-07 | P2 | 设备 | 端口转发 `hdc fport` | 为调试/网络调试预留 | — | adb forward | — | 待开始 |
+| P2-07 | P2 | 设备 | 端口转发 `hdc fport` | 为调试/网络调试预留 | 与 [DEBUG-TASKS.md](DEBUG-TASKS.md) 阶段 2 联动 | adb forward | — | 待开始 |
 | P2-08 | P2 | 签名 | Harmony 签名流程 UI | p7b/p12 或调用官方签名工具 | — | `keystorecertificatedialog` | **可能无法实现**：政策与工具仅 DevEco 内；可文档引导「DevEco 签名」 | 待开始 |
 | P2-09 | P2 | 编辑器 | `app.json5` / `module.json5` 结构化编辑 | 只读校验 + 跳转或简单表单 | — | `androidmanifesteditor.cpp` | JSON5 与 Stage 模型复杂度高 | 待开始 |
 | P2-10 | P2 | 语言服务 | ArkTS/ETS 对接 LSP（可选） | 外部 language server 配置页 | — | `javalanguageserver.cpp` | **可能无法实现**：无稳定开源 LSP 或授权限制 | 待开始 |
@@ -110,6 +110,7 @@
 | 0.2 | 2025-03-20 | P0-10→部分完成；新增 §7 近期落地；§4 标注下一阶段建议（P0-01～03、P1-14） |
 | 0.3 | 2026-03-20 | **P1-14**：`HarmonyHvigorOhpmOutputParser`（hvigor/ohpm/ArkTS 常见行）+ `ohpro`/工程目录 `addSearchDir` |
 | 0.4 | 2026-03-20 | **P1-01 / P1-02**：`harmonylogcategories` 统一分类；`HarmonyConfigurations` 调试输出改 `qCDebug`；OHOS_ARCH 用户提示改 `writeFlashing` |
+| 0.5 | 2026-03-20 | **P2-01 / P2-07**：新增 [DEBUG-TASKS.md](DEBUG-TASKS.md) 分阶段任务清单；总表 P2-01/P2-07「落地」列引用 |
 
 ---
 

@@ -138,7 +138,7 @@
 
 | # | Android 能力 / 典型文件 | Harmony 对应 | 进度 | 备注 |
 |---|---------------------------|--------------|------|------|
-| 11.1 | `AndroidDebugWorkerFactory`（LLDB 远程） | — | ⬜ | — |
+| 11.1 | `AndroidDebugWorkerFactory`（LLDB 远程） | `HarmonyDebugWorkerFactory`（计划） | ⬜ | 任务拆解见 [DEBUG-TASKS.md](DEBUG-TASKS.md)；协议见 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md) |
 | 11.2 | `AndroidQmlToolingSupportFactory` | — | ⬜ | — |
 | 11.3 | RunnerWorker 内日志（logcat） | — | ⬜ | 可对 `hilog` |
 

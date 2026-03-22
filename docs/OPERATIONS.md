@@ -70,7 +70,7 @@
 
 ### 后续增强（计划）
 
-- **调试**：对接 Qt Creator Debugger 与远程 LLDB（见 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md)；官方：[使用 LLDB 调试](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/debug-lldb)）。  
+- **调试**：对接 Qt Creator Debugger 与远程 LLDB；任务拆分见 [DEBUG-TASKS.md](DEBUG-TASKS.md)，协议与命令见 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md)；官方：[使用 LLDB 调试](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/debug-lldb)。  
 - **日志**：`hdc hilog` 或等价方式接入应用输出（见 PRIORITY-PLAN **P2**）。
 
 ---

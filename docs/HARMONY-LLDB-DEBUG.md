@@ -3,7 +3,7 @@
 > **官方文档（权威）**：[指南-NDK 开发调试和性能分析-LLDB 高性能调试器](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/debug-lldb)（文中简称「官方 LLDB 指南」）。  
 > **官方更新时间**（据页面）：2026-03-09 10:50。  
 >
-> **本文定位**：Harmony 插件团队内部 **P2-01（HarmonyDebugWorkerFactory）** 的操作参考与 **Qt Creator 对接提纲**。正文主体与官方指南一致；**若与官网冲突，以官网为准**。  
+> **本文定位**：Harmony 插件团队内部 **P2-01（HarmonyDebugWorkerFactory）** 的操作参考与 **Qt Creator 对接提纲**。**分阶段任务清单**见 [DEBUG-TASKS.md](DEBUG-TASKS.md)。正文主体与官方指南一致；**若与官网冲突，以官网为准**。  
 > **路径占位**：下文 `<DevEco_Studio_Home>`、`<clang distribution>` 等请替换为本机实际路径；Windows 示意为 `lldb.exe`，Linux / macOS 请使用同目录下 `lldb` 可执行文件。
 
 ---

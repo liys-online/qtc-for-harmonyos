@@ -29,6 +29,7 @@
 | [**SDK-PACKAGE-MANAGER.md**](SDK-PACKAGE-MANAGER.md) | **OpenHarmony SDK 包管理器** + **Qt for OpenHarmony SDK 管理器**（Gitee API / [GitCode 发布页](https://gitcode.com/openharmony-sig/qt/releases)） |
 | [**QT-OH-BINARY-CATALOG.md**](QT-OH-BINARY-CATALOG.md) | **Qt for OH 二进制清单 JSON 协议**（设计稿 + 仓库内 `qt-oh-binary-catalog.v1.json`） |
 | [**HARMONY-LLDB-DEBUG.md**](HARMONY-LLDB-DEBUG.md) | **Native LLDB 调试与 Qt Creator 对接**：官方文档入口、流程归纳、P2-01 映射与验证清单（命令以官方为准） |
+| [**DEBUG-TASKS.md**](DEBUG-TASKS.md) | **调试功能任务清单**：分阶段 checkbox（P2-01 / P2-07），从命令行验收到 `HarmonyDebugWorkerFactory` |
 
 ---
 
@@ -48,6 +49,7 @@
 |------|------|
 | 2025-03-20 | 根据当前实现更新 [PRIORITY-PLAN.md](PRIORITY-PLAN.md)（P0-10、§7 近期落地、§4 下一阶段建议）、[COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md)、[OPERATIONS.md](OPERATIONS.md) |
 | 2026-03-20 | 新增 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md)；后同步官方《LLDB 高性能调试器》全文结构、路径表、root/user 远程步骤与 FAQ（仍以 [官网](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/debug-lldb) 为准） |
+| 2026-03-20 | 新增 [DEBUG-TASKS.md](DEBUG-TASKS.md)（P2-01 / P2-07 分阶段任务清单） |
 
 ---
 
