@@ -111,6 +111,8 @@
 | 0.3 | 2026-03-20 | **P1-14**：`HarmonyHvigorOhpmOutputParser`（hvigor/ohpm/ArkTS 常见行）+ `ohpro`/工程目录 `addSearchDir` |
 | 0.4 | 2026-03-20 | **P1-01 / P1-02**：`harmonylogcategories` 统一分类；`HarmonyConfigurations` 调试输出改 `qCDebug`；OHOS_ARCH 用户提示改 `writeFlashing` |
 | 0.5 | 2026-03-20 | **P2-01 / P2-07**：新增 [DEBUG-TASKS.md](DEBUG-TASKS.md) 分阶段任务清单；总表 P2-01/P2-07「落地」列引用 |
+| 0.6 | 2026-03-20 | **DEBUG-TASKS 0.2**：§7 摘要增 `probeNativeDebugShellEnvironment`（`harmonyutils`） |
+| 0.7 | 2026-03-20 | **DEBUG-TASKS 0.3 / 0.4**：`OPERATIONS.md` §2.4、§2.5（Native 调试构建约定与风险） |
 
 ---
 
@@ -128,3 +130,5 @@
 | **uv_cwd / EPERM** | `prepareOhProDirectory()` + 环境变量 `PWD` / `INIT_CWD`；主进程 cwd 规范化 |
 | **hvigor / ohpm → Issues** | `HarmonyBuildHapStep::setupOutputFormatter` 注册 `HarmonyHvigorOhpmOutputParser`；匹配 `*.ets`/`*.ts` 等 `path:line:col:`、`At file:`、`hvigor ERROR` / `ohpm ERROR` 等（详见源码注释） |
 | **日志分类（P1-01）** | `harmonylogcategories.{h,cpp}`：`qtc.harmony.config|device|build|deploy|run|plugin|toolchain`；`QT_LOGGING_RULES` 可开 `*.debug=true` |
+| **Native 调试前置（DEBUG-TASKS 0.2）** | `harmonyutils`：`probeNativeDebugShellEnvironment` / `nativeDebugRecipeKind`（`hdc shell id`、`getenforce`） |
+| **Native 调试文档（DEBUG-TASKS 0.3–0.4）** | [OPERATIONS.md](OPERATIONS.md) §2.4（`-g`/strip/debug HAP）§2.5（user/签名风险与降级） |

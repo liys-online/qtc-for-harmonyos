@@ -51,6 +51,29 @@
 - Android 以 **Gradle** 为主；Harmony 以 **hvigor + ohpm** 为主。
 - 插件侧统一抽象为：**可配置命令 + 工作目录 + 环境变量 + 退出码**。
 
+### 2.4 Native（C/C++）调试：符号、strip 与 Debug HAP（DEBUG-TASKS 0.3）
+
+> **目的**：与 **Qt for OpenHarmony** 工程配合时，保证 **LLDB** 能解析 native（`.so`）符号与源码位置。细则以 **当前 Qt 版本文档** 与 **华为 LLDB 指南** 为准；下表为插件侧**团队约定**与排查入口。  
+> **延伸阅读**：[HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md)（官方步骤、root/user 矩阵）；[DEBUG-TASKS.md](DEBUG-TASKS.md) 阶段 1。
+
+| 层级 | 建议 | 说明 |
+|------|------|------|
+| **Qt Creator / CMake** | 调试会话使用 **Debug** 构建配置（或与 Qt for OH 文档等价的、**带调试信息** 的构建类型） | 目标通常是 `CMAKE_BUILD_TYPE=Debug`（或 Kit 选择的同名变体），使 OHOS Clang 生成 **DWARF**（行为上等价于对 native 使用 **`-g`**）。**RelWithDebInfo** 若工具链支持，也可用于「优化 + 符号」场景。 |
+| **Native 产物（`.so`）** | **不要**对需要下断点的 `.so` 执行 **strip**；避免在调试链上启用会剥离调试节的链接选项 | 与 Android NDK 经验类似：Release 默认 strip 时，LLDB 往往只能看到汇编或无法解析局部变量。若必须交付 Release，是否支持 **分离调试符号** 以 **Qt / LLVM 发行说明** 为准。 |
+| **HAP / hvigor** | 安装到设备用于 **user 镜像 LLDB（官方 §7.2）** 的包，应为 **DevEco 构建的 debug 变体 HAP**（带调试能力与合规签名） | 在工程侧通常对应 **`build-profile.json5`** 里 product 的 **debug** / **`buildMode`** 等（字段名随 **API 版本与模板** 变化，以工程模板为准）。**勿**期望对仅含 strip 后 `.so` 的 release HAP 获得完整 native 调试体验。 |
+| **交叉检查（可选）** | 对构建出的 `.so` 用 `file`、`llvm-readobj` / `readelf`、或 `llvm-objdump --debug-info` 查看是否含调试节 | 用于区分「未下断点」是 **部署/attach** 问题还是 **符号未进包**。 |
+
+**与插件行为的关系**：当前 **HarmonyBuildHapStep** 不代替 DevEco 决定 debug/release；团队应在 **Kit 构建类型** 与 **ohpro / hvigor 配置** 上保持一致，便于后续 **HarmonyDebugWorkerFactory** 接入（见 [DEBUG-TASKS.md](DEBUG-TASKS.md) 阶段 3–4）。
+
+### 2.5 user 镜像与签名：风险与降级（DEBUG-TASKS 0.4）
+
+| 风险 | 常见表现 | 建议处理 / 降级 |
+|------|----------|-----------------|
+| **`aa attach` / debug 流程失败** | 权限错误、进程不可 attach、或官方文档中的 **Permission denied** 类报错 | 确认设备 **开发者调试** 已开启；对照 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md) **§8 FAQ** 与官方指南。 |
+| **签名校验 / debug HAP 不被接受** | 安装成功但调试器无法注入或应用被拒绝调试 | 使用 **DevEco** 按官方流程生成并安装 **debug** 签名 HAP；检查证书/profile 是否与设备匹配。 |
+| **仅 CLI / 无 DevEco 环境** | 难以完成 user 场景下 HAP 签名与 `aa` 全链 | **降级**：先在 **root 镜像** 上按官方 **§7.1** 验证 `lldb-server` + TCP；user 场景以 **DevEco 一键调试** 为参照实现集成。 |
+| **策略结论（插件）** | — | **Qt Creator 集成**阶段：对 **user + HAP** 失败时，Issues/日志中应引导用户查阅 **DevEco 签名与 debug HAP**；不暗示替换未签名的 `lldb-server`（见 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md) §3）。 |
+
 ---
 
 ## 3. 部署管线（hdc）

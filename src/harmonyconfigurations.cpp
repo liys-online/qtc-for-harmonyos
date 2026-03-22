@@ -22,8 +22,12 @@
 #include "harmonyqtversion.h"
 #include "harmonydevice.h"
 #include "harmonylogcategories.h"
+#include "ohostr.h"
 #include <QDir>
 #include <QJsonDocument>
+#include <QVersionNumber>
+
+#include <algorithm>
 #include <QSet>
 #include <QStandardPaths>
 #include <utils/environment.h>
@@ -854,6 +858,126 @@ FilePath javaLocation()
 
     if (!stored.isEmpty())
         return devecoMacBundleContentsOrSame(stored) / "jbr";
+    return {};
+}
+
+FilePath previewDevecoBundledSdkDefaultRoot(const FilePath &devecoStudioPathCandidate)
+{
+    if (devecoStudioPathCandidate.isEmpty())
+        return {};
+    const FilePath sdkDefault = devecoMacBundleContentsOrSame(devecoStudioPathCandidate.cleanPath()) / "sdk"
+                                / "default";
+    if (!sdkDefault.isReadableDir())
+        return {};
+    return sdkDefault;
+}
+
+FilePath devecoBundledSdkDefaultRoot()
+{
+    return previewDevecoBundledSdkDefaultRoot(devecoStudioLocation());
+}
+
+namespace {
+FilePath hostLldbExecutableForSdkDefault(const FilePath &sdkDefault)
+{
+    if (sdkDefault.isEmpty())
+        return {};
+    const FilePath lldb = (sdkDefault / "openharmony/native/llvm/bin/lldb").withExecutableSuffix();
+    return lldb.isExecutableFile() ? lldb : FilePath{};
+}
+
+FilePath lldbServerExecutableForSdkDefault(const FilePath &sdkDefault, const QString &ohosTriple)
+{
+    if (sdkDefault.isEmpty() || ohosTriple.isEmpty())
+        return {};
+    const FilePath server
+        = (sdkDefault / "hms/native/lldb" / ohosTriple / "lldb-server").withExecutableSuffix();
+    return server.isExecutableFile() ? server : FilePath{};
+}
+
+FilePath staticLldbUnderClangDir(const FilePath &clangVerDir, const QString &ohosTriple)
+{
+    const FilePath lldb = (clangVerDir / "bin" / ohosTriple / "lldb").withExecutableSuffix();
+    return lldb.isExecutableFile() ? lldb : FilePath{};
+}
+
+FilePath staticLldbExecutableForSdkDefault(const FilePath &sdkDefault, const QString &ohosTriple)
+{
+    if (sdkDefault.isEmpty() || ohosTriple.isEmpty())
+        return {};
+    const FilePath clangRoot = sdkDefault / "openharmony/native/llvm/lib/clang";
+    if (!clangRoot.isReadableDir())
+        return {};
+
+    // 文档路径：.../lib/clang/current/bin/<triple>/lldb
+    if (FilePath found = staticLldbUnderClangDir(clangRoot / "current", ohosTriple); !found.isEmpty())
+        return found;
+
+    // 部分 macOS / 新版 SDK 仅有版本号目录（如 15.0.4），无 current 或 current 未带静态 lldb
+    const QDir clangDir(clangRoot.toUserOutput());
+    QStringList names = clangDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    std::sort(names.begin(), names.end(), [](const QString &a, const QString &b) {
+        const QVersionNumber va = QVersionNumber::fromString(a);
+        const QVersionNumber vb = QVersionNumber::fromString(b);
+        if (!va.isNull() || !vb.isNull())
+            return va > vb;
+        return a > b;
+    });
+    for (const QString &name : std::as_const(names)) {
+        if (name == QLatin1String("current"))
+            continue;
+        if (FilePath found = staticLldbUnderClangDir(clangRoot.pathAppended(name), ohosTriple);
+            !found.isEmpty())
+            return found;
+    }
+    return {};
+}
+} // namespace
+
+FilePath hostLldbExecutable()
+{
+    return hostLldbExecutableForSdkDefault(devecoBundledSdkDefaultRoot());
+}
+
+FilePath lldbServerExecutable(const QString &ohosTriple)
+{
+    return lldbServerExecutableForSdkDefault(devecoBundledSdkDefaultRoot(), ohosTriple);
+}
+
+FilePath staticLldbExecutable(const QString &ohosTriple)
+{
+    return staticLldbExecutableForSdkDefault(devecoBundledSdkDefaultRoot(), ohosTriple);
+}
+
+FilePath hostLldbExecutableForSdkDefaultRoot(const FilePath &sdkDefaultRoot)
+{
+    return hostLldbExecutableForSdkDefault(sdkDefaultRoot);
+}
+
+FilePath lldbServerExecutableForSdkDefaultRoot(const FilePath &sdkDefaultRoot, const QString &ohosTriple)
+{
+    return lldbServerExecutableForSdkDefault(sdkDefaultRoot, ohosTriple);
+}
+
+FilePath staticLldbExecutableForSdkDefaultRoot(const FilePath &sdkDefaultRoot, const QString &ohosTriple)
+{
+    return staticLldbExecutableForSdkDefault(sdkDefaultRoot, ohosTriple);
+}
+
+QString ohosLldbTripleForAbi(const QString &abiName)
+{
+    const QString a = abiName.trimmed().toLower();
+    if (a.isEmpty())
+        return {};
+    if (a == QString::fromLatin1(Constants::HARMONY_ABI_ARM64_V8A) || a == QLatin1String("arm64")
+        || a == QLatin1String("aarch64"))
+        return QString::fromLatin1(Constants::OHOS_LLDB_TRIPLE_AARCH64);
+    if (a == QString::fromLatin1(Constants::HARMONY_ABI_ARMEABI_V7A) || a == QLatin1String("armeabi")
+        || a == QLatin1String("armv7") || a == QLatin1String("armv7-a"))
+        return QString::fromLatin1(Constants::OHOS_LLDB_TRIPLE_ARM);
+    if (a == QString::fromLatin1(Constants::HARMONY_ABI_X86_64) || a == QLatin1String("x86-64"))
+        return QString::fromLatin1(Constants::OHOS_LLDB_TRIPLE_X86_64);
+    // x86 在 OH 文档中 lldb-server 常为 x86_64；不单独映射 i686
     return {};
 }
 

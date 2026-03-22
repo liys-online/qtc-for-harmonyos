@@ -22,7 +22,7 @@
 |------|------|
 | [**ARCHITECTURE.md**](ARCHITECTURE.md) | **架构与设计**：目标、原则、分层、扩展点、数据流、已知限制 |
 | [**MODULES.md**](MODULES.md) | **源码模块**：主要文件职责与 `lib/` 说明 |
-| [**OPERATIONS.md**](OPERATIONS.md) | **构建 / 部署 / 运行**：外部依赖与主流程 |
+| [**OPERATIONS.md**](OPERATIONS.md) | **构建 / 部署 / 运行**：外部依赖与主流程；**§2.4–2.5** Native 调试符号、debug HAP 与 user/签名风险 |
 | [**ANDROID-PARITY.md**](ANDROID-PARITY.md) | **与 Android 插件模块映射**（概要） |
 | [**COMPARISON-PROGRESS.md**](COMPARISON-PROGRESS.md) | **功能对标矩阵与进度**（✅ 🔄 ⬜ ➖） |
 | [**PRIORITY-PLAN.md**](PRIORITY-PLAN.md) | **优先级任务计划表**（P0→P3，含状态与风险列） |
@@ -50,6 +50,7 @@
 | 2025-03-20 | 根据当前实现更新 [PRIORITY-PLAN.md](PRIORITY-PLAN.md)（P0-10、§7 近期落地、§4 下一阶段建议）、[COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md)、[OPERATIONS.md](OPERATIONS.md) |
 | 2026-03-20 | 新增 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md)；后同步官方《LLDB 高性能调试器》全文结构、路径表、root/user 远程步骤与 FAQ（仍以 [官网](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/debug-lldb) 为准） |
 | 2026-03-20 | 新增 [DEBUG-TASKS.md](DEBUG-TASKS.md)（P2-01 / P2-07 分阶段任务清单） |
+| 2026-03-20 | [OPERATIONS.md](OPERATIONS.md) 增 §2.4–2.5（Native 调试构建约定、user/签名风险）；[DEBUG-TASKS.md](DEBUG-TASKS.md) 阶段 0.3–0.4 完成 |
 
 ---
 

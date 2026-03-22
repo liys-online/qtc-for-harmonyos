@@ -181,6 +181,39 @@ namespace Ohos::Internal {
         Utils::FilePath nodeLocation();
         Utils::FilePath ohpmJsLocation();
         Utils::FilePath javaLocation();
+
+        /**
+         * 根据任意候选 DevEco 根路径预览 \c sdk/default （不写入配置）。
+         * 用于设置页在用户选择路径时显示 LLDB 诊断；与 \c devecoBundledSdkDefaultRoot() 逻辑一致。
+         */
+        Utils::FilePath previewDevecoBundledSdkDefaultRoot(const Utils::FilePath &devecoStudioPathCandidate);
+        /**
+         * DevEco 安装目录下内嵌的 \c sdk/default 根（存在且可读时返回）。
+         * 对应官方 LLDB 文档中的 \c <DevEco_Studio_Home>/sdk/default 。
+         */
+        Utils::FilePath devecoBundledSdkDefaultRoot();
+        /** 主机 LLDB：\c openharmony/native/llvm/bin/lldb （与 SDK 配套）。 */
+        Utils::FilePath hostLldbExecutable();
+        /**
+         * 设备侧 lldb-server：\c hms/native/lldb/<triple>/lldb-server 。
+         * \a ohosTriple 如 \c aarch64-linux-ohos 、\c x86_64-linux-ohos 。
+         */
+        Utils::FilePath lldbServerExecutable(const QString &ohosTriple);
+        /** 设备本地调试用静态化 lldb（表 1）：\c .../clang/current/bin/<triple>/lldb 。 */
+        Utils::        FilePath staticLldbExecutable(const QString &ohosTriple);
+        /**
+         * 给定已解析的 \c sdk/default 根，解析 LLDB 组件（供设置页校验，与 \c previewDevecoBundledSdkDefaultRoot 联用）。
+         */
+        Utils::FilePath hostLldbExecutableForSdkDefaultRoot(const Utils::FilePath &sdkDefaultRoot);
+        Utils::FilePath lldbServerExecutableForSdkDefaultRoot(const Utils::FilePath &sdkDefaultRoot,
+                                                        const QString &ohosTriple);
+        Utils::FilePath staticLldbExecutableForSdkDefaultRoot(const Utils::FilePath &sdkDefaultRoot,
+                                                       const QString &ohosTriple);
+        /**
+         * 将 Kit/设备常用 ABI 名（如 \c arm64-v8a ）映射为 lldb 三元组；无法识别时返回空串。
+         */
+        QString ohosLldbTripleForAbi(const QString &abiName);
+
         /**
          * @brief getQmakeList
          * @return

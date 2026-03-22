@@ -60,6 +60,50 @@ QStringList applicationAbis(const ProjectExplorer::Kit *k);
 
 QStringList hdcSelector(const QString &serialNumber);
 
+/**
+ * @name Native 调试设备壳环境探测（DEBUG-TASKS 0.2）
+ *
+ * 通过 `hdc shell id` / `getenforce` 粗判 **root vs user**、**SELinux 状态**，供后续在官方 §7.1（root + TCP）
+ * 与 §7.2（user + HAP + abstract）之间选配方。判定规则与 `HARMONY-LLDB-DEBUG.md` §5（官方矩阵）一致。
+ * @{
+ */
+enum class HarmonyShellUidClass {
+    Unknown,
+    /** `uid=0`（常见 `uid=0(root)`） */
+    Root,
+    /** 非 0 uid，多为 user / shell 账户 */
+    NonRoot,
+};
+
+enum class HarmonySelinuxState {
+    Unknown,
+    Enforcing,
+    Permissive,
+    Disabled,
+};
+
+enum class HarmonyNativeDebugRecipeKind {
+    Unknown,
+    /** 更适合官方 §7.1：root shell 下推送 lldb-server、TCP 监听（仍可能需 `setenforce 0`） */
+    FavorRootTcpListening,
+    /** 更适合官方 §7.2：非 root 时常需 debug HAP + `aa` + abstract socket */
+    FavorUserHapAbstractSocket,
+};
+
+struct HarmonyNativeDebugShellProbe {
+    HarmonyShellUidClass uidClass = HarmonyShellUidClass::Unknown;
+    HarmonySelinuxState selinux = HarmonySelinuxState::Unknown;
+    QString idOutput;
+    QString getenforceOutput;
+    bool hdcMissing = false;
+    bool idCommandOk = false;
+    bool getenforceCommandOk = false;
+};
+
+HarmonyNativeDebugShellProbe probeNativeDebugShellEnvironment(const QString &deviceSerial);
+HarmonyNativeDebugRecipeKind nativeDebugRecipeKind(const HarmonyNativeDebugShellProbe &probe);
+/** @} */
+
 }
 
 #endif // HARMONYUTILS_H

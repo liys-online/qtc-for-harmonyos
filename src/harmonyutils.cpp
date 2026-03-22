@@ -15,6 +15,8 @@
 #include <qtsupport/qtkitaspect.h>
 #include <utils/qtcprocess.h>
 #include <QDir>
+#include <QRegularExpression>
+#include <chrono>
 #include <QDirIterator>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -491,6 +493,94 @@ FilePath findBuiltHapPackage(const FilePath &ohProRoot, QString *diagnosticOut)
         *diagnosticOut = lines.join(QLatin1Char('\n'));
 
     return found;
+}
+
+static QString runHdcShellCommand(const QString &deviceSerial, const QString &shellOneLiner,
+                                  bool *ok = nullptr)
+{
+    const FilePath hdc = HarmonyConfig::hdcToolPath();
+    if (!hdc.isExecutableFile()) {
+        if (ok)
+            *ok = false;
+        return {};
+    }
+    QStringList args;
+    if (!deviceSerial.trimmed().isEmpty())
+        args.append(hdcSelector(deviceSerial));
+    args << QStringLiteral("shell") << shellOneLiner;
+
+    Process process;
+    process.setCommand(CommandLine{hdc, args});
+    process.setWorkingDirectory(hdc.parentDir());
+    process.runBlocking(std::chrono::seconds(30));
+    const bool success = process.result() == ProcessResult::FinishedWithSuccess;
+    if (ok)
+        *ok = success;
+    return process.allOutput();
+}
+
+static HarmonyShellUidClass parseIdOutput(const QString &raw)
+{
+    static const QRegularExpression re(QStringLiteral(R"(\buid=(\d+))"));
+    const QRegularExpressionMatch m = re.match(raw);
+    if (!m.hasMatch())
+        return HarmonyShellUidClass::Unknown;
+    bool convOk = false;
+    const qulonglong uid = m.captured(1).toULongLong(&convOk);
+    if (!convOk)
+        return HarmonyShellUidClass::Unknown;
+    return uid == 0 ? HarmonyShellUidClass::Root : HarmonyShellUidClass::NonRoot;
+}
+
+static HarmonySelinuxState parseGetenforceOutput(const QString &raw)
+{
+    const QString t = raw.trimmed().toLower();
+    if (t.isEmpty())
+        return HarmonySelinuxState::Unknown;
+    if (t == QLatin1String("enforcing"))
+        return HarmonySelinuxState::Enforcing;
+    if (t == QLatin1String("permissive"))
+        return HarmonySelinuxState::Permissive;
+    if (t == QLatin1String("disabled"))
+        return HarmonySelinuxState::Disabled;
+    return HarmonySelinuxState::Unknown;
+}
+
+HarmonyNativeDebugShellProbe probeNativeDebugShellEnvironment(const QString &deviceSerial)
+{
+    HarmonyNativeDebugShellProbe out;
+    const FilePath hdc = HarmonyConfig::hdcToolPath();
+    if (!hdc.isExecutableFile()) {
+        out.hdcMissing = true;
+        qCDebug(harmonyDeviceLog) << "probeNativeDebugShellEnvironment: hdc not executable";
+        return out;
+    }
+
+    bool idOk = false;
+    out.idOutput = runHdcShellCommand(deviceSerial, QStringLiteral("id"), &idOk);
+    out.idCommandOk = idOk;
+    out.uidClass = parseIdOutput(out.idOutput);
+    if (!idOk)
+        qCDebug(harmonyDeviceLog) << "probeNativeDebugShellEnvironment: id failed" << out.idOutput;
+
+    bool geOk = false;
+    out.getenforceOutput = runHdcShellCommand(deviceSerial, QStringLiteral("getenforce"), &geOk);
+    out.getenforceCommandOk = geOk;
+    out.selinux = parseGetenforceOutput(out.getenforceOutput);
+    if (!geOk)
+        qCDebug(harmonyDeviceLog) << "probeNativeDebugShellEnvironment: getenforce failed"
+                                  << out.getenforceOutput;
+
+    return out;
+}
+
+HarmonyNativeDebugRecipeKind nativeDebugRecipeKind(const HarmonyNativeDebugShellProbe &probe)
+{
+    if (probe.uidClass == HarmonyShellUidClass::Unknown)
+        return HarmonyNativeDebugRecipeKind::Unknown;
+    if (probe.uidClass == HarmonyShellUidClass::NonRoot)
+        return HarmonyNativeDebugRecipeKind::FavorUserHapAbstractSocket;
+    return HarmonyNativeDebugRecipeKind::FavorRootTcpListening;
 }
 
 }

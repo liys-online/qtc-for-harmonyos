@@ -32,10 +32,10 @@
 
 ## 2. 阶段 0 — 前置与探测
 
-- [ ] **0.1** 在 `HarmonyConfig`（或独立 `HarmonyDebugPaths`）中**解析并缓存**：主机 `lldb`、各架构 `lldb-server` 的 `FilePath`（对齐官方 `sdk/default/openharmony/.../llvm/bin` 与 `sdk/default/hms/native/lldb/...`）。  
-- [ ] **0.2** 定义**设备探测**辅助：`hdc shell id`、`getenforce` 结果枚举（root/user、SELinux），供后续选择 **§7.1 vs §7.2** 配方。  
-- [ ] **0.3** 与 **Qt for OH** 约定：确认 **`-g`、strip、debug HAP** 的推荐构建方式，写入 [OPERATIONS.md](OPERATIONS.md) 或本文附录。  
-- [ ] **0.4** 登记**风险**：user 镜像下 `aa attach` / 签名校验失败时的降级策略（仅文档引导 DevEco / 仅支持 root 调试等）。
+- [x] **0.1** 在 `HarmonyConfig` 中解析主机 `lldb`、各架构 `lldb-server` / 静态化 `lldb` 的 `FilePath`（**依赖已配置的 DevEco 路径** 下 `sdk/default/...`，见 `HarmonyConfig::devecoBundledSdkDefaultRoot()`、`hostLldbExecutable()`、`lldbServerExecutable()`、`staticLldbExecutable()`、`ohosLldbTripleForAbi()`；常量 `OHOS_LLDB_TRIPLE_*` 见 `ohosconstants.h`）。**可选后续**：在仅安装 OpenHarmony SDK（无 DevEco）时增加 `OHOS_SDK_HOME` 等同布局回退。  
+- [x] **0.2** 定义**设备探测**辅助：`hdc shell id`、`getenforce` 结果枚举（root/user、SELinux），供后续选择 **§7.1 vs §7.2** 配方。实现：`harmonyutils.h` — `probeNativeDebugShellEnvironment()`、`nativeDebugRecipeKind()`。  
+- [x] **0.3** 与 **Qt for OH** 约定：**`-g`/调试信息、strip、debug HAP** 的推荐构建方式已写入 [OPERATIONS.md](OPERATIONS.md) **§2.4**。  
+- [x] **0.4** 登记**风险**：user 镜像下 `aa attach` / 签名校验失败等降级策略已写入 [OPERATIONS.md](OPERATIONS.md) **§2.5**。
 
 ---
 
@@ -111,6 +111,8 @@
 | 任务块 | 预期新增/修改文件（建议） |
 |--------|---------------------------|
 | 0.1 路径 | `harmonyconfigurations.*` 或 `harmonydebugpaths.*` |
+| 0.2 设备壳探测 | `harmonyutils.*`（`HarmonyNativeDebugShellProbe`） |
+| 0.3 / 0.4 构建与风险 | [OPERATIONS.md](OPERATIONS.md) §2.4、§2.5 |
 | 2.x fport | `harmonyutils.*` 或 `harmonyhdcforward.*` |
 | 3.x Factory | `harmonydebugsupport.cpp/.h`、`ohos.cpp`、`src/CMakeLists.txt` |
 | 4.x 参数 | `harmonydebugsupport.cpp`、`harmonyrunconfiguration.*`、`harmonyutils.*` |
@@ -122,3 +124,6 @@
 | 日期 | 说明 |
 |------|------|
 | 2026-03-20 | 初版：分阶段任务清单，对齐 P2-01 / P2-07 与 HARMONY-LLDB-DEBUG。 |
+| 2026-03-20 | **0.1 代码落地**：`harmonyconfigurations.*` + `ohosconstants.h` 增加 LLDB 路径与 ABI→triple 映射。 |
+| 2026-03-20 | **0.2**：`harmonyutils.*` 增加 `probeNativeDebugShellEnvironment` / `nativeDebugRecipeKind`（`id` + `getenforce`）。 |
+| 2026-03-20 | **0.3 / 0.4**：`OPERATIONS.md` 增 §2.4（符号、strip、debug HAP）与 §2.5（user/签名风险与降级）。 |

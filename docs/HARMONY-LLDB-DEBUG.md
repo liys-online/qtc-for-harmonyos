@@ -29,7 +29,9 @@
 
 ## 3. 工具获取与目录结构
 
-通过安装 **HUAWEI DevEco Studio** 及 SDK 组件可获取完整 LLDB 套件。以下为官方给出的 **Windows 路径结构示意**（其他 OS 目录层级相同，可执行文件名可能为 `lldb` 无 `.exe`）：
+通过安装 **HUAWEI DevEco Studio** 及 SDK 组件可获取完整 LLDB 套件。Harmony 插件内可在已配置 DevEco 路径时，用 **`HarmonyConfig::hostLldbExecutable()`**、**`lldbServerExecutable(triple)`**、**`staticLldbExecutable(triple)`** 解析下列布局（`triple` 如 `aarch64-linux-ohos`，常量见 `ohosconstants.h` 的 `OHOS_LLDB_TRIPLE_*`）。
+
+以下为官方给出的 **Windows 路径结构示意**（其他 OS 目录层级相同，可执行文件名可能为 `lldb` 无 `.exe`）：
 
 ```text
 <DevEco_Studio_Home>/
@@ -71,6 +73,8 @@
 |---------------------------|------|
 | `...\openharmony\native\llvm\lib\clang\current\bin\aarch64-linux-ohos\lldb` | **aarch64-linux-ohos** |
 | `...\openharmony\native\llvm\lib\clang\current\bin\arm-linux-ohos\lldb` | **arm-linux-ohos** |
+
+> **说明**：部分安装包在 `lib/clang/` 下只有**版本号目录**（如 `15.0.4`）而无 `current` 或 `current` 内未带静态 `lldb`。插件侧 `HarmonyConfig::staticLldbExecutable` 会依次尝试 `current` 与各版本子目录（优先较新版本）。
 
 ### 3.3 lldb-server（表 2 — 远程 / 推送用）
 
@@ -184,6 +188,11 @@
 - **SELinux Enforcing**：`hdc shell getenforce` → `Enforcing`。  
 - **SELinux Permissive**：→ `Permissive`。
 
+**插件侧（DEBUG-TASKS 0.2）**
+
+- `Ohos::Internal::probeNativeDebugShellEnvironment(deviceSerial)`：对设备执行 `hdc shell id` 与 `hdc shell getenforce`（`deviceSerial` 为空时使用 hdc 默认连接设备），填充 `HarmonyNativeDebugShellProbe`（含原始输出与 `idCommandOk` / `getenforceCommandOk`）。  
+- `nativeDebugRecipeKind(probe)`：**非 root uid** → `FavorUserHapAbstractSocket`；**root** → `FavorRootTcpListening`（SELinux 仍为 **Enforcing** 时，官方 §7.1 常需 `setenforce 0`，见上表）。
+
 **远程调试（主要方式）**
 
 - **一键调试**：使用 **DevEco Studio** 的 Debug（自动处理推送与连接）。  
@@ -192,6 +201,10 @@
 **本地调试（受限）**
 
 - 设备需 **root**；将**对应架构**的静态化 `lldb` 或 `lldb-server` 用 `hdc file send` 推到设备（见官方「环境准备」）。
+
+**构建侧（Qt / hvigor，团队约定）**
+
+- **`-g` / 调试信息、strip、debug HAP** 与 **user 镜像风险降级** 的运维说明见 [OPERATIONS.md](OPERATIONS.md) **§2.4、§2.5**（DEBUG-TASKS 0.3 / 0.4）。
 
 ---
 
@@ -322,7 +335,7 @@ Android 参考：`src/plugins/android/androiddebugsupport.cpp`（`DebuggerRunPar
 **实现落点（计划）**
 
 - 新增 **`HarmonyDebugWorkerFactory`**，依赖 **Debugger** 插件。  
-- 区分 **root + TCP** 与 **user + HAP + abstract** 两条配方（或自动探测 `id` / `getenforce`）。  
+- 区分 **root + TCP** 与 **user + HAP + abstract** 两条配方；壳环境可用 **`probeNativeDebugShellEnvironment`** / **`nativeDebugRecipeKind`**（§5）辅助决策。  
 - 失败信息输出到 **Issues / 应用输出**，便于对照官方 FAQ。
 
 ---
@@ -352,3 +365,5 @@ Android 参考：`src/plugins/android/androiddebugsupport.cpp`（`DebuggerRunPar
 |------|------|
 | 2026-03-20 | 初版框架 + 官方入口。 |
 | 2026-03-20 | **全文对齐**官方《LLDB 高性能调试器》结构与命令；修正合并的 `hdc file send`、设备路径前导 `/` 等笔误；增 §9 Qt Creator 映射。 |
+| 2026-03-20 | §5 补充插件 API：`probeNativeDebugShellEnvironment` / `nativeDebugRecipeKind`（DEBUG-TASKS 0.2）。 |
+| 2026-03-20 | §5 末链至 [OPERATIONS.md](OPERATIONS.md) §2.4–2.5（构建约定与 user/签名风险）。 |
