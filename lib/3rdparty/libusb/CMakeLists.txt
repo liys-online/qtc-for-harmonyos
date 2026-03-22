@@ -58,5 +58,7 @@ if(APPLE)
     ${OBJC_LIBRARY}
   )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # linux_netlink.c: SCM_CREDENTIALS / struct ucred（glibc 需在含头文件前启用 GNU 扩展）
+  target_compile_definitions(libusb PRIVATE _GNU_SOURCE)
   target_link_libraries(libusb PRIVATE pthread)
 endif()
