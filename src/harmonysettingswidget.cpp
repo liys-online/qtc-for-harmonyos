@@ -288,7 +288,6 @@ HarmonySettingsWidget::HarmonySettingsWidget()
             HarmonyConfig::setdefaultSdk({});
         HarmonyConfig::removeSdkList(m_sdkListWidget->currentItem()->text());
         m_sdkListWidget->takeItem(m_sdkListWidget->currentRow());
-        Utils::markSettingsDirty();
     });
     connect(m_makeDefaultSdkButton, &QPushButton::clicked, this, [this] {
         const FilePath defaultSdk = isDefaultSdkSelected()
@@ -296,7 +295,6 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         : FilePath::fromUserInput(m_sdkListWidget->currentItem()->text());
         HarmonyConfig::setdefaultSdk(defaultSdk);
         setAllOk();
-        Utils::markSettingsDirty();
     });
 
     connect(m_qmakeListWidget, &QListWidget::currentTextChanged,
@@ -310,7 +308,6 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     connect(removeQmakeButton, &QPushButton::clicked, this, [this, removeQmakeButton] {
         HarmonyConfig::removeQmake(m_qmakeListWidget->currentItem()->text());
         m_qmakeListWidget->takeItem(m_qmakeListWidget->currentRow());
-        Utils::markSettingsDirty();
     });
 
     connect(m_makePathChooser, &PathChooser::rawPathChanged, this, &HarmonySettingsWidget::onMakePathChanged);
@@ -325,6 +322,11 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         executeHarmonyQtOhSdkManagerDialog(Core::ICore::dialogParent());
     });
     setOnApply([] { HarmonyConfigurations::applyConfig(); });
+    // 1) IOptionsPageWidget 无 Aspect/dirtyChecker 时 isDirty() 默认 true。
+    // 2) Utils::markSettingsDirty() 会把整个「偏好设置」的 m_isDirty 置 true；切换子页时会弹
+    //    “The previous page contains unsaved changes.”，与 (1) 无关。本页已用 HarmonyConfig 即时写盘，
+    //    validateSdk() 也会在首次显示时跑一遍，故不得调用 markSettingsDirty()。
+    setDirtyChecker([] { return false; });
 
     connect(HarmonyConfigurations::instance(), &HarmonyConfigurations::updated, this, [this] {
         reloadQmakeListFromConfig();
@@ -428,7 +430,6 @@ void HarmonySettingsWidget::checkSdkItem(QString sdkLocation)
             if (HarmonyConfig::defaultSdk().isEmpty()) {
                 HarmonyConfig::setdefaultSdk(FilePath::fromString(sdkLocation));
             }
-            Utils::markSettingsDirty();
         }
         m_harmonySummary->setPointValid(SdkToolsInstalledRow, true);
         setAllOk();
@@ -454,7 +455,6 @@ void HarmonySettingsWidget::checkQmakeItem(QString qmakeLocation)
         HarmonyConfig::addQmake(qmakeLocation);
         if (m_qmakeListWidget->findItems(qmakeLocation, Qt::MatchExactly).size() == 0) {
             m_qmakeListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), qmakeLocation));
-            Utils::markSettingsDirty();
         }
     }
     else
@@ -521,7 +521,6 @@ void HarmonySettingsWidget::onDevecoStudioPathChanged()
                 .arg(hint));
     }
     setAllOk();
-    Utils::markSettingsDirty();
 }
 
 void HarmonySettingsWidget::onMakePathChanged()
@@ -530,7 +529,6 @@ void HarmonySettingsWidget::onMakePathChanged()
         return;
     const FilePath makePath = m_makePathChooser->filePath().cleanPath();
     HarmonyConfig::setMakeLocation(makePath);
-    Utils::markSettingsDirty();
 }
 
 void HarmonySettingsWidget::onOhosSdkRootChanged()
@@ -543,7 +541,6 @@ void HarmonySettingsWidget::onOhosSdkRootChanged()
             false,
             Tr::tr("Set HarmonyOS SDK location for SDK Manager (.temp/ downloads and <API>/ unpack)."));
         setAllOk();
-        Utils::markSettingsDirty();
         return;
     }
     if (!p.exists()) {
@@ -551,7 +548,6 @@ void HarmonySettingsWidget::onOhosSdkRootChanged()
             m_harmonySummary->setPointValid(OhosSdkManagerRootRow, false,
                                             Tr::tr("Cannot create HarmonyOS SDK directory"));
             setAllOk();
-            Utils::markSettingsDirty();
             return;
         }
     }
@@ -560,11 +556,9 @@ void HarmonySettingsWidget::onOhosSdkRootChanged()
         m_harmonySummary->setPointValid(OhosSdkManagerRootRow, true);
         if (HarmonyConfig::registerDownloadedSdksUnder(HarmonyConfig::effectiveOhosSdkRoot()) > 0)
             HarmonyConfigurations::applyConfig();
-        Utils::markSettingsDirty();
     } else {
         m_harmonySummary->setPointValid(OhosSdkManagerRootRow, false,
                                         Tr::tr("HarmonyOS SDK directory is not writable"));
-        Utils::markSettingsDirty();
     }
     setAllOk();
 }
@@ -602,6 +596,7 @@ HarmonySettingsPage::HarmonySettingsPage()
     setId(Constants::HARMONY_SETTINGS_ID);
     setDisplayName(Tr::tr("HarmonyOS"));
     setCategory(ProjectExplorer::Constants::SDK_SETTINGS_CATEGORY);
+    setAutoApply(); // 与 Android 设置页一致；多数选项已即时写入 HarmonyConfig
     setWidgetCreator([] { return new HarmonySettingsWidget; });
 }
 
