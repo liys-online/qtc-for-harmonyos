@@ -46,8 +46,8 @@
 | P0-08 | P0 | 工具链 | 父工具链同步（Windows MinGW） | `syncAutodetectedWithParentToolchains` 使用 `HARMONY_TOOLCHAIN_TYPEID`（原误用 `CLANG_TOOLCHAIN_TYPEID` 导致从不执行）；Unix 仍与上游 Clang 一致不挂 MinGW | P0-07 | `gcctoolchain.cpp` | — | 已完成 |
 | P0-09 | P0 | 配置 | `kitsRestored` 未配置 SDK 引导 | InfoBar：缺 SDK / 缺 Harmony Qt 两种情形 → Harmony 设置；全无则不提示 | 设置页 ID 稳定 | `androidplugin.cpp` | — | 已完成 |
 | P0-10 | P0 | 配置 | `registerQtVersions()` 策略 | `syncToolchainsQtAndKits()` 统一：`applyConfig` / `kitsLoaded`（无 SDK 自增时）/ `qtVersionsChanged` / `addQmake`/`removeQmake` | — | `androidconfigurations.cpp` | — | 已完成 |
-| P1-01 | P1 | 日志 | 全模块 `QLoggingCategory` | config/device/build/deploy/run 分类；环境变量或 Qt 日志规则可开关 | — | 各 `qCDebug` 用法 | — | 部分完成 |
-| P1-02 | P1 | 日志 | 移除调试向 `writeSilently` | 仅保留用户必须感知的 Disrupting/输出面板 | P1-01 | — | — | 待开始 |
+| P1-01 | P1 | 日志 | 全模块 `QLoggingCategory` | config/device/build/deploy/run 分类；环境变量或 Qt 日志规则可开关 | `harmonylogcategories.*`；`usbmonitor` 内 `qtc.harmony.device.usbmonitor` | 各 `qCDebug` 用法 | — | 已完成 |
+| P1-02 | P1 | 日志 | 移除调试向 `writeSilently` | 仅保留用户必须感知的 Disrupting/输出面板 | P1-01 | — | Kit 侧 **OHOS_ARCH** 纠正改为 `writeFlashing` | 已完成 |
 | P1-03 | P1 | 错误 | Deploy/Run 对话框父窗口 | `Core::ICore::dialogParent()` | — | — | — | 已完成 |
 | P1-04 | P1 | 错误 | Deploy 自定义 HAP 按钮 early return | 每条 return 前有 Message/Task | — | `androiddeployqtstep.cpp` | — | 已完成 |
 | P1-05 | P1 | 设备 | `HarmonyDeviceWidget::updateDeviceFromUi` | 可编辑项写回 `IDevice`（若需要） | — | `androiddevice.cpp` | 若无可编辑字段可标为 N/A 已搁置 | 待开始 |
@@ -109,6 +109,7 @@
 | 0.1 | （填写） | 初版：P0–P3 总表 + 状态约定 |
 | 0.2 | 2025-03-20 | P0-10→部分完成；新增 §7 近期落地；§4 标注下一阶段建议（P0-01～03、P1-14） |
 | 0.3 | 2026-03-20 | **P1-14**：`HarmonyHvigorOhpmOutputParser`（hvigor/ohpm/ArkTS 常见行）+ `ohpro`/工程目录 `addSearchDir` |
+| 0.4 | 2026-03-20 | **P1-01 / P1-02**：`harmonylogcategories` 统一分类；`HarmonyConfigurations` 调试输出改 `qCDebug`；OHOS_ARCH 用户提示改 `writeFlashing` |
 
 ---
 
@@ -125,3 +126,4 @@
 | **Java / hvigor** | `javaLocation()`：macOS `jbr/Contents/Home`、`JAVA_HOME`、`/usr/libexec/java_home`、PATH；`HarmonyQtVersion::addToBuildEnvironment` 注入 `JAVA_HOME`；sync/ohpm/assemble 统一 `applyDevecoAndJavaEnv` |
 | **uv_cwd / EPERM** | `prepareOhProDirectory()` + 环境变量 `PWD` / `INIT_CWD`；主进程 cwd 规范化 |
 | **hvigor / ohpm → Issues** | `HarmonyBuildHapStep::setupOutputFormatter` 注册 `HarmonyHvigorOhpmOutputParser`；匹配 `*.ets`/`*.ts` 等 `path:line:col:`、`At file:`、`hvigor ERROR` / `ohpm ERROR` 等（详见源码注释） |
+| **日志分类（P1-01）** | `harmonylogcategories.{h,cpp}`：`qtc.harmony.config|device|build|deploy|run|plugin|toolchain`；`QT_LOGGING_RULES` 可开 `*.debug=true` |

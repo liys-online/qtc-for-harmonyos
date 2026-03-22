@@ -2,11 +2,11 @@
 
 #include "harmonyconfigurations.h"
 #include "harmonydevice.h"
+#include "harmonylogcategories.h"
 #include "ohosconstants.h"
 #include <projectexplorer/devicesupport/devicemanager.h>
 #include <utils/qtcprocess.h>
 #include <usbmonitor/usbmonitor.h>
-#include <QLoggingCategory>
 #include <QRegularExpression>
 #include <QTimer>
 
@@ -14,9 +14,7 @@
 
 using namespace Utils;
 using namespace ProjectExplorer;
-namespace {
-static Q_LOGGING_CATEGORY(harmonyDeviceLog, "qtc.harmony.harmonydevice", QtWarningMsg)
-}
+
 namespace Ohos::Internal {
 static constexpr char ipRegexStr[] = "(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})";
 static const auto ipRegex = QRegularExpression(ipRegexStr + QStringLiteral(":(\\d{1,5})"));

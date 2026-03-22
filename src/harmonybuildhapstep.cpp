@@ -1,5 +1,6 @@
 #include "harmonybuildhapstep.h"
 #include "harmonyhvigoroutputparser.h"
+#include "harmonylogcategories.h"
 #include "harmonyqtversion.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
@@ -19,8 +20,6 @@
 #include <utils/layoutbuilder.h>
 #include <utils/qtcprocess.h>
 #include <utils/outputformatter.h>
-#include <QLoggingCategory>
-
 #include <qtsupport/qtkitaspect.h>
 
 #include <ohprojectecreator/ohprojectecreator.h>
@@ -33,7 +32,6 @@ using ProjectExplorer::BuildSystemTask;
 
 namespace Ohos::Internal {
 namespace {
-static Q_LOGGING_CATEGORY(harmonyBuildHapLog, "qtc.harmony.build.hap", QtWarningMsg)
 
 QString harmonyNodeMissingUserHint()
 {
@@ -102,7 +100,7 @@ public:
         : QWidget{},
         m_step{step}
     {
-        qCDebug(harmonyBuildHapLog) << "HarmonyBuildHapWidget setup";
+        qCDebug(harmonyBuildLog) << "HarmonyBuildHapWidget setup";
         QSizePolicy sizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
         sizePolicy.setHorizontalStretch(0);
         sizePolicy.setVerticalStretch(0);
@@ -299,7 +297,7 @@ const char BuildToolsVersionKey[] = "BuildToolsVersion";
 HarmonyBuildHapStep::HarmonyBuildHapStep(ProjectExplorer::BuildStepList *bc, Utils::Id id)
     : AbstractProcessStep(bc, id)
 {
-    qCDebug(harmonyBuildHapLog) << "HarmonyBuildHapStep setup";
+    qCDebug(harmonyBuildLog) << "HarmonyBuildHapStep setup";
 }
 
 void HarmonyBuildHapStep::fromMap(const Utils::Store &map)
@@ -536,7 +534,7 @@ bool HarmonyBuildHapStep::setupProcess(Utils::Process &process)
     // PWD can be different from getcwd in case of symbolic links (getcwd resolves symlinks).
     // For example Clang uses PWD for paths in debug info, see QTCREATORBUG-23788
     Environment envWithPwd = params->environment();
-    qCDebug(harmonyBuildHapLog) << "Environment PATH prepared";
+    qCDebug(harmonyBuildLog) << "Environment PATH prepared";
     envWithPwd.set(QStringLiteral("PWD"), workingDir.nativePath());
     envWithPwd.set(QStringLiteral("INIT_CWD"), workingDir.nativePath());
     process.setProcessMode(params->processMode());
@@ -635,7 +633,7 @@ bool HarmonyBuildHapStep::init()
             applyDevecoAndJavaEnv(evn);
             applyHvigorWorkingDirectoryEnv(evn, ohProCwd);
             params->setEnvironment(evn);
-            qCDebug(harmonyBuildHapLog) << "Step in directory:"
+            qCDebug(harmonyBuildLog) << "Step in directory:"
                                         << params->workingDirectory().toUserOutput();
             // params->setCommandLine({node, {hvigorwJs.toUserOutput(), "--help"}});
             params->setCommandLine({node, {hvigorwJs.toUserOutput(),
@@ -654,7 +652,7 @@ bool HarmonyBuildHapStep::init()
                 // createOhPro(buildSystem(), ohProPath);
                 emit createTemplates();
             } else {
-                qCDebug(harmonyBuildHapLog) << Tr::tr("OhPro already exists in %1").arg(ohProPath);
+                qCDebug(harmonyBuildLog) << Tr::tr("OhPro already exists in %1").arg(ohProPath);
             }
 
         }

@@ -169,7 +169,7 @@
 
 | # | 项 | 进度 | 备注 |
 |---|-----|------|------|
-| 14.1 | 统一 `QLoggingCategory` 替代调试向 `writeSilently` | 🔄 | 设备/插件/构建已部分完成 |
+| 14.1 | 统一 `QLoggingCategory` 替代调试向 `writeSilently` | ✅ | `harmonylogcategories.*`；Kit 同步走 `qCDebug`；**OHOS_ARCH** 纠正走 `writeFlashing`；usbmonitor 用 `qtc.harmony.device.usbmonitor` |
 | 14.2 | `ohosconstants.h` 巨型未用常量清理 | ⬜ | 可对 `Parameter` 等拆分或删除 |
 | 14.3 | ID 前缀统一（`Qt4ProjectManager.*` → `Harmony.*`） | ⬜ | 需迁移旧设置 |
 | 14.4 | 单元测试 | ⬜ | 对标 Android 若干 `*_test.cpp` |

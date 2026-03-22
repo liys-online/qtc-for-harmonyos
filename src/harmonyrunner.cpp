@@ -2,6 +2,7 @@
 
 #include "harmonyconfigurations.h"
 #include "harmonydevice.h"
+#include "harmonylogcategories.h"
 #include "harmonyutils.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
@@ -200,6 +201,7 @@ public:
 
 void setupHarmonyRunWorker()
 {
+    qCDebug(harmonyRunLog) << "Registering Harmony process run worker factory.";
     static HarmonyProcessRunnerFactory theHarmonyRunWorkerFactory;
 }
 

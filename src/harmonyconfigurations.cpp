@@ -21,6 +21,7 @@
 #include "harmonytoolchain.h"
 #include "harmonyqtversion.h"
 #include "harmonydevice.h"
+#include "harmonylogcategories.h"
 #include <QDir>
 #include <QJsonDocument>
 #include <QSet>
@@ -29,7 +30,7 @@
 #include <utils/hostosinfo.h>
 #include <utils/qtcprocess.h>
 
-#include <coreplugin/messagemanager.h>
+#include <coreplugin/messagemanager.h> // writeFlashing (OHOS_ARCH kit 提示)
 
 #include <ohprojectecreator/ohprojectecreator.h>
 
@@ -137,7 +138,7 @@ static QString getDeviceProperty(const QString &device, const QString &property)
 {
     Process hdcParam;
     const CommandLine command{HarmonyConfig::hdcToolPath(), {"-t", device, "shell", "param", "get", property}};
-    qDebug() << "getDeviceProperty" << command.toUserOutput();
+    qCDebug(harmonyConfigLog) << "getDeviceProperty" << command.toUserOutput();
     hdcParam.setCommand(command);
     hdcParam.runBlocking();
     if (hdcParam.result() == ProcessResult::FinishedWithSuccess)
@@ -491,14 +492,14 @@ QPair<QVersionNumber, QVersionNumber> getVersion(const Utils::FilePath &releaseF
     QString filePath = releaseFile.path();
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qWarning() << "Failed to open file:" << filePath;
+        qCWarning(harmonyConfigLog) << "Failed to open file:" << filePath;
         return versionPair;
     }
     QByteArray rawData = file.readAll();
     file.close();
     QJsonDocument doc = QJsonDocument::fromJson(rawData);
     if (doc.isNull() || !doc.isObject()) {
-        qWarning() << "Invalid JSON data!";
+        qCWarning(harmonyConfigLog) << "Invalid JSON data!";
         return versionPair;
     }
     QJsonObject rootObj = doc.object();
@@ -872,7 +873,7 @@ QPair<int, QVersionNumber> devecoStudioVersion()
     file.close();
     QJsonDocument doc = QJsonDocument::fromJson(rawData);
     if (doc.isNull() || !doc.isObject()) {
-        qWarning() << "Invalid JSON data!";
+        qCWarning(harmonyConfigLog) << "Invalid JSON data!";
         return { -1, QVersionNumber() };
     }
     QJsonObject rootObj = doc.object();
@@ -1089,8 +1090,7 @@ void HarmonyConfigurations::updateAutomaticKitList()
             }),
             ToolchainBundle::HandleMissing::CreateAndRegister),
         [](const ToolchainBundle &b) { return b.isCompletelyValid(); });
-    Core::MessageManager::writeSilently(
-        tr("Found %1 Harmony toolchain bundles").arg(bundles.size()));
+    qCDebug(harmonyConfigLog) << tr("Found %1 Harmony toolchain bundles").arg(bundles.size());
     QList<Kit *> unhandledKits = existingKits;
 
     // 为每个工具链Bundle和Qt版本组合创建Kit
@@ -1100,14 +1100,14 @@ void HarmonyConfigurations::updateAutomaticKitList()
             // 检查工具链的NDK位置是否与Qt版本匹配
             const auto tcApiVersion = bundle.get(&HarmonyToolchain::apiVersion);
             const auto expectedNdkPath = bundle.get(&HarmonyToolchain::ndkLocation);
-            Core::MessageManager::writeSilently(
-                tr("Processing Qt %1 for HarmonyOS %2 with NDK %3")
-                    .arg(qt->displayName(), bundle.targetAbi().toString(), expectedNdkPath.toUserOutput()));
+            qCDebug(harmonyConfigLog)
+                << tr("Processing Qt %1 for HarmonyOS %2 with NDK %3")
+                       .arg(qt->displayName(), bundle.targetAbi().toString(), expectedNdkPath.toUserOutput());
             auto ohQt = static_cast<const HarmonyQtVersion *>(qt);
             if(tcApiVersion.isNull() || ohQt->supportOhVersion() != tcApiVersion) {
-                Core::MessageManager::writeSilently(
-                    tr("Skipping Qt %1 for HarmonyOS %2: unsupported API version %3")
-                        .arg(ohQt->displayName(), ohQt->supportOhVersion().toString(), tcApiVersion.toString()));
+                qCDebug(harmonyConfigLog)
+                    << tr("Skipping Qt %1 for HarmonyOS %2: unsupported API version %3")
+                           .arg(ohQt->displayName(), ohQt->supportOhVersion().toString(), tcApiVersion.toString());
                 continue;
             }
 
@@ -1145,13 +1145,13 @@ void HarmonyConfigurations::updateAutomaticKitList()
                 }();
                 QByteArray ohosArch = normalizeOhosArchForSdkToolchain(rawOhosArch);
                 if (rawOhosArch.isEmpty()) {
-                    Core::MessageManager::writeSilently(
+                    Core::MessageManager::writeFlashing(
                         QObject::tr("Harmony Kit: Could not detect OHOS_ARCH from Qt or toolchain; "
                                     "defaulting CMake variable to %1. If configure still fails, add "
                                     "OHOS_ARCH in Kit CMake configuration or fix Qt mkspecs qdevice.pri.")
                             .arg(QString::fromLatin1(ohosArch)));
                 } else if (rawOhosArch != ohosArch) {
-                    Core::MessageManager::writeSilently(
+                    Core::MessageManager::writeFlashing(
                         QObject::tr("Harmony Kit: OHOS_ARCH value %1 is not valid for OpenHarmony "
                                     "ohos.toolchain.cmake (allowed: arm64-v8a, armeabi-v7a, x86_64). "
                                     "Using %2 instead. Remove conflicting -DOHOS_ARCH from the kit's "
@@ -1230,8 +1230,7 @@ void HarmonyConfigurations::updateAutomaticKitList()
 
 void setupHarmonyConfigurations()
 {
-    Core::MessageManager::writeSilently(
-        QObject::tr("Setting up Harmony configurations..."));
+    qCDebug(harmonyConfigLog) << QObject::tr("Setting up Harmony configurations...");
     static HarmonyConfigurations harmonyConfigurations;
 }
 

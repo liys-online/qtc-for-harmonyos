@@ -32,14 +32,13 @@
 #include "harmonyrunconfiguration.h"
 #include "harmonyrunner.h"
 #include "harmonydeployqtstep.h"
+#include "harmonylogcategories.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
 
 #include <QTranslator>
-#include <QLoggingCategory>
 
 namespace {
-static Q_LOGGING_CATEGORY(harmonyPluginLog, "qtc.harmony.plugin", QtWarningMsg)
 
 const char kSetupHarmonySdkInfoBarId[] = "Harmony.ConfigureSdkSetup";
 const char kSetupHarmonyQtInfoBarId[] = "Harmony.ConfigureQtSetup";

@@ -1,4 +1,5 @@
 #include "harmonytoolchain.h"
+#include "harmonylogcategories.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
 #include "harmonyconfigurations.h"
@@ -7,18 +8,15 @@
 #include <projectexplorer/toolchainmanager.h>
 #include <projectexplorer/toolchainconfigwidget.h>
 #include <projectexplorer/clangparser.h>
-#include <coreplugin/messagemanager.h>
 
 #include <utils/hostosinfo.h>
 #include <utils/qtcprocess.h>
 
-#include <QLoggingCategory>
 #include <QBuffer>
 
 using namespace Utils;
 using namespace ProjectExplorer;
 namespace Ohos::Internal {
-static Q_LOGGING_CATEGORY(harmonyTCLog, "qtc.harmony.toolchainmanagement", QtWarningMsg);
 using ClangTargetsType = QHash<QString, Abi>;
 
 class WarningFlagAdder
@@ -485,9 +483,9 @@ static HeaderPaths builtInHeaderPaths(const Environment &env,
     extraHeaderPathsFunction(paths);
     headerCache->insert({env, arguments}, paths);
 
-    qCDebug(harmonyTCLog) << "Reporting header paths to code model:";
+    qCDebug(harmonyToolchainLog) << "Reporting header paths to code model:";
     for (const HeaderPath &hp : std::as_const(paths)) {
-        qCDebug(harmonyTCLog) << compilerCommand.toUserOutput()
+        qCDebug(harmonyToolchainLog) << compilerCommand.toUserOutput()
         << (languageId == ProjectExplorer::Constants::CXX_LANGUAGE_ID ? ": C++ [" : ": C [")
         << arguments.join(", ") << "]" << hp.path;
     }
@@ -567,10 +565,10 @@ Toolchain::MacroInspectionRunner HarmonyToolchain::createMacroInspectionRunner()
         const auto report = MacroInspectionReport{macros, languageVersion(lang, macros)};
         macroCache->insert(arguments, report);
 
-        qCDebug(harmonyTCLog) << "MacroInspectionReport for code model:";
-        qCDebug(harmonyTCLog) << "Language version:" << static_cast<int>(report.languageVersion);
+        qCDebug(harmonyToolchainLog) << "MacroInspectionReport for code model:";
+        qCDebug(harmonyToolchainLog) << "Language version:" << static_cast<int>(report.languageVersion);
         for (const Macro &m : macros) {
-            qCDebug(harmonyTCLog) << compilerCommand().toUserOutput()
+            qCDebug(harmonyToolchainLog) << compilerCommand().toUserOutput()
             << (lang == ProjectExplorer::Constants::CXX_LANGUAGE_ID ? ": C++ [" : ": C [")
             << arguments.join(", ") << "]"
             << QString::fromUtf8(m.toByteArray());
@@ -931,7 +929,7 @@ ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown,
         const FilePath clangPath = HarmonyConfig::clangPathFromNdk(ndkLocation);
         if (!clangPath.exists())
         {
-            qCDebug(harmonyTCLog) << "Clang toolchains detection fails. Can not find Clang"
+            qCDebug(harmonyToolchainLog) << "Clang toolchains detection fails. Can not find Clang"
                                   << clangPath;
         }
         for (const Id &lang : LanguageIds)
@@ -942,7 +940,7 @@ ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown,
 
             if (!compilerCommand.exists())
             {
-                qCDebug(harmonyTCLog)
+                qCDebug(harmonyToolchainLog)
                 << "Skipping Clang toolchain. Can not find compiler" << compilerCommand;
                 continue;
             }
@@ -970,7 +968,7 @@ ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown,
                 }
                 else
                 {
-                    qCDebug(harmonyTCLog) << "New Clang toolchain found" << abi.toString() << lang
+                    qCDebug(harmonyToolchainLog) << "New Clang toolchain found" << abi.toString() << lang
                                           << "for NDK" << ndkLocation;
                     auto atc = new HarmonyToolchain();
                     atc->setNdkLocation(ndkLocation);

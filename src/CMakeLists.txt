@@ -102,6 +102,7 @@ add_qtc_plugin(Harmony
     harmonydevicemanager.cpp
     harmonydevicemanager.h
     harmonyutils.h harmonyutils.cpp
+    harmonylogcategories.h harmonylogcategories.cpp
     harmonysdkdownloader.h harmonysdkdownloader.cpp
     harmonysdkmanagerdialog.h harmonysdkmanagerdialog.cpp
     harmonyqttreleasesdownloader.h harmonyqttreleasesdownloader.cpp

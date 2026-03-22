@@ -1,6 +1,7 @@
 #include "harmonydeployqtstep.h"
 #include "harmonyconfigurations.h"
 #include "harmonydeviceinfo.h"
+#include "harmonylogcategories.h"
 #include "harmonydevice.h"
 #include "harmonyutils.h"
 #include "ohosconstants.h"
@@ -32,7 +33,6 @@
 #include <utils/layoutbuilder.h>
 #include <utils/qtcassert.h>
 #include <utils/qtcprocess.h>
-#include <QLoggingCategory>
 #include <QMessageBox>
 #include <QPushButton>
 using namespace ProjectExplorer;
@@ -40,8 +40,6 @@ using namespace Utils;
 using namespace QtTaskTree;
 using namespace std::chrono_literals;
 namespace Ohos::Internal {
-
-static Q_LOGGING_CATEGORY(deployStepLog, "qtc.harmony.build.harmonydeployqtstep", QtWarningMsg)
 
 const char UninstallPreviousPackageKey[] = "UninstallPreviousPackage";
 
@@ -147,7 +145,7 @@ bool HarmonyDeployQtStep::init()
                return false);
 
     const int minTargetApi = minimumSDK(buildConfiguration());
-    qCDebug(deployStepLog) << "Target architecture:" << harmonyABIs
+    qCDebug(harmonyDeployLog) << "Target architecture:" << harmonyABIs
                            << "Min target API" << minTargetApi;
 
     const BuildSystem *bs = buildSystem();
@@ -207,7 +205,7 @@ bool HarmonyDeployQtStep::init()
 
     // m_avdName = info.avdName;
     m_serialNumber = info.serialNumber.trimmed();
-    qCDebug(deployStepLog) << "Selected device info:" << info;
+    qCDebug(harmonyDeployLog) << "Selected device info:" << info;
 
     if (m_serialNumber.isEmpty()) {
         reportWarningOrError(
@@ -258,7 +256,7 @@ bool HarmonyDeployQtStep::init()
     QString hapDiagnostic;
     m_hapPath = findBuiltHapPackage(ohbuildDirectory, &hapDiagnostic);
     if (!m_hapPath.isEmpty() && m_hapPath.isReadableFile())
-        qCDebug(deployStepLog).noquote() << "Resolved HAP for deploy:" << m_hapPath.toUserOutput();
+        qCDebug(harmonyDeployLog).noquote() << "Resolved HAP for deploy:" << m_hapPath.toUserOutput();
     if (m_hapPath.isEmpty() || !m_hapPath.isReadableFile()) {
         reportWarningOrError(
             Tr::tr("Cannot find a readable HAP package under \"%1\".\n"
@@ -311,7 +309,7 @@ Group HarmonyDeployQtStep::deployRecipe()
             return SetupResult::StopWithError;
         }
         const QString msg = Tr::tr("Uninstalling the previous package \"%1\".").arg(packageName);
-        qCDebug(deployStepLog) << msg;
+        qCDebug(harmonyDeployLog) << msg;
         emit addOutput(msg, OutputFormat::NormalMessage);
         const CommandLine cmd{m_hdcPath, {hdcSelector(m_serialNumber), "uninstall", packageName}};
         emit addOutput(Tr::tr("Package deploy: Running command \"%1\".").arg(cmd.toUserOutput()),
@@ -535,7 +533,7 @@ QWidget *HarmonyDeployQtStep::createConfigWidget()
             args << QLatin1String("install") << packagePath.toUserOutput();
             const CommandLine cmd(hdcPath, args);
             process.setCommand(cmd);
-            qCDebug(deployStepLog).noquote() << "Manual HAP install:" << cmd.toUserOutput();
+            qCDebug(harmonyDeployLog).noquote() << "Manual HAP install:" << cmd.toUserOutput();
         };
         const auto onHdcDone = [dlgParent](const Process &process, DoneWith result) {
             if (result == DoneWith::Success) {
@@ -597,7 +595,7 @@ void HarmonyDeployQtStep::stdError(const QString &line)
 
 void HarmonyDeployQtStep::reportWarningOrError(const QString &message, Task::TaskType type)
 {
-    qCDebug(deployStepLog).noquote() << message;
+    qCDebug(harmonyDeployLog).noquote() << message;
     emit addOutput(message, OutputFormat::ErrorMessage);
     TaskHub::addTask(DeploymentTask(type, message));
 }

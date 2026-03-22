@@ -13,6 +13,7 @@
 | `ohosconstants.h` | 插件 ID、设置键、ABI 名等常量 |
 | `ohostr.h` | 翻译上下文 |
 | `harmonyqtcdefs.h` | Qt Creator 版本宏（见 [VERSIONING.md](../VERSIONING.md)） |
+| `harmonylogcategories.h` / `harmonylogcategories.cpp` | 统一 `QLoggingCategory`（`qtc.harmony.config` / `device` / `build` / `deploy` / `run` / `plugin` / `toolchain`）；见 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) P1-01 |
 | `harmonyrunner.cpp` / `harmonyrunner.h` | RunWorker 工厂注册（运行执行链） |
 
 ---
@@ -73,7 +74,7 @@
 | 路径 | 职责 |
 |------|------|
 | `harmonyutils.*` | 包名、构建目录、hdc 参数等共用函数 |
-| `lib/usbmonitor/` | USB 变化通知（平台相关） |
+| `lib/usbmonitor/` | USB 变化通知（平台相关）；日志分类 `qtc.harmony.device.usbmonitor` |
 | `lib/ohprojectecreator/` | OpenHarmony 工程/模板生成辅助 |
 | `lib/3rdparty/libusb/` | libusb 及平台配置 |
 | `src/compat/` | 按 Qt Creator 大版本可选追加的源文件（见 [compat/README.md](../src/compat/README.md)） |

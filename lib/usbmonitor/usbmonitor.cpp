@@ -1,15 +1,17 @@
 #include "usbmonitor.h"
 #include "libusbi.h"
-#include <QDebug>
+#include <QLoggingCategory>
 #include <libusb.h>
 #include <QTimer>
+
+Q_LOGGING_CATEGORY(harmonyUsbMonitorLog, "qtc.harmony.device.usbmonitor", QtWarningMsg)
 class UsbMonitorPrivate
 {
 public:
     UsbMonitorPrivate() : ctx(nullptr)
     {
         if (libusb_init(&ctx) != LIBUSB_SUCCESS) {
-            qWarning() << "Failed to initialize libusb!";
+            qCWarning(harmonyUsbMonitorLog) << "Failed to initialize libusb!";
             ctx = nullptr;
         }
     }
@@ -66,7 +68,7 @@ UsbMonitor::UsbMonitor(QObject *parent)
 
 UsbMonitor::~UsbMonitor()
 {
-    qDebug() << "UsbMonitor destructor called.";
+    qCDebug(harmonyUsbMonitorLog) << "UsbMonitor destructor called.";
     if(isRunning()) {
         stopMonitor();
     }
