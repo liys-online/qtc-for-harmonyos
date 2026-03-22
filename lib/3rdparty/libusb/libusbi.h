@@ -113,6 +113,14 @@ typedef long usbi_atomic_t;
 #define usbi_atomic_store(a, v)        __atomic_store_n((a), (v), __ATOMIC_SEQ_CST)
 #define usbi_atomic_inc(a)     __atomic_add_fetch((a), 1, __ATOMIC_SEQ_CST)
 #define usbi_atomic_dec(a)     __atomic_sub_fetch((a), 1, __ATOMIC_SEQ_CST)
+#elif defined(__cplusplus)
+/* Any C++ TU (e.g. Qt usbmonitor.cpp): atomic_long / stdatomic.h is unreliable
+ * in C++17 with GCC; use compiler atomics like the Haiku workaround above. */
+typedef long usbi_atomic_t;
+#define usbi_atomic_load(a)    __atomic_load_n((a), __ATOMIC_SEQ_CST)
+#define usbi_atomic_store(a, v) __atomic_store_n((a), (v), __ATOMIC_SEQ_CST)
+#define usbi_atomic_inc(a)     __atomic_add_fetch((a), 1, __ATOMIC_SEQ_CST)
+#define usbi_atomic_dec(a)     __atomic_sub_fetch((a), 1, __ATOMIC_SEQ_CST)
 #else
 #include <stdatomic.h>
 typedef atomic_long usbi_atomic_t;
