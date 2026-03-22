@@ -43,6 +43,10 @@ add_library(libusb STATIC
   ${LIBUSB_PLATFORM_SOURCES}
 )
 
+# 静态库被链入 Harmony 共享插件（.so/.dylib）时必须在 ELF 上带 PIC；否则 Linux 报
+# R_X86_64_TPOFF32 … recompile with -fPIC（threads_posix.c 线程局部存储重定位）。
+set_target_properties(libusb PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 target_compile_definitions(libusb PRIVATE LIBUSB_LIBRARY)
 target_include_directories(libusb PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
