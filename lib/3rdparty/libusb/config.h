@@ -1,7 +1,7 @@
 /* libusb config.h — dispatch to a platform-specific manual config.
  *
  * The vendored tree originally shipped only MSVC + Windows sources; Qt Creator
- * on macOS/Linux needs Darwin / Linux configs and the matching os/*.c files.
+ * on macOS/Linux needs Darwin / Linux configs and matching sources under os/.
  */
 #ifndef LIBUSB_QTC_BUNDLED_CONFIG_H
 #define LIBUSB_QTC_BUNDLED_CONFIG_H
