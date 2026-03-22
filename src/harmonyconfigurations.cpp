@@ -746,16 +746,14 @@ void addQmake(const QString &qmake)
         config().m_qmakeList.append(qmake);
     }
     HarmonyConfigurations::persistSettings();
-    HarmonyConfigurations::registerQtVersions();
-    HarmonyConfigurations::updateAutomaticKitList();
+    HarmonyConfigurations::syncToolchainsQtAndKits();
 }
 
 void removeQmake(const QString &qmake)
 {
     config().m_qmakeList.removeAll(qmake);
     HarmonyConfigurations::persistSettings();
-    HarmonyConfigurations::registerQtVersions();
-    HarmonyConfigurations::updateAutomaticKitList();
+    HarmonyConfigurations::syncToolchainsQtAndKits();
 }
 
 QStringList &getQmakeList()
@@ -973,15 +971,20 @@ HarmonyConfigurations *HarmonyConfigurations::instance()
     return m_instance;
 }
 
+void HarmonyConfigurations::syncToolchainsQtAndKits()
+{
+    registerNewToolchains();
+    registerQtVersions();
+    updateAutomaticKitList();
+    removeOldToolchains();
+}
+
 void HarmonyConfigurations::applyConfig()
 {
     emit m_instance->aboutToUpdate();
     m_instance->save();
     updateHarmonyDevice();
-    registerNewToolchains();
-    registerQtVersions();
-    updateAutomaticKitList();
-    removeOldToolchains();
+    syncToolchainsQtAndKits();
     emit m_instance->updated();
 }
 

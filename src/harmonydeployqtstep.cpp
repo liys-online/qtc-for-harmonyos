@@ -35,7 +35,6 @@
 #include <QLoggingCategory>
 #include <QMessageBox>
 #include <QPushButton>
-#include <QDirIterator>
 using namespace ProjectExplorer;
 using namespace Utils;
 using namespace QtTaskTree;
@@ -76,28 +75,6 @@ static DeployErrorFlags parseDeployErrors(const QString &deployOutputLine)
         errorCode |= VersionDowngrade;
 
     return errorCode;
-}
-
-static FilePath detectHapPath(const FilePath &ohBuildDirectory)
-{
-    const FilePath defaultPath = ohBuildDirectory.pathAppended(
-        "entry/build/default/outputs/default/entry-default-signed.hap");
-    if (defaultPath.exists())
-        return defaultPath;
-
-    const FilePath outputDir = ohBuildDirectory.pathAppended("entry/build/default/outputs/default");
-    if (outputDir.exists()) {
-        const FilePaths haps = outputDir.dirEntries({{"*.hap"}, QDir::Files});
-        if (!haps.isEmpty())
-            return haps.first();
-    }
-
-    QDirIterator it(ohBuildDirectory.toUserOutput(), {"*.hap"}, QDir::Files,
-                    QDirIterator::Subdirectories);
-    if (it.hasNext())
-        return FilePath::fromString(it.next());
-
-    return {};
 }
 
 class HarmonyDeployQtStep final : public BuildStep
@@ -278,16 +255,26 @@ bool HarmonyDeployQtStep::init()
         return false;
     }
 
-    m_hapPath = detectHapPath(ohbuildDirectory);
+    QString hapDiagnostic;
+    m_hapPath = findBuiltHapPackage(ohbuildDirectory, &hapDiagnostic);
+    if (!m_hapPath.isEmpty() && m_hapPath.isReadableFile())
+        qCDebug(deployStepLog).noquote() << "Resolved HAP for deploy:" << m_hapPath.toUserOutput();
     if (m_hapPath.isEmpty() || !m_hapPath.isReadableFile()) {
         reportWarningOrError(
             Tr::tr("Cannot find a readable HAP package under \"%1\".\n"
-                   "Expected a path such as "
-                   "\"entry/build/default/outputs/default/*.hap\" after a successful HAP build.")
-                .arg(ohbuildDirectory.toUserOutput()),
+                   "Run the \"Build Harmony HAP\" step first. The deploy step checks, in order:\n"
+                   "• each module's \"build/default/outputs/default\" (from build-profile.json5 when present; "
+                   "entry-type modules first),\n"
+                   "• the classic \"entry/build/default/outputs/default\" layout,\n"
+                   "• the newest \"*.hap\" file anywhere under the ohpro directory.\n\n"
+                   "Details:\n%2")
+                .arg(ohbuildDirectory.toUserOutput(),
+                     hapDiagnostic.isEmpty() ? Tr::tr("(no diagnostic)") : hapDiagnostic),
             Task::Error);
         return false;
     }
+
+    emit addOutput(Tr::tr("HAP package: %1").arg(m_hapPath.toUserOutput()), OutputFormat::NormalMessage);
 
     m_command = m_hdcPath;
 

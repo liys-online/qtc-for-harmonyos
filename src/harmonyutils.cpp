@@ -15,9 +15,14 @@
 #include <utils/qtcprocess.h>
 #include <QLoggingCategory>
 #include <QDir>
+#include <QDirIterator>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
+
+#include <algorithm>
+
 using namespace ProjectExplorer;
 using namespace Utils;
 namespace Ohos::Internal {
@@ -314,6 +319,180 @@ int defaultMinimumSDK(const QtSupport::QtVersion *qtVersion)
     if (harmonyQt)
         return harmonyQt->supportOhVersion().majorVersion();
     return OhProjecteCreator::defaultApiLevel();
+}
+
+namespace {
+
+const QString kOutputsRelative = QStringLiteral("build/default/outputs/default");
+
+FilePath moduleRootFromBuildProfileEntry(const FilePath &ohProRoot, const QJsonObject &moduleObject)
+{
+    const QString srcPath = moduleObject.value(QStringLiteral("srcPath")).toString().trimmed();
+    if (!srcPath.isEmpty())
+        return ohProRoot.resolvePath(srcPath);
+    const QString name = moduleObject.value(QStringLiteral("name")).toString();
+    if (!name.isEmpty())
+        return ohProRoot.pathAppended(name);
+    return {};
+}
+
+FilePath pickHapInOutputDir(const FilePath &outputDir, const QString &moduleName)
+{
+    if (!outputDir.isReadableDir())
+        return {};
+
+    const QStringList exactCandidates{
+        moduleName + QStringLiteral("-default-signed.hap"),
+        moduleName + QStringLiteral("-default-debug-signed.hap"),
+        moduleName + QStringLiteral("-signed.hap"),
+    };
+    for (const QString &fn : exactCandidates) {
+        const FilePath p = outputDir.pathAppended(fn);
+        if (p.isReadableFile())
+            return p;
+    }
+
+    FilePaths haps = outputDir.dirEntries({{QStringLiteral("*.hap")}, QDir::Files});
+    if (haps.isEmpty())
+        return {};
+    std::sort(haps.begin(), haps.end(), [](const FilePath &a, const FilePath &b) {
+        return a.lastModified() > b.lastModified();
+    });
+    return haps.front();
+}
+
+FilePath resolveFromBuildProfileModules(const FilePath &ohProRoot, QStringList *diagnostic)
+{
+    const FilePath profilePath = ohProRoot.pathAppended(QStringLiteral("build-profile.json5"));
+    if (!profilePath.isReadableFile()) {
+        if (diagnostic)
+            diagnostic->append(QStringLiteral("No readable build-profile.json5 — using entry + scan fallbacks."));
+        return {};
+    }
+
+    const Result<QByteArray> content = profilePath.fileContents();
+    if (!content) {
+        if (diagnostic)
+            diagnostic->append(QStringLiteral("Could not read build-profile.json5."));
+        return {};
+    }
+
+    QJsonParseError parseError{};
+    const QJsonDocument doc = QJsonDocument::fromJson(*content, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        if (diagnostic) {
+            diagnostic->append(QStringLiteral("build-profile.json5: JSON error: %1")
+                                   .arg(parseError.errorString()));
+        }
+        return {};
+    }
+
+    const QJsonArray modules = doc.object().value(QStringLiteral("modules")).toArray();
+    if (modules.isEmpty()) {
+        if (diagnostic)
+            diagnostic->append(QStringLiteral("build-profile.json5: empty modules[] — using entry fallbacks."));
+        return {};
+    }
+
+    const auto tryOneModule = [&](const QJsonObject &mo, const QString &phase) -> FilePath {
+        const QString moduleName = mo.value(QStringLiteral("name")).toString();
+        const FilePath modRoot = moduleRootFromBuildProfileEntry(ohProRoot, mo);
+        if (moduleName.isEmpty() || modRoot.isEmpty()) {
+            if (diagnostic)
+                diagnostic->append(QStringLiteral("[%1] skip (missing module name or path).").arg(phase));
+            return {};
+        }
+        const FilePath outputDir = modRoot.pathAppended(kOutputsRelative);
+        if (diagnostic) {
+            diagnostic->append(
+                QStringLiteral("[%1] module \"%2\" → %3").arg(phase, moduleName, outputDir.toUserOutput()));
+        }
+        return pickHapInOutputDir(outputDir, moduleName);
+    };
+
+    for (const QJsonValue &mv : modules) {
+        const QJsonObject mo = mv.toObject();
+        if (mo.value(QStringLiteral("type")).toString() != QStringLiteral("entry"))
+            continue;
+        const FilePath found = tryOneModule(mo, QStringLiteral("entry-type"));
+        if (!found.isEmpty())
+            return found;
+    }
+
+    for (const QJsonValue &mv : modules) {
+        const QJsonObject mo = mv.toObject();
+        if (mo.value(QStringLiteral("type")).toString() == QStringLiteral("entry"))
+            continue;
+        const FilePath found = tryOneModule(mo, QStringLiteral("other-module"));
+        if (!found.isEmpty())
+            return found;
+    }
+
+    return {};
+}
+
+FilePath legacyEntryHap(const FilePath &ohProRoot, QStringList *diagnostic)
+{
+    const FilePath defaultPath = ohProRoot.pathAppended(
+        QStringLiteral("entry/build/default/outputs/default/entry-default-signed.hap"));
+    if (diagnostic)
+        diagnostic->append(QStringLiteral("Legacy path: %1").arg(defaultPath.toUserOutput()));
+    if (defaultPath.isReadableFile())
+        return defaultPath;
+
+    const FilePath outputDir = ohProRoot.pathAppended(QStringLiteral("entry/build/default/outputs/default"));
+    return pickHapInOutputDir(outputDir, QStringLiteral("entry"));
+}
+
+FilePath newestHapRecursive(const FilePath &ohProRoot, QStringList *diagnostic)
+{
+    QDirIterator it(ohProRoot.toUserOutput(),
+                    {QStringLiteral("*.hap")},
+                    QDir::Files,
+                    QDirIterator::Subdirectories);
+    FilePath best;
+    QDateTime bestTime;
+    int n = 0;
+    while (it.hasNext()) {
+        const FilePath candidate = FilePath::fromString(it.next());
+        if (!candidate.isReadableFile())
+            continue;
+        ++n;
+        const QDateTime t = candidate.lastModified();
+        if (!bestTime.isValid() || t > bestTime) {
+            bestTime = t;
+            best = candidate;
+        }
+    }
+    if (diagnostic) {
+        diagnostic->append(QStringLiteral("Recursive *.hap: %1 file(s); newest: %2")
+                                 .arg(QString::number(n),
+                                      best.isEmpty() ? QStringLiteral("(none)") : best.toUserOutput()));
+    }
+    return best;
+}
+
+} // namespace
+
+FilePath findBuiltHapPackage(const FilePath &ohProRoot, QString *diagnosticOut)
+{
+    if (!ohProRoot.isReadableDir()) {
+        if (diagnosticOut)
+            *diagnosticOut = QStringLiteral("Not a readable directory: ") + ohProRoot.toUserOutput();
+        return {};
+    }
+
+    QStringList lines;
+    FilePath found = resolveFromBuildProfileModules(ohProRoot, &lines);
+    if (found.isEmpty())
+        found = legacyEntryHap(ohProRoot, &lines);
+    if (found.isEmpty())
+        found = newestHapRecursive(ohProRoot, &lines);
+
+    if (diagnosticOut)
+        *diagnosticOut = lines.join(QLatin1Char('\n'));
+
+    return found;
 }
 
 }

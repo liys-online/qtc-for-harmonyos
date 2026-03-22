@@ -16,6 +16,12 @@ namespace Ohos::Internal {
          */
         static void applyConfig();
         /**
+         * @brief syncToolchainsQtAndKits
+         * 刷新自动检测工具链、按 qmake 列表注册/清理 Harmony Qt、更新自动 Kit、移除无效工具链。
+         * \c applyConfig() 在保存与设备更新后调用本函数；\c kitsLoaded 在无完整 apply 时也走此路径。
+         */
+        static void syncToolchainsQtAndKits();
+        /**
          * @brief registerNewToolchains
          * 注册新的工具链
          */

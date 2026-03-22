@@ -39,13 +39,13 @@
 | P0-01 | P0 | 运行 | RunWorker 与启动命令完整闭环 | `Run` 可执行；失败有 Task/输出；支持取消；与 Kit 设备一致 | 已有 `ProcessRunnerFactory` 时可升级为自定义 Recipe | `androidrunner.cpp`、`androidrunnerworker.cpp` | 若仅 `ProcessRunner` 无法表达「停止后 post shell」，需自定义 Worker（非阻塞） | 部分完成 |
 | P0-02 | P0 | 运行 | `postStartShellCmd` 生命周期 | hdc 会话结束（含用户 Stop）后按行执行 Post-quit 命令；见 `harmonyrunner.cpp` | P0-01 | 同上 | — | 已完成 |
 | P0-03 | P0 | 运行 | 默认 Ability / Bundle 可配置 | 运行配置两项覆盖 + `defaultHarmonyAbilityName()` 解析 `module.json5`（entry 模块优先） | 工程模板约定 | `AndroidRunConfiguration` aspects | 复杂 JSON5/多 entry 需用户覆盖 | 已完成 |
-| P0-04 | P0 | 部署 | HAP 路径策略固化 | 从 `build-profile`/hvigor 输出约定解析优先；再 fallback 扫描；无产物时明确报错 | 已部分实现扫描 | `androiddeployqtstep.cpp` | 不同 hvigor 版本输出路径变更时需持续适配 | 部分完成 |
+| P0-04 | P0 | 部署 | HAP 路径策略固化 | `findBuiltHapPackage()`：`build-profile.json5` modules（entry 优先）→ `entry/…` → 树内最新 `*.hap`；部署错误附诊断轨迹 | — | `androiddeployqtstep.cpp` | hvigor 输出路径若再变，可继续加候选文件名 | 已完成 |
 | P0-05 | P0 | 部署 | 部署前校验 hdc / 设备 / 产物 | `init()` 中统一 `reportWarningOrError` | — | 同上 | — | 已完成 |
 | P0-06 | P0 | 构建 | `HarmonyBuildHapStep` 失败路径用户可见 | 配置缺失、ohpm/hvigor 失败进入 TaskHub + 输出面板；另含 Node/Java 解析、ohpro 目录与 `PWD`/`INIT_CWD`（见 §7） | — | `androidbuildapkstep.cpp` | — | 已完成 |
 | P0-07 | P0 | 工具链 | `makeCommand()` 非 Windows | macOS/Linux 在 PATH 中解析 `make`/`gmake`（对齐 GCC `mingwAwareMakeCommand` 思路） | — | `androidtoolchain.cpp` / `gcctoolchain.cpp` | — | 已完成 |
 | P0-08 | P0 | 工具链 | 父工具链同步（Windows MinGW） | `syncAutodetectedWithParentToolchains` 使用 `HARMONY_TOOLCHAIN_TYPEID`（原误用 `CLANG_TOOLCHAIN_TYPEID` 导致从不执行）；Unix 仍与上游 Clang 一致不挂 MinGW | P0-07 | `gcctoolchain.cpp` | — | 已完成 |
 | P0-09 | P0 | 配置 | `kitsRestored` 未配置 SDK 引导 | InfoBar：缺 SDK / 缺 Harmony Qt 两种情形 → Harmony 设置；全无则不提示 | 设置页 ID 稳定 | `androidplugin.cpp` | — | 已完成 |
-| P0-10 | P0 | 配置 | `registerQtVersions()` 策略 | qmake 列表变更后刷新已注册 Qt + Kit；`kitsLoaded` 仍走 `applyConfig`；`ohos.cpp` 中单列 `registerQtVersions` 调用仍注释，待统一或删除 | — | `androidconfigurations.cpp` | 若与当前 Kit 策略冲突需产品决策 | 部分完成 |
+| P0-10 | P0 | 配置 | `registerQtVersions()` 策略 | `syncToolchainsQtAndKits()` 统一：`applyConfig` / `kitsLoaded`（无 SDK 自增时）/ `qtVersionsChanged` / `addQmake`/`removeQmake` | — | `androidconfigurations.cpp` | — | 已完成 |
 | P1-01 | P1 | 日志 | 全模块 `QLoggingCategory` | config/device/build/deploy/run 分类；环境变量或 Qt 日志规则可开关 | — | 各 `qCDebug` 用法 | — | 部分完成 |
 | P1-02 | P1 | 日志 | 移除调试向 `writeSilently` | 仅保留用户必须感知的 Disrupting/输出面板 | P1-01 | — | — | 待开始 |
 | P1-03 | P1 | 错误 | Deploy/Run 对话框父窗口 | `Core::ICore::dialogParent()` | — | — | — | 已完成 |
@@ -86,7 +86,7 @@
 1. **P0-04 → P0-05 → P0-06**（部署与构建错误可见，与 Run 并行可接受）— *P0-06 相关：hvigor 环境、路径与 cwd 已加固，见 §7*  
 2. **P0-01 → P0-02 → P0-03**（运行体验）— *均已完成；下一阶段主线 **P0-04**（HAP 路径）等*  
 3. **P0-07 → P0-08**（跨平台工具链）— *已完成：`harmonytoolchain` `makeCommand` + MinGW 父链 ID；Kit CMake `CMAKE_MAKE_PROGRAM` Unix 解析*  
-4. **P0-09 → P0-10**（配置与 Kit）— *P0-09 已完成（InfoBar）；P0-10：`ohos.cpp` 内 `registerQtVersions` 仍注释，待与 `applyConfig` 统一*  
+4. **P0-09 → P0-10**（配置与 Kit）— *均已完成*  
 5. 进入 **P1** 按「日志→错误→设备→解析→常量/ID」顺序（**P1-14** hvigor 输出进 Issues 可与构建体验衔接）  
 6. **P2** 按业务价值选：解析器、设备图标、hilog、签名文档化、向导  
 7. **P3** 仅评估，确认后转 P2 或 **已搁置**
@@ -117,7 +117,7 @@
 
 | 主题 | 说明 |
 |------|------|
-| **配置持久化** | `HarmonyConfig` 变更路径/SDK/qmake 等时调用 `HarmonyConfigurations::persistSettings()`；移除/添加 qmake 后同步 `registerQtVersions` + `updateAutomaticKitList`（解决重启后列表回弹） |
+| **配置持久化** | `HarmonyConfig` 变更路径/SDK/qmake 等时调用 `HarmonyConfigurations::persistSettings()`；qmake 增删后走 `syncToolchainsQtAndKits()`（与 `applyConfig` / `kitsLoaded` 同源） |
 | **CMake / Kit** | `OHOS_ARCH` 规范化（避免 `unknown` / 非法 ABI）；Unix 可自动设 `CMAKE_MAKE_PROGRAM`；Windows 可用 Harmony 设置中的 MinGW `make` |
 | **qdevice.pri** | `HarmonyQtVersion::targetAbi()` 跳过注释行、支持 `OHOS_ARCH=` 赋值，避免误解析 |
 | **Node / hvigor** | `nodeLocation()`：`tools/node/node`、`tools/node/bin/node`、系统 PATH；错误提示更明确 |

@@ -56,7 +56,7 @@
 ## 3. 部署管线（hdc）
 
 - **HarmonyDeployQtStep** 解析当前运行设备、HAP 产物路径，执行 **hdc install**。
-- HAP 路径应优先来自构建约定，其次扫描产物目录；找不到产物时须明确报错（见实现与 [PRIORITY-PLAN.md](PRIORITY-PLAN.md)）。
+- **HAP 定位**（`harmonyutils::findBuiltHapPackage`）：读 `ohpro/build-profile.json5` 的 `modules[]`，按 `srcPath`/`name` 拼 `…/build/default/outputs/default/`，优先 `type: entry` 的模块；再尝试经典 `entry/build/.../entry-default-signed.hap` 与同目录下其它 `*.hap`（按修改时间取最新）；最后在 ohpro 树下递归找**最新**的 `*.hap`。失败时任务说明里附带尝试轨迹。
 - 安装失败信息应对齐用户可理解场景（证书、版本降级等），参考 Android `androiddeployqtstep` 的错误分类思路。
 
 ---

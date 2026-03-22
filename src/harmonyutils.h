@@ -48,6 +48,14 @@ bool isQt5CmakeProject(const ProjectExplorer::Target *target);
 
 Utils::FilePath harmonyBuildDirectory(const ProjectExplorer::BuildConfiguration *bc);
 Utils::FilePath buildDirectory(const ProjectExplorer::BuildConfiguration *bc);
+
+/**
+ * Locate a built \c .hap under the ohpro root: \c build-profile.json5 \c modules (entry-type first),
+ * then classic \c entry/…/outputs/default, then newest \c *.hap under the tree.
+ * \a diagnosticOut optional multi-line trace of what was tried (for deploy error UI).
+ */
+Utils::FilePath findBuiltHapPackage(const Utils::FilePath &ohProRoot, QString *diagnosticOut = nullptr);
+
 QStringList applicationAbis(const ProjectExplorer::Kit *k);
 
 QStringList hdcSelector(const QString &serialNumber);

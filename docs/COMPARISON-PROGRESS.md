@@ -39,7 +39,7 @@
 | 2.1 | `AndroidConfig` + QSettings 分组 | `HarmonyConfig` / `HarmonyConfigurations` | ✅ | 路径/SDK/qmake 等 mutator 已 `persistSettings()` 写回 QSettings（与 Android 持久化习惯对齐） |
 | 2.2 | `android.xml` 等辅助持久化 | `harmony.xml`（若使用） | 🔄 | 需确认路径与是否存在默认文件 |
 | 2.3 | SDK/NDK 校验与版本读取 | `isValidSdk`、`oh-uni-package.json` 等 | 🔄 | 错误提示已部分从 Android 文案改为 OHOS |
-| 2.4 | 自动创建 Kit / 工具链联动 | `updateAutomaticKitList` 等 | 🔄 | 与 qmake/SDK 列表联动，需持续验证 |
+| 2.4 | 自动创建 Kit / 工具链联动 | `syncToolchainsQtAndKits` 统一刷新（含 `registerQtVersions`） | 🔄 | `kitsLoaded` / `qtVersionsChanged` / qmake 列表与 `applyConfig` 同源 |
 
 ---
 
@@ -117,7 +117,7 @@
 | 9.1 | `androiddeployqt` + `adb install` 双路径 | `HarmonyDeployQtStep`（以 hdc 为主） | 🔄 | `harmonydeployqt` 分支仍注释 |
 | 9.2 | 安装失败错误码解析与重试 | 已有类似结构 | 🔄 | 部分文案仍偏 adb 语境 |
 | 9.3 | 卸载再安装 | 支持 | ✅ | — |
-| 9.4 | HAP/APK 产物路径 | 自动探测 `*.hap` + 默认路径 | 🔄 | 已减少硬编码，边界 case 需继续测 |
+| 9.4 | HAP/APK 产物路径 | `findBuiltHapPackage`：profile 模块 + entry 回退 + 最新 `*.hap` | ✅ | 多模块 / 非 entry 目录名见 `harmonyutils.cpp` |
 | 9.5 | 自定义包安装按钮 | 「Install a HAP File…」 | ✅ | 前置校验 + 对话框提示；模拟器明确说明不支持 |
 
 ---

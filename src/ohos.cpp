@@ -128,16 +128,14 @@ public:
     {
         if (HarmonyConfig::registerDownloadedSdksUnder(HarmonyConfig::effectiveOhosSdkRoot()) > 0)
             HarmonyConfigurations::applyConfig();
+        else
+            HarmonyConfigurations::syncToolchainsQtAndKits();
 
         askUserAboutHarmonySdkSetupIfNeeded();
 
-        HarmonyConfigurations::registerNewToolchains();
-        // HarmonyConfigurations::registerQtVersions();
-        HarmonyConfigurations::updateAutomaticKitList();
         connect(QtSupport::QtVersionManager::instance(), &QtSupport::QtVersionManager::qtVersionsChanged,
                 HarmonyConfigurations::instance(), [] {
-                    HarmonyConfigurations::registerNewToolchains();
-                    HarmonyConfigurations::updateAutomaticKitList();
+                    HarmonyConfigurations::syncToolchainsQtAndKits();
                 });
     }
 
@@ -241,4 +239,4 @@ public:
 
 } // namespace Ohos::Internal
 
-#include <ohos.moc>
+#include "ohos.moc"
