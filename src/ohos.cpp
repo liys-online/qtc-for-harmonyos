@@ -18,6 +18,10 @@
 #include <qtsupport/qtversionmanager.h>
 #include <qtsupport/qtkitaspect.h>
 
+#include <utils/infobar.h>
+
+#include <QTimer>
+
 #include "harmonybuildconfiguration.h"
 #include "harmonybuildhapstep.h"
 #include "harmonysettingswidget.h"
@@ -36,7 +40,34 @@
 
 namespace {
 static Q_LOGGING_CATEGORY(harmonyPluginLog, "qtc.harmony.plugin", QtWarningMsg)
+
+const char kSetupHarmonySdkInfoBarId[] = "Harmony.ConfigureSdkSetup";
+const char kSetupHarmonyQtInfoBarId[] = "Harmony.ConfigureQtSetup";
+
+static bool hasHarmonyQtVersions()
+{
+    using namespace QtSupport;
+    return !QtVersionManager::versions([](const QtVersion *v) {
+               return dynamic_cast<const Ohos::Internal::HarmonyQtVersion *>(v) != nullptr;
+           }).isEmpty();
 }
+
+static bool hasRegisteredValidHarmonySdk()
+{
+    using namespace Utils;
+    using namespace Ohos::Internal;
+    const FilePath def = HarmonyConfig::defaultSdk().cleanPath();
+    if (!def.isEmpty() && HarmonyConfig::isValidSdk(def))
+        return true;
+    for (const QString &s : HarmonyConfig::getSdkList()) {
+        const FilePath fp = FilePath::fromUserInput(s).cleanPath();
+        if (!fp.isEmpty() && HarmonyConfig::isValidSdk(fp))
+            return true;
+    }
+    return HarmonyConfig::isValidSdk(HarmonyConfig::effectiveOhosSdkRoot().cleanPath());
+}
+
+} // namespace
 
 namespace Ohos::Internal {
 
@@ -95,9 +126,11 @@ public:
 
     void kitsRestored()
     {
-        // Add code here to handle kits being restored
         if (HarmonyConfig::registerDownloadedSdksUnder(HarmonyConfig::effectiveOhosSdkRoot()) > 0)
             HarmonyConfigurations::applyConfig();
+
+        askUserAboutHarmonySdkSetupIfNeeded();
+
         HarmonyConfigurations::registerNewToolchains();
         // HarmonyConfigurations::registerQtVersions();
         HarmonyConfigurations::updateAutomaticKitList();
@@ -106,7 +139,72 @@ public:
                     HarmonyConfigurations::registerNewToolchains();
                     HarmonyConfigurations::updateAutomaticKitList();
                 });
+    }
 
+    void askUserAboutHarmonySdkSetupIfNeeded()
+    {
+        const bool hasQt = hasHarmonyQtVersions();
+        const bool hasSdk = hasRegisteredValidHarmonySdk();
+
+        // Fully configured — nothing to suggest.
+        if (hasQt && hasSdk)
+            return;
+
+        // User has not started Harmony setup (no Qt and no SDK path) — stay quiet.
+        if (!hasQt && !hasSdk)
+            return;
+
+        Utils::InfoBar *infoBar = Core::ICore::popupInfoBar();
+
+        if (hasQt && !hasSdk) {
+            if (!infoBar->canInfoBeAdded(Utils::Id(kSetupHarmonySdkInfoBarId)))
+                return;
+
+            Utils::InfoBarEntry entry(
+                Utils::Id(kSetupHarmonySdkInfoBarId),
+                Tr::tr("Add an OpenHarmony / HarmonyOS SDK path and default SDK in preferences, "
+                       "or set %1 / %2 so kits, hdc, and toolchains can be resolved.")
+                    .arg(QString::fromLatin1(Constants::OHOS_SDK_HOME_ENV_VAR),
+                         QString::fromLatin1(Constants::OHOS_SDK_ENV_VAR)),
+                Utils::InfoBarEntry::GlobalSuppression::Enabled);
+            entry.setTitle(Tr::tr("Configure Harmony SDK?"));
+            entry.setInfoType(Utils::InfoLabel::Information);
+            entry.addCustomButton(
+                Tr::tr("Open Harmony Settings"),
+                [this] {
+                    QTimer::singleShot(0, this, [] {
+                        Core::ICore::showSettings(Constants::HARMONY_SETTINGS_ID);
+                    });
+                },
+                {},
+                Utils::InfoBarEntry::ButtonAction::SuppressPersistently);
+            infoBar->addInfo(entry);
+            return;
+        }
+
+        // hasSdk && !hasQt — SDK is set up but no Harmony Qt registered yet.
+        QTC_CHECK(hasSdk && !hasQt);
+        if (!infoBar->canInfoBeAdded(Utils::Id(kSetupHarmonyQtInfoBarId)))
+            return;
+
+        Utils::InfoBarEntry entry(
+            Utils::Id(kSetupHarmonyQtInfoBarId),
+            Tr::tr("Harmony SDK paths look valid, but no Qt for Harmony is registered. "
+                   "Add a qmake path on the Harmony settings page, or register the qmake in "
+                   "Edit > Preferences > Kits > Qt Versions."),
+            Utils::InfoBarEntry::GlobalSuppression::Enabled);
+        entry.setTitle(Tr::tr("Add Harmony Qt?"));
+        entry.setInfoType(Utils::InfoLabel::Information);
+        entry.addCustomButton(
+            Tr::tr("Open Harmony Settings"),
+            [this] {
+                QTimer::singleShot(0, this, [] {
+                    Core::ICore::showSettings(Constants::HARMONY_SETTINGS_ID);
+                });
+            },
+            {},
+            Utils::InfoBarEntry::ButtonAction::SuppressPersistently);
+        infoBar->addInfo(entry);
     }
     void addBuildHapStepForOhBuild(ProjectExplorer::BuildConfiguration *bc)
     {

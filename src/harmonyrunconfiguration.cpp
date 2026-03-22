@@ -66,6 +66,23 @@ public:
         postStartShellCmd.setSettingsKey("Harmony.PostStartShellCmdListKey");
         postStartShellCmd.setLabelText(Tr::tr("Post-quit on-device shell commands:"));
 
+        bundleNameOverride.setId(Constants::HARMONY_RUN_BUNDLE_OVERRIDE);
+        bundleNameOverride.setSettingsKey("Harmony.Run.BundleNameOverrideKey");
+        bundleNameOverride.setLabelText(Tr::tr("Bundle name override:"));
+        bundleNameOverride.setToolTip(Tr::tr("If empty, the bundle name from AppScope/app.json5 is used."));
+        bundleNameOverride.setDisplayStyle(StringAspect::LineEditDisplay);
+        bundleNameOverride.setHistoryCompleter("Harmony.Run.BundleName.History");
+
+        abilityNameOverride.setId(Constants::HARMONY_RUN_ABILITY_OVERRIDE);
+        abilityNameOverride.setSettingsKey("Harmony.Run.AbilityNameOverrideKey");
+        abilityNameOverride.setLabelText(Tr::tr("Ability name override:"));
+        abilityNameOverride.setToolTip(
+            Tr::tr("If empty, the first suitable ability name is read from module.json5 under the ohpro "
+                   "directory (entry module preferred, then first exported or first ability). "
+                   "If none is found, EntryAbility is used."));
+        abilityNameOverride.setDisplayStyle(StringAspect::LineEditDisplay);
+        abilityNameOverride.setHistoryCompleter("Harmony.Run.AbilityName.History");
+
         setUpdater([this] {
             const ProjectExplorer::BuildTargetInfo bti = buildTargetInfo();
             setDisplayName(bti.displayName);
@@ -78,7 +95,16 @@ public:
             if (hdc.isEmpty() || !hdc.exists())
                 return cmd;
 
-            const QString pkgName = packageName(bc);
+            QString pkgName = bundleNameOverride().trimmed();
+            if (pkgName.isEmpty())
+                pkgName = packageName(bc);
+
+            QString abilityName = abilityNameOverride().trimmed();
+            if (abilityName.isEmpty())
+                abilityName = defaultHarmonyAbilityName(bc);
+            if (abilityName.isEmpty())
+                abilityName = QStringLiteral("EntryAbility");
+
             cmd.setExecutable(hdc);
             cmd.addArg("shell");
 
@@ -88,9 +114,8 @@ public:
                 startCommand = "aa start " + userArgs.trimmed();
             } else {
                 startCommand = "aa start";
-                if (!pkgName.isEmpty()) {
-                    startCommand += " -b " + pkgName + " -a EntryAbility";
-                }
+                if (!pkgName.isEmpty())
+                    startCommand += " -b " + pkgName + " -a " + abilityName;
             }
 
             const QStringList preCmds = preStartShellCmd().split('\n', Qt::SkipEmptyParts);
@@ -119,6 +144,8 @@ public:
     StringAspect amStartArgs{this};
     BaseStringListAspect preStartShellCmd{this};
     BaseStringListAspect postStartShellCmd{this};
+    StringAspect bundleNameOverride{this};
+    StringAspect abilityNameOverride{this};
 };
 class HarmonyRunConfigurationFactory : public ProjectExplorer::RunConfigurationFactory
 {

@@ -11,10 +11,11 @@
 #include <projectexplorer/project.h>
 #include <projectexplorer/projectnodes.h>
 
-#include <qjsonarray.h>
 #include <qtsupport/qtkitaspect.h>
 #include <utils/qtcprocess.h>
 #include <QLoggingCategory>
+#include <QDir>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 using namespace ProjectExplorer;
@@ -68,6 +69,92 @@ QString packageName(const ProjectExplorer::BuildConfiguration *bc)
         packageName = appObject.value("bundleName").toString();
     }
     return packageName;
+}
+
+static QString abilityFromModuleJsonObject(const QJsonObject &moduleObject)
+{
+    const QJsonArray abilities = moduleObject.value(QStringLiteral("abilities")).toArray();
+    if (abilities.isEmpty())
+        return {};
+
+    QString firstName;
+    QString exportedName;
+    for (const QJsonValue &v : abilities) {
+        const QJsonObject ab = v.toObject();
+        const QString n = ab.value(QStringLiteral("name")).toString();
+        if (n.isEmpty())
+            continue;
+        if (firstName.isEmpty())
+            firstName = n;
+        if (ab.value(QStringLiteral("exported")).toBool())
+            exportedName = n;
+    }
+    if (!exportedName.isEmpty())
+        return exportedName;
+    return firstName;
+}
+
+static void collectAbilityFromModuleJson5(const FilePath &jsonPath,
+                                          QString *entryAbility,
+                                          QString *anyAbility)
+{
+    if (!jsonPath.isReadableFile())
+        return;
+
+    const Result<QByteArray> raw = jsonPath.fileContents();
+    if (!raw)
+        return;
+
+    QJsonParseError err{};
+    const QJsonDocument doc = QJsonDocument::fromJson(*raw, &err);
+    if (err.error != QJsonParseError::NoError || !doc.isObject())
+        return;
+
+    const QJsonObject moduleObject = doc.object().value(QStringLiteral("module")).toObject();
+    if (moduleObject.isEmpty())
+        return;
+
+    const QString ability = abilityFromModuleJsonObject(moduleObject);
+    if (ability.isEmpty())
+        return;
+
+    if (moduleObject.value(QStringLiteral("type")).toString() == QStringLiteral("entry")) {
+        if (entryAbility->isEmpty())
+            *entryAbility = ability;
+    } else if (anyAbility->isEmpty()) {
+        *anyAbility = ability;
+    }
+}
+
+QString defaultHarmonyAbilityName(const BuildConfiguration *bc)
+{
+    const FilePath root = harmonyBuildDirectory(bc);
+    if (root.isEmpty() || !root.isReadableDir())
+        return {};
+
+    QString entryAbility;
+    QString anyAbility;
+
+    collectAbilityFromModuleJson5(root.pathAppended(QStringLiteral("entry/src/main/module.json5")),
+                                &entryAbility,
+                                &anyAbility);
+
+    if (root.isReadableDir()) {
+        const FilePaths children = root.dirEntries(QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const FilePath &ch : children) {
+            const QString name = ch.fileName();
+            if (name == QStringLiteral("AppScope") || name == QStringLiteral("hvigor")
+                || name == QStringLiteral("oh_modules") || name.startsWith(QLatin1Char('.')))
+                continue;
+            collectAbilityFromModuleJson5(ch.pathAppended(QStringLiteral("src/main/module.json5")),
+                                        &entryAbility,
+                                        &anyAbility);
+        }
+    }
+
+    if (!entryAbility.isEmpty())
+        return entryAbility;
+    return anyAbility;
 }
 
 Utils::FilePath harmonyBuildDirectory(const ProjectExplorer::BuildConfiguration *bc)

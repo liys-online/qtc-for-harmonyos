@@ -118,7 +118,7 @@ void UsbMonitor::run()
         previousDevices = currentDevices;
         libusb_free_device_list(devices, 1);
 
-        qDebug() << "UsbMonitor active.";
+        // qDebug() << "UsbMonitor active.";
         QThread::msleep(m_p->blank);
     }
 }

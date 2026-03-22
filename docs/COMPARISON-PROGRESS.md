@@ -25,7 +25,7 @@
 |---|---------------------------|--------------|------|------|
 | 1.1 | `IPlugin` 注册各模块 `setup*()` | `ohos.cpp` | ✅ | 已注册配置/设备/Qt/设置/BC/工具链/构建/部署/运行等 |
 | 1.2 | `Q_PLUGIN_METADATA` + `*.json.in` 依赖声明 | `Harmony.json.in` + `CMakeLists.txt` 列入 `SOURCES` | ✅ | 需与主工程 `add_qtc_plugin` 流程一致 |
-| 1.3 | `kitsRestored` 后 InfoBar 引导未配置 SDK | `ohos.cpp::kitsRestored` | ⬜ | 当前无 Android 式引导条 |
+| 1.3 | `kitsRestored` 后 InfoBar 引导未配置 SDK | `ohos.cpp`（Harmony Qt 已注册但无有效 SDK 时） | ✅ | 对标 Android `askUserAboutAndroidSetup` |
 | 1.4 | `extensionsInitialized` 收尾逻辑 | `ohos.cpp` | ⬜ | 当前多为空 |
 | 1.5 | `#ifdef WITH_TESTS` 注册测试 | — | ⬜ | Harmony 侧暂无 |
 | 1.6 | 翻译加载 | `loadTranslations()` | 🔄 | 需确认资源与生命周期（如 translator 归属） |
@@ -126,7 +126,7 @@
 
 | # | Android 能力 / 典型文件 | Harmony 对应 | 进度 | 备注 |
 |---|---------------------------|--------------|------|------|
-| 10.1 | `AndroidRunConfiguration` + Aspects | `HarmonyRunConfiguration` | 🔄 | 字段齐全度接近 |
+| 10.1 | `AndroidRunConfiguration` + Aspects | `HarmonyRunConfiguration`（含 Bundle/Ability 覆盖与 `module.json5` 默认 Ability） | 🔄 | 字段齐全度接近 |
 | 10.2 | `RunWorkerFactory` + 实际启动 | `harmonyrunner.cpp` + `ProcessRunnerFactory` | 🔄 | 已能发起 `hdc shell` 启动；非 Android 级编排 |
 | 10.3 | `am start` / `aa start` 参数与多步骤 shell | `aa start` + `preStartShellCmd` 合并；`postStartShellCmd` 在 hdc 会话结束后执行 | 🔄 | 与 Android 编排粒度仍不同，行为已对齐 |
 | 10.4 | 部署前运行 / 设备未连处理 | Android `androidKicker` 等 | ⬜ | 需按 RunControl 模式补 |

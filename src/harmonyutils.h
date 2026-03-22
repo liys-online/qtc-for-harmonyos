@@ -19,6 +19,13 @@ bool openDevEcoProject(const QString &path);
 
 QString packageName(const ProjectExplorer::BuildConfiguration *bc);
 
+/**
+ * Default UIAbility name for `aa start -a` from ohpro module.json5 files:
+ * prefers module \c type \c entry, then first exported ability, else first ability.
+ * Empty if nothing could be parsed.
+ */
+QString defaultHarmonyAbilityName(const ProjectExplorer::BuildConfiguration *bc);
+
 QString deviceSerialNumber(const ProjectExplorer::BuildConfiguration *bc);
 void setDeviceSerialNumber(ProjectExplorer::BuildConfiguration *bc,
                            const QString &deviceSerialNumber);
