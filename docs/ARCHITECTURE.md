@@ -82,7 +82,7 @@ Harmony 插件（目标 Harmony）
 
 ### 5.2 构建 → 部署（概要）
 
-1. **构建**：`HarmonyBuildConfiguration` 与 CMake 协同；`HarmonyBuildHapStep` 通过 **QtTaskTree** 执行 hvigor sync、ohpm install、assembleHap 等子步骤。  
+1. **构建**：`HarmonyBuildConfiguration` 与 CMake 协同；`HarmonyBuildHapStep` 通过 **QtTaskTree** 执行 hvigor sync、ohpm install、assembleHap；子步骤与 Harmony Qt 构建环境统一解析 **Node / JDK / DevEco**，并保证 **`ohpro` 工作目录** 与 **PWD** 一致（见 [OPERATIONS.md](OPERATIONS.md)）。  
 2. **部署**：`HarmonyDeployQtStep` 解析目标设备与 HAP 产物路径，调用 **hdc install**。  
 3. **运行**：`HarmonyRunConfiguration` 生成启动命令；由 **RunWorker**（如 `ProcessRunnerFactory` 或后续自定义 Recipe）执行。
 
@@ -100,8 +100,8 @@ Harmony 插件（目标 Harmony）
 
 ## 7. 配置与持久化
 
-- 全局选项通过 `Core::ICore::settings()` 持久化（与 Android 插件同类模式）。
-- Kit、构建目录与工程侧约定通过 **BuildConfiguration** / **ProjectNode** 扩展数据等与 CMake 输出目录关联。
+- 全局选项通过 `Core::ICore::settings()` 持久化（与 Android 插件同类模式）；**HarmonyConfig** 变更（SDK、qmake、DevEco、Make、OHOS SDK 根等）通过 **`HarmonyConfigurations::persistSettings()`** 写回，避免仅内存生效。
+- Kit、构建目录与工程侧约定通过 **BuildConfiguration** / **ProjectNode** 扩展数据等与 CMake 输出目录关联；qmake 列表变更会触发 **Qt 版本注册 / 自动 Kit** 刷新（与 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) §7 一致）。
 
 ---
 

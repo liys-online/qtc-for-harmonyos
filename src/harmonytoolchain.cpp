@@ -696,7 +696,9 @@ static const GccToolchain *mingwToolchainFromId(const QByteArray &id)
 
 void HarmonyToolchain::syncAutodetectedWithParentToolchains()
 {
-    if (!HostOsInfo::isWindowsHost() || typeId() != ProjectExplorer::Constants::CLANG_TOOLCHAIN_TYPEID
+    // Match GccToolchain::syncAutodetectedWithParentToolchains (Windows + Clang family only).
+    // Was incorrectly checking CLANG_TOOLCHAIN_TYPEID so this never ran for Harmony.
+    if (!HostOsInfo::isWindowsHost() || typeId() != Id(Constants::HARMONY_TOOLCHAIN_TYPEID)
         || !detectionSource().isAutoDetected()) {
         return;
     }
@@ -708,7 +710,7 @@ void HarmonyToolchain::syncAutodetectedWithParentToolchains()
         connect(ToolchainManager::instance(), &ToolchainManager::toolchainsLoaded, this,
                 [id = id()] {
                     if (Toolchain * const tc = ToolchainManager::findToolchain(id)) {
-                        if (tc->typeId() == ProjectExplorer::Constants::CLANG_TOOLCHAIN_TYPEID)
+                        if (tc->typeId() == Id(Constants::HARMONY_TOOLCHAIN_TYPEID))
                             static_cast<HarmonyToolchain *>(tc)->syncAutodetectedWithParentToolchains();
                     }
                 });
@@ -858,10 +860,14 @@ FilePath HarmonyToolchain::ndkLocation() const
 
 FilePath HarmonyToolchain::makeCommand(const Utils::Environment &environment) const
 {
+    // Unix / macOS: same idea as GccToolchain::mingwAwareMakeCommand — prefer PATH, include gmake (BSD).
     if (!HostOsInfo::isWindowsHost()) {
-        FilePath make = environment.searchInPath("make");
-        if (!make.isEmpty())
-            return make;
+        const QStringList names{QStringLiteral("make"), QStringLiteral("gmake")};
+        for (const QString &name : names) {
+            const FilePath found = environment.searchInPath(name);
+            if (!found.isEmpty())
+                return found;
+        }
         return FilePath("make");
     }
     const FilePath makePath = HarmonyConfig::makeLocation();

@@ -41,6 +41,14 @@
 
 ---
 
+## 最近更新（文档）
+
+| 日期 | 说明 |
+|------|------|
+| 2025-03-20 | 根据当前实现更新 [PRIORITY-PLAN.md](PRIORITY-PLAN.md)（P0-10、§7 近期落地、§4 下一阶段建议）、[COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md)、[OPERATIONS.md](OPERATIONS.md) |
+
+---
+
 ## 文档维护约定
 
 1. **功能进度**：更新 [COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md) 中的状态符号与备注。  

@@ -4,6 +4,10 @@
 #include <utils/filepath.h>
 #include <utils/environment.h>
 #include "ohostr.h"
+
+#include <QFile>
+#include <QRegularExpression>
+#include <QTextStream>
 using namespace Utils;
 namespace Ohos::Internal {
 HarmonyQtVersion::HarmonyQtVersion() {}
@@ -28,6 +32,14 @@ void HarmonyQtVersion::addToBuildEnvironment(const ProjectExplorer::Kit *k, Util
                 env.set(Constants::OHOS_SDK_ENV_VAR, sdk);
             }
         }
+    }
+    // 自动注入 JAVA_HOME（DevEco JBR → JAVA_HOME 环境变量 → macOS java_home → PATH），
+    // 使 CMake/hvigor/终端构建无需用户手工配置。
+    const FilePath javaHome = HarmonyConfig::javaLocation();
+    const FilePath javaExe = (javaHome / "bin" / "java").withExecutableSuffix();
+    if (!javaHome.isEmpty() && javaExe.isExecutableFile()) {
+        env.set(QStringLiteral("JAVA_HOME"), javaHome.toFSPathString());
+        env.appendOrSetPath({javaHome / "bin"});
     }
 }
 
@@ -92,25 +104,48 @@ const QStringList HarmonyQtVersion::ohosAbis() const
 
 ProjectExplorer::Abi HarmonyQtVersion::targetAbi() const
 {
-    if (FilePath qdevicepri = mkspecsPath().pathAppended(Constants::Q_DEVICE_PRI); qdevicepri.exists())
-    {
-        if (QFile qconfigFile(qdevicepri.toFSPathString()); qconfigFile.open(QIODevice::ReadOnly))
-        {
-            QTextStream in(&qconfigFile);
-            while (!in.atEnd())
-            {
-                if (const QString line = in.readLine(); line.contains(Constants::OHOS_ARCH))
-                {
-                    auto arch = QLatin1String(line.simplified().split(' ').last().toUtf8());
-                    qconfigFile.close();
-                    return HarmonyConfig::abi(arch);
-                }
-            }
+    const FilePath qdevicepri = mkspecsPath().pathAppended(Constants::Q_DEVICE_PRI);
+    if (!qdevicepri.exists())
+        return {};
+
+    QFile qconfigFile(qdevicepri.toFSPathString());
+    if (!qconfigFile.open(QIODevice::ReadOnly | QIODevice::Text))
+        return {};
+
+    // 旧实现：任意「包含 OHOS_ARCH 子串」的行都取最后一个词。会误匹配注释，例如
+    // 「# OHOS_ARCH unknown」→ 得到 unknown → abi() 失败 → 无效 Abi；若别处再把
+    // displayName/错误字符串写进 CMake，就会出现 ohos.toolchain.cmake 的 unrecognized unknown。
+    static const QRegularExpression assignRe(
+        QStringLiteral(R"(OHOS_ARCH\s*[=:]\s*(\S+))"),
+        QRegularExpression::CaseInsensitiveOption);
+
+    QTextStream in(&qconfigFile);
+    while (!in.atEnd()) {
+        const QString trimmed = in.readLine().trimmed();
+        if (trimmed.isEmpty() || trimmed.startsWith(QLatin1Char('#')))
+            continue;
+        if (!trimmed.contains(QLatin1String(Constants::OHOS_ARCH), Qt::CaseInsensitive))
+            continue;
+
+        const QRegularExpressionMatch m = assignRe.match(trimmed);
+        if (m.hasMatch()) {
+            const QByteArray token = m.captured(1).toLatin1();
             qconfigFile.close();
+            return HarmonyConfig::abi(QLatin1String(token.constData(), token.size()));
+        }
+
+        // 无等号：「OHOS_ARCH arm64-v8a」；要求首词即为 OHOS_ARCH，避免匹配 DEFINES 等行。
+        const QStringList parts = trimmed.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+        if (parts.size() >= 2
+            && parts.constFirst().compare(QString::fromLatin1(Constants::OHOS_ARCH),
+                                          Qt::CaseInsensitive) == 0) {
+            const QByteArray token = parts.constLast().toLatin1();
+            qconfigFile.close();
+            return HarmonyConfig::abi(QLatin1String(token.constData(), token.size()));
         }
     }
-    // Default to a generic ABI if not found
-    return ProjectExplorer::Abi();
+    qconfigFile.close();
+    return {};
 }
 
 // Factory

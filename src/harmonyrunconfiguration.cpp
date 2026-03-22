@@ -102,8 +102,12 @@ public:
             }
             allDeviceCommands << startCommand;
 
-            // NOTE: postStartShellCmd requires a dedicated run worker lifecycle hook.
-            // Here we only execute pre-commands and launch command in one shell session.
+            // `aa start` returns immediately; if the device shell exits right away, hdc finishes and
+            // RunControl's task tree ends before the UI treats the run as active (Stop stays disabled).
+            // Keep the shell session open until the user stops the run (same idea as Android's PID wait).
+            allDeviceCommands << QStringLiteral("while true; do sleep 2; done");
+
+            // postStartShellCmd (Post-quit…) runs when the hdc session ends — see harmonyrunner.cpp.
             cmd.addArg(allDeviceCommands.join(" ; "));
 
             return cmd;

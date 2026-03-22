@@ -8,14 +8,17 @@
 
 | 组件 | 用途 | 典型来源 |
 |------|------|----------|
-| Node.js | 执行 hvigor、ohpm 脚本 | 官方运行时或 DevEco 捆绑目录 |
+| Node.js | 执行 hvigor、ohpm 脚本 | DevEco：`tools/node/node` 或 `tools/node/bin/node`；否则系统 **PATH** 中的 `node` |
+| JDK | hvigor / Gradle 子进程 | DevEco：`jbr/Contents/Home`（macOS）或 `jbr`（扁平布局）；否则 **JAVA_HOME**、macOS **`/usr/libexec/java_home`** 或 PATH 中的 `java`；Harmony Qt Kit 构建环境会**自动注入** `JAVA_HOME` |
 | hvigorw（hvigorw.js） | 工程同步与 HAP 构建 | DevEco / SDK 工具链目录 |
 | ohpm（pm-cli.js） | 依赖安装 | 同上 |
 | hdc | 设备通信、安装 HAP | SDK `toolchains` 等路径下 |
-| CMake + Ninja/Make | IDE 侧生成与 native 构建 | 由 Kit / Qt Creator 提供 |
+| CMake + Ninja/Make | IDE 侧生成与 native 构建 | 由 Kit / Qt Creator 提供；Harmony 自动 Kit 可为 Unix Makefiles 预填 **`CMAKE_MAKE_PROGRAM`** |
 | Qt for Harmony | 交叉 Qt 与工程描述 | Qt 发行渠道 |
 
 **约束**：插件通过**设置页与环境变量**解析路径，不在代码中写死绝对路径。
+
+**hvigor 子进程环境（实现要点）**：`DEVECO_SDK_HOME`；有效 JDK 时 `JAVA_HOME` 与 `PATH` 含 `$JAVA_HOME/bin`；工作目录为构建目录下已创建的 **`ohpro`** 规范绝对路径，并设置 **`PWD`** / **`INIT_CWD`**（减轻 Node `uv_cwd` 类错误）。
 
 ---
 
@@ -34,7 +37,9 @@
 2. **ohpm install**（安装 ohpm 依赖）  
 3. **hvigor assembleHap**（或等价产物任务）
 
-标准输出/错误回传至 Qt Creator **构建输出**；失败应可通过 **Issues** 与日志定位（输出解析器见 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) 中 P1 任务）。
+每步启动前会 **确保构建目录下的 `ohpro` 子目录已创建** 并采用 **规范绝对路径** 作为 cwd；与主步骤一致注入 **DevEco / Java** 相关环境变量（见 §1）。
+
+标准输出/错误回传至 Qt Creator **构建输出**；失败应可通过 **Issues** 与日志定位（**hvigor 日志解析进 Issues** 仍属 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) **P1-14**）。
 
 ### 2.3 与 Android 的差异
 
@@ -55,6 +60,8 @@
 
 - **HarmonyRunConfiguration** 描述启动参数与环境。
 - 实际执行由 **RunWorker** 完成（例如通过 `hdc shell` 调用 **aa start** 等）；`preStartShellCmd` / `postStartShellCmd` 等高级行为以 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) **P0** 任务为准逐步对齐 Android 生命周期。
+- **`aa start` 会立刻返回**：若不在设备 shell 里保持会话，本机 `hdc` 会马上退出，Qt Creator 会认为运行已结束（**停止按钮不可用**）。实现上在启动命令后追加设备侧 `while/sleep` 循环以保持会话，直到用户点「停止」（与 Android 用 PID 轮询保持 `adb` 会话的思路一致）。
+- **Post-quit on-device shell commands**：在 **本机 `hdc` 进程结束** 后（含用户点停止、会话被 kill），按行执行运行配置里的命令（每条一次 `hdc shell …`，与 Android 多条 `adb shell` 类似）。
 
 ### 后续增强（计划）
 

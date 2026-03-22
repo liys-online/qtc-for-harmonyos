@@ -21,7 +21,7 @@
 
 | 单元 | 职责 |
 |------|------|
-| `harmonyconfigurations.*` | 全局配置读写、SDK/DevEco 路径、与 Kit/工具链协作 |
+| `harmonyconfigurations.*` | 全局配置读写、SDK/DevEco 路径、`persistSettings()`、`javaLocation()`/`nodeLocation()`、自动 Kit CMake（`OHOS_ARCH` 等）、与工具链协作 |
 | `harmonysettingswidget.*` | 「选项」中的 Harmony 设置页 |
 | `harmonysdkdownloader.*` | OpenHarmony SDK **组件索引** HTTP 拉取与 JSON 解析（对标 Android `sdkmanager --list` 的数据层） |
 | `harmonysdkmanagerdialog.*` | **SDK 包管理**对话框：刷新列表、多选下载、SHA-256 校验、日志（入口在设置页「Manage SDK Packages…」） |
@@ -35,7 +35,7 @@
 
 | 单元 | 职责 |
 |------|------|
-| `harmonyqtversion.*` | Harmony 相关 Qt 版本检测与注册 |
+| `harmonyqtversion.*` | Harmony Qt 版本检测、`targetAbi()`（qdevice.pri）、`addToBuildEnvironment` 注入 `JAVA_HOME`/PATH |
 | `harmonytoolchain.*` | OHOS 交叉工具链检测与注册 |
 
 ---
@@ -55,7 +55,7 @@
 | 单元 | 职责 |
 |------|------|
 | `harmonybuildconfiguration.*` | CMake 构建配置扩展 |
-| `harmonybuildhapstep.*` | HAP 构建步骤及步骤内配置界面（如 `HarmonyBuildHapWidget`） |
+| `harmonybuildhapstep.*` | HAP 构建步骤（sync / ohpm / assemble）、`prepareOhProDirectory`、`applyDevecoAndJavaEnv`、配置界面 `HarmonyBuildHapWidget` |
 | `harmonydeployqtstep.*` | 部署步骤（hdc 安装等） |
 
 ---

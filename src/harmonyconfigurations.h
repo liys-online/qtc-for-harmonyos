@@ -35,6 +35,11 @@ namespace Ohos::Internal {
          * 更新自动Kit列表
          */
         static void updateAutomaticKitList();
+        /**
+         * Write HarmonyConfig to application settings. Safe to call after mutating paths/lists;
+         * no-op if HarmonyConfigurations has not been constructed yet (e.g. during load()).
+         */
+        static void persistSettings();
     private:
         friend void setupHarmonyConfigurations();
         explicit HarmonyConfigurations(QObject *parent = nullptr);

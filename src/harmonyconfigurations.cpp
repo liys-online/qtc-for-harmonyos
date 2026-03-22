@@ -40,6 +40,26 @@ using namespace QtSupport;
 namespace Ohos::Internal {
 using namespace Constants::Parameter;
 
+static FilePath unixHostMakeProgramForCMake()
+{
+    const Environment sys = Environment::systemEnvironment();
+    const QStringList names{QStringLiteral("make"), QStringLiteral("gmake")};
+    for (const QString &name : names) {
+        const FilePath found = sys.searchInPath(name);
+        if (!found.isEmpty())
+            return found;
+    }
+    const FilePath fallbacks[] = {
+        FilePath::fromString("/usr/bin/make"),
+        FilePath::fromString("/bin/make"),
+    };
+    for (const FilePath &fp : fallbacks) {
+        if (fp.isExecutableFile())
+            return fp;
+    }
+    return {};
+}
+
 static bool harmonySdkListContainsNormalized(const QStringList &list, const FilePath &sdkDir)
 {
     const FilePath normalized = sdkDir.cleanPath();
@@ -55,6 +75,53 @@ const QLatin1String X86ToolsDisplayName("i686");
 const QLatin1String AArch64ToolsDisplayName("arm64-v8a");
 const QLatin1String X86_64ToolsDisplayName("x86_64");
 const QLatin1String Unknown("unknown");
+
+/** 供 CMake OHOS_ARCH 使用（与 ohos.toolchain.cmake 一致）；勿使用 displayName 的 "unknown"。 */
+static QByteArray abiToOhosNdkArchString(const Abi &abi)
+{
+    if (!abi.isValid())
+        return {};
+    switch (abi.architecture()) {
+    case Abi::ArmArchitecture:
+        return abi.wordWidth() == 64 ? QByteArray(Constants::HARMONY_ABI_ARM64_V8A)
+                                     : QByteArray(Constants::HARMONY_ABI_ARMEABI_V7A);
+    case Abi::X86Architecture:
+        return abi.wordWidth() == 64 ? QByteArray(Constants::HARMONY_ABI_X86_64)
+                                     : QByteArray(Constants::HARMONY_ABI_X86);
+    default:
+        return {};
+    }
+}
+
+/**
+ * OpenHarmony SDK 的 ohos.toolchain.cmake 仅识别 arm64-v8a、armeabi-v7a、x86_64。
+ * 旧 Kit / 手写参数 / 缓存里可能出现 unknown、x86 等非法值，在此统一纠正。
+ */
+static QByteArray normalizeOhosArchForSdkToolchain(QByteArray arch)
+{
+    arch = arch.trimmed();
+    static const QList<QByteArray> allowed{
+        QByteArray(Constants::HARMONY_ABI_ARM64_V8A),
+        QByteArray(Constants::HARMONY_ABI_ARMEABI_V7A),
+        QByteArray(Constants::HARMONY_ABI_X86_64),
+    };
+    if (allowed.contains(arch))
+        return arch;
+    const QByteArray lower = arch.toLower();
+    if (lower == QByteArrayLiteral("aarch64") || lower == QByteArrayLiteral("arm64"))
+        return QByteArray(Constants::HARMONY_ABI_ARM64_V8A);
+    if (lower == QByteArrayLiteral("arm") || lower == QByteArrayLiteral("armeabi")
+        || lower == QByteArrayLiteral("armv7") || lower == QByteArrayLiteral("armv7-a"))
+        return QByteArray(Constants::HARMONY_ABI_ARMEABI_V7A);
+    if (arch == QByteArray(Constants::HARMONY_ABI_X86))
+        return QByteArray(Constants::HARMONY_ABI_X86_64);
+    if (lower == QByteArrayLiteral("i686") || lower == QByteArrayLiteral("x86"))
+        return QByteArray(Constants::HARMONY_ABI_X86_64);
+    if (lower == QByteArrayLiteral("unknown") || arch.isEmpty())
+        return QByteArray(Constants::HARMONY_ABI_ARM64_V8A);
+    return QByteArray(Constants::HARMONY_ABI_ARM64_V8A);
+}
+
 static FilePath sdkSettingsFileName()
 {
     return Core::ICore::installerResourcePath("harmony.xml");
@@ -77,6 +144,71 @@ static QString getDeviceProperty(const QString &device, const QString &property)
         return hdcParam.allOutput();
     return {};
 }
+
+namespace {
+FilePath javaHomeIfValid(const FilePath &home)
+{
+    if (home.isEmpty())
+        return {};
+    const FilePath javaExe = (home / "bin" / "java").withExecutableSuffix();
+    return javaExe.isExecutableFile() ? home : FilePath{};
+}
+
+#ifdef Q_OS_MACOS
+/** 使用 Apple 官方工具自动解析本机已安装的 JDK（无需用户配置 JAVA_HOME）。 */
+FilePath macOsJavaHomeFromJavaHomeTool()
+{
+    static FilePath cache;
+    static bool done = false;
+    if (done)
+        return cache;
+    done = true;
+
+    const FilePath tool = FilePath::fromString("/usr/libexec/java_home");
+    if (!tool.isExecutableFile())
+        return cache;
+    const QList<QStringList> argVariants = {
+        {QStringLiteral("-v"), QStringLiteral("17+")},
+        {QStringLiteral("-v"), QStringLiteral("17")},
+        {QStringLiteral("-v"), QStringLiteral("11+")},
+        QStringList{},
+    };
+    for (const QStringList &args : argVariants) {
+        Process proc;
+        proc.setCommand({tool, args});
+        proc.runBlocking();
+        if (proc.result() != ProcessResult::FinishedWithSuccess)
+            continue;
+        const FilePath home = FilePath::fromUserInput(proc.cleanedStdOut().trimmed()).cleanPath();
+        if (const FilePath v = javaHomeIfValid(home); !v.isEmpty()) {
+            cache = v;
+            return cache;
+        }
+    }
+    return cache;
+}
+#endif
+
+/** PATH 中的 java 解析到 JDK 根目录（resolveSymlinks 后取 bin 的父目录）。 */
+FilePath javaHomeFromPathJava()
+{
+    static FilePath cache;
+    static bool done = false;
+    if (done)
+        return cache;
+    done = true;
+
+    const FilePath javaExe = Environment::systemEnvironment().searchInPath("java");
+    if (!javaExe.isExecutableFile())
+        return cache;
+    const FilePath resolved = javaExe.resolveSymlinks();
+    FilePath home = resolved.parentDir();
+    if (home.fileName() == QStringLiteral("bin"))
+        home = home.parentDir();
+    cache = javaHomeIfValid(home);
+    return cache;
+}
+} // namespace
 
 namespace HarmonyConfig {
 struct HarmonyConfigData{
@@ -280,6 +412,7 @@ bool tryAutoDetectDevecoStudio()
 void setDevecoStudioLocation(const Utils::FilePath &devecoStudioLocation)
 {
     config().m_devecoStudioPath = devecoStudioLocation.cleanPath();
+    HarmonyConfigurations::persistSettings();
 }
 
 FilePath makeLocation()
@@ -290,6 +423,7 @@ FilePath makeLocation()
 void setMakeLocation(const Utils::FilePath &makeLocation)
 {
     config().m_makeLocation = makeLocation;
+    HarmonyConfigurations::persistSettings();
 }
 
 QList<FilePath> ndkLocations()
@@ -375,17 +509,59 @@ QPair<QVersionNumber, QVersionNumber> getVersion(const Utils::FilePath &releaseF
     return versionPair;
 }
 
+static void appendHarmonyHdcToolchainBases(QVector<FilePath> &out, const FilePath &sdkRoot)
+{
+    if (sdkRoot.isEmpty() || !sdkRoot.isReadableDir())
+        return;
+    const auto appendPair = [&](const FilePath &root) {
+        if (root.isEmpty() || !root.isReadableDir())
+            return;
+        out.append(root / "toolchains");
+        out.append(root / "default" / "openharmony" / "toolchains");
+    };
+    appendPair(sdkRoot);
+    // SDK 根下多 API 目录（如 …/sdk/18/toolchains/hdc）
+    const FilePaths children = sdkRoot.dirEntries(QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const FilePath &ch : children) {
+        if (ch.fileName() == QStringLiteral(".temp"))
+            continue;
+        const QString n = ch.fileName();
+        if (!n.isEmpty() && n.at(0) == QLatin1Char('.'))
+            continue;
+        appendPair(ch);
+    }
+}
+
 FilePath hdcToolPath()
 {
-    const QVector<FilePath> candidatePaths = {
-        defaultSdk() / "toolchains",
-        defaultSdk() / "default" / "openharmony" / "toolchains"
+    QVector<FilePath> bases;
+    QSet<QString> seen;
+
+    const auto addRoots = [&](const FilePath &sdkRoot) {
+        QVector<FilePath> chunk;
+        appendHarmonyHdcToolchainBases(chunk, sdkRoot.cleanPath());
+        for (const FilePath &b : std::as_const(chunk)) {
+            const QString k = b.toUserOutput();
+            if (k.isEmpty() || seen.contains(k))
+                continue;
+            seen.insert(k);
+            bases.append(b);
+        }
     };
-    for (const FilePath &path : candidatePaths) {
-        if (FilePath hdcPath = path.pathAppended("hdc").withExecutableSuffix(); hdcPath.isExecutableFile())
+
+    addRoots(defaultSdk());
+    for (const QString &s : getSdkList())
+        addRoots(FilePath::fromUserInput(s).cleanPath());
+    addRoots(effectiveOhosSdkRoot());
+
+    for (const FilePath &path : std::as_const(bases)) {
+        const FilePath hdcPath = path.pathAppended("hdc").withExecutableSuffix();
+        if (hdcPath.isExecutableFile())
             return hdcPath;
     }
-    return candidatePaths.first().pathAppended("hdc").withExecutableSuffix();
+
+    const FilePath fallbackRoot = !defaultSdk().isEmpty() ? defaultSdk().cleanPath() : effectiveOhosSdkRoot();
+    return (fallbackRoot / "toolchains" / "hdc").withExecutableSuffix();
 }
 
 int getSDKVersion(const QString &device)
@@ -422,13 +598,16 @@ QStringList &getSdkList()
 
 void addSdk(const QString &sdk)
 {
-    if (!config().m_sdkList.contains(sdk))
+    if (!config().m_sdkList.contains(sdk)) {
         config().m_sdkList.append(sdk);
+        HarmonyConfigurations::persistSettings();
+    }
 }
 
 void removeSdkList(const QString &sdk)
 {
     config().m_sdkList.removeAll(sdk);
+    HarmonyConfigurations::persistSettings();
 }
 
 bool isValidSdk(const FilePath &sdkLocation)
@@ -477,6 +656,7 @@ FilePath defaultSdk()
 void setdefaultSdk(const Utils::FilePath &sdkLocation)
 {
     config().m_defaultSdkLocation = sdkLocation;
+    HarmonyConfigurations::persistSettings();
 }
 
 FilePath ohosSdkRoot()
@@ -487,6 +667,7 @@ FilePath ohosSdkRoot()
 void setOhosSdkRoot(const FilePath &path)
 {
     config().m_ohosSdkRoot = path;
+    HarmonyConfigurations::persistSettings();
 }
 
 QString effectiveQtOhBinaryCatalogUrl()
@@ -564,11 +745,17 @@ void addQmake(const QString &qmake)
     {
         config().m_qmakeList.append(qmake);
     }
+    HarmonyConfigurations::persistSettings();
+    HarmonyConfigurations::registerQtVersions();
+    HarmonyConfigurations::updateAutomaticKitList();
 }
 
 void removeQmake(const QString &qmake)
 {
     config().m_qmakeList.removeAll(qmake);
+    HarmonyConfigurations::persistSettings();
+    HarmonyConfigurations::registerQtVersions();
+    HarmonyConfigurations::updateAutomaticKitList();
 }
 
 QStringList &getQmakeList()
@@ -595,9 +782,42 @@ FilePath hvigorwJsLocation()
     return devecoToolsLocation() / "hvigor" / "bin" / "hvigorw.js";
 }
 
+namespace {
+FilePath harmonyBundledNodeUnderTools(const FilePath &toolsDir)
+{
+    if (toolsDir.isEmpty() || !toolsDir.isReadableDir())
+        return {};
+    const FilePath candidates[] = {
+        // 旧布局（部分 DevEco / Windows）
+        toolsDir / "node" / "node",
+        // 常见：macOS / 新版 DevEco 为 tools/node/bin/node
+        toolsDir / "node" / "bin" / "node",
+    };
+    for (const FilePath &p : candidates) {
+        const FilePath exe = p.withExecutableSuffix();
+        if (exe.isExecutableFile())
+            return exe;
+    }
+    return {};
+}
+} // namespace
+
 FilePath nodeLocation()
 {
-    return FilePath(devecoToolsLocation() / "node" / "node").withExecutableSuffix();
+    const FilePath tools = devecoToolsLocation();
+    const FilePath bundled = harmonyBundledNodeUnderTools(tools);
+    if (!bundled.isEmpty())
+        return bundled;
+
+    // 未随 DevEco 安装或路径变更时，使用系统 PATH 中的 node（brew / 官网安装均可跑 hvigor）
+    const FilePath fromPath = Environment::systemEnvironment().searchInPath("node");
+    if (fromPath.isExecutableFile())
+        return fromPath;
+
+    // 供诊断：仍返回旧版默认路径（可能不存在）
+    if (!tools.isEmpty())
+        return (tools / "node" / "node").withExecutableSuffix();
+    return {};
 }
 
 FilePath ohpmJsLocation()
@@ -608,9 +828,34 @@ FilePath ohpmJsLocation()
 FilePath javaLocation()
 {
     const FilePath stored = devecoStudioLocation();
-    if (stored.isEmpty())
-        return {};
-    return devecoMacBundleContentsOrSame(stored) / "jbr";
+    if (!stored.isEmpty()) {
+        const FilePath jbrRoot = devecoMacBundleContentsOrSame(stored) / "jbr";
+#ifdef Q_OS_MACOS
+        // JetBrains JBR on macOS: …/jbr/Contents/Home/bin/java（勿把 JAVA_HOME 指到 jbr 根目录）
+        if (const FilePath macHome = javaHomeIfValid(jbrRoot / "Contents" / "Home"); !macHome.isEmpty())
+            return macHome;
+#endif
+        if (const FilePath flat = javaHomeIfValid(jbrRoot); !flat.isEmpty())
+            return flat;
+    }
+
+    const QString fromEnv = qtcEnvironmentVariable(QStringLiteral("JAVA_HOME"));
+    if (!fromEnv.isEmpty()) {
+        if (const FilePath h = javaHomeIfValid(FilePath::fromUserInput(fromEnv).cleanPath());
+            !h.isEmpty())
+            return h;
+    }
+
+#ifdef Q_OS_MACOS
+    if (const FilePath mac = macOsJavaHomeFromJavaHomeTool(); !mac.isEmpty())
+        return mac;
+#endif
+    if (const FilePath fromPath = javaHomeFromPathJava(); !fromPath.isEmpty())
+        return fromPath;
+
+    if (!stored.isEmpty())
+        return devecoMacBundleContentsOrSame(stored) / "jbr";
+    return {};
 }
 
 QPair<int, QVersionNumber> devecoStudioVersion()
@@ -697,6 +942,12 @@ void HarmonyConfigurations::save()
     settings->beginGroup(SettingsGroup);
     HarmonyConfig::config().save(*settings);
     settings->endGroup();
+}
+
+void HarmonyConfigurations::persistSettings()
+{
+    if (m_instance)
+        m_instance->save();
 }
 
 void HarmonyConfigurations::updateHarmonyDevice()
@@ -881,12 +1132,51 @@ void HarmonyConfigurations::updateAutomaticKitList()
                                     QByteArrayLiteral("%{Qt:QT_INSTALL_PREFIX}")));
                 cmakeConfig.insert(
                     CMakeConfigItem("OHOS_STL", CMakeConfigItem::STRING, QByteArrayLiteral("c++_shared")));
-                cmakeConfig.insert(CMakeConfigItem(
-                    "OHOS_ARCH",
-                    CMakeConfigItem::STRING,
-                    QString(HarmonyConfig::displayName(ohQt->targetAbi())).toUtf8()));
+                // targetAbi() 若未从 qdevice.pri 解析到，会得到无效 Abi → displayName 为 "unknown"，
+                // ohos.toolchain.cmake 会报 unrecognized unknown。优先用 Qt 版本身 ABI，否则用工具链 Bundle。
+                const QByteArray rawOhosArch = [&] {
+                    QByteArray a = abiToOhosNdkArchString(ohQt->targetAbi());
+                    if (a.isEmpty())
+                        a = abiToOhosNdkArchString(bundle.targetAbi());
+                    return a;
+                }();
+                QByteArray ohosArch = normalizeOhosArchForSdkToolchain(rawOhosArch);
+                if (rawOhosArch.isEmpty()) {
+                    Core::MessageManager::writeSilently(
+                        QObject::tr("Harmony Kit: Could not detect OHOS_ARCH from Qt or toolchain; "
+                                    "defaulting CMake variable to %1. If configure still fails, add "
+                                    "OHOS_ARCH in Kit CMake configuration or fix Qt mkspecs qdevice.pri.")
+                            .arg(QString::fromLatin1(ohosArch)));
+                } else if (rawOhosArch != ohosArch) {
+                    Core::MessageManager::writeSilently(
+                        QObject::tr("Harmony Kit: OHOS_ARCH value %1 is not valid for OpenHarmony "
+                                    "ohos.toolchain.cmake (allowed: arm64-v8a, armeabi-v7a, x86_64). "
+                                    "Using %2 instead. Remove conflicting -DOHOS_ARCH from the kit's "
+                                    "additional CMake arguments if configure still fails.")
+                            .arg(QString::fromLatin1(rawOhosArch), QString::fromLatin1(ohosArch)));
+                }
+                cmakeConfig.insert(
+                    CMakeConfigItem("OHOS_ARCH", CMakeConfigItem::STRING, ohosArch));
                 cmakeConfig.insert(
                     CMakeConfigItem("OHOS_PLATFORM", CMakeConfigItem::STRING, QByteArrayLiteral("OHOS")));
+
+                // Unix Makefiles 生成器需要本机 make：PATH 优先（Homebrew 等），再试常见路径。
+                if (HostOsInfo::isAnyUnixHost()) {
+                    const FilePath unixMake = unixHostMakeProgramForCMake();
+                    if (!unixMake.isEmpty()) {
+                        cmakeConfig.insert(CMakeConfigItem("CMAKE_MAKE_PROGRAM", CMakeConfigItem::FILEPATH,
+                                                           unixMake.toUserOutput().toUtf8()));
+                    }
+                } else if (HostOsInfo::isWindowsHost()) {
+                    const FilePath root = HarmonyConfig::makeLocation();
+                    if (!root.isEmpty()) {
+                        const FilePath mingwMake = root.pathAppended("bin/mingw32-make.exe");
+                        if (mingwMake.isExecutableFile()) {
+                            cmakeConfig.insert(CMakeConfigItem("CMAKE_MAKE_PROGRAM", CMakeConfigItem::FILEPATH,
+                                                               mingwMake.toUserOutput().toUtf8()));
+                        }
+                    }
+                }
 
 
                 k->setDetectionSource(DetectionSource(

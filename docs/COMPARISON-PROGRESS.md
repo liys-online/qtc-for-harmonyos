@@ -36,7 +36,7 @@
 
 | # | Android 能力 / 典型文件 | Harmony 对应 | 进度 | 备注 |
 |---|---------------------------|--------------|------|------|
-| 2.1 | `AndroidConfig` + QSettings 分组 | `HarmonyConfig` / `HarmonyConfigurations` | 🔄 | 模型与 Android 不同，字段持续演进 |
+| 2.1 | `AndroidConfig` + QSettings 分组 | `HarmonyConfig` / `HarmonyConfigurations` | ✅ | 路径/SDK/qmake 等 mutator 已 `persistSettings()` 写回 QSettings（与 Android 持久化习惯对齐） |
 | 2.2 | `android.xml` 等辅助持久化 | `harmony.xml`（若使用） | 🔄 | 需确认路径与是否存在默认文件 |
 | 2.3 | SDK/NDK 校验与版本读取 | `isValidSdk`、`oh-uni-package.json` 等 | 🔄 | 错误提示已部分从 Android 文案改为 OHOS |
 | 2.4 | 自动创建 Kit / 工具链联动 | `updateAutomaticKitList` 等 | 🔄 | 与 qmake/SDK 列表联动，需持续验证 |
@@ -60,7 +60,7 @@
 
 | # | Android 能力 / 典型文件 | Harmony 对应 | 进度 | 备注 |
 |---|---------------------------|--------------|------|------|
-| 4.1 | `AndroidQtVersion` 检测 ABI / builtWith | `HarmonyQtVersion` | 🔄 | 依赖 qconfig / qdevice.pri 等 |
+| 4.1 | `AndroidQtVersion` 检测 ABI / builtWith | `HarmonyQtVersion` | 🔄 | qconfig / qdevice.pri；**已收紧** `targetAbi()` 解析（跳过 `#` 注释、支持 `OHOS_ARCH=`） |
 | 4.2 | 多 ABI / 版本边界判断 | `supportsMultipleQtAbis` 等 | 🔄 | 存在硬编码版本号风险 |
 | 4.3 | Qt 版本工厂注册 | `harmonyqtversion` | ✅ | 与 Android 模式一致 |
 
@@ -71,7 +71,7 @@
 | # | Android 能力 / 典型文件 | Harmony 对应 | 进度 | 备注 |
 |---|---------------------------|--------------|------|------|
 | 5.1 | Android 专用 KitAspect（ABI、签名等） | 无独立 `harmonykitaspect` 模块 | ⬜ | 能力分散在配置/Kit 自动创建中，待对标拆分 |
-| 5.2 | Kit 与设备、Qt、工具链组合 | Kit + `QtKitAspect` 等 | 🔄 | 需与自动 Kit 列表策略对齐 |
+| 5.2 | Kit 与设备、Qt、工具链组合 | Kit + `QtKitAspect` 等 | 🔄 | 自动 Kit CMake 项含 **`OHOS_ARCH` 规范化**、Unix **`CMAKE_MAKE_PROGRAM`**；与 qmake 列表联动仍待全场景验证 |
 
 ---
 
@@ -103,9 +103,9 @@
 | # | Android 能力 / 典型文件 | Harmony 对应 | 进度 | 备注 |
 |---|---------------------------|--------------|------|------|
 | 8.1 | `AndroidPackageInstallationStep`（install 到 android-build） | ➖ / 部分由 CMake | ➖ | OHOS 侧工程结构不同 |
-| 8.2 | `AndroidBuildApkStep`（androiddeployqt + Gradle） | `HarmonyBuildHapStep`（hvigor/ohpm） | 🔄 | 签名 UI 大量注释；流程已串 sync→ohpm→assemble |
+| 8.2 | `AndroidBuildApkStep`（androiddeployqt + Gradle） | `HarmonyBuildHapStep`（hvigor/ohpm） | 🔄 | 签名 UI 大量注释；sync→ohpm→assemble；**已加固** Node 多路径、Java 自动、`DEVECO_SDK_HOME`/`JAVA_HOME`、`ohpro` 目录与 `PWD`/`INIT_CWD` |
 | 8.3 | Keystore / 签名向导 | — / DevEco 按钮 | 🔄 | 对标 `KeystoreCertificateDialog` 未完整 |
-| 8.4 | 构建输出解析（错误进 Issues） | `HarmonyBuildHapStep` 配置类失败 | 🔄 | node/hvigor/ohpm 缺失与 `init()` 失败已 `addOutput`+`BuildSystemTask`；hvigor 日志解析仍对标 `JavaParser`/Gradle |
+| 8.4 | 构建输出解析（错误进 Issues） | `HarmonyBuildHapStep` 配置类失败 | 🔄 | 配置类失败已 `addOutput`+`BuildSystemTask`；**hvigor 编译期日志进 Issues 仍待做**（对标 `JavaParser`/Gradle） |
 | 8.5 | 日志分类 `QLoggingCategory` | `harmonyBuildHapLog` 等 | 🔄 | 已部分引入，未全文件统一 |
 
 ---
@@ -128,7 +128,7 @@
 |---|---------------------------|--------------|------|------|
 | 10.1 | `AndroidRunConfiguration` + Aspects | `HarmonyRunConfiguration` | 🔄 | 字段齐全度接近 |
 | 10.2 | `RunWorkerFactory` + 实际启动 | `harmonyrunner.cpp` + `ProcessRunnerFactory` | 🔄 | 已能发起 `hdc shell` 启动；非 Android 级编排 |
-| 10.3 | `am start` / `aa start` 参数与多步骤 shell | `aa start` + `preStartShellCmd` 合并 | 🔄 | `postStartShellCmd` 未接生命周期 |
+| 10.3 | `am start` / `aa start` 参数与多步骤 shell | `aa start` + `preStartShellCmd` 合并；`postStartShellCmd` 在 hdc 会话结束后执行 | 🔄 | 与 Android 编排粒度仍不同，行为已对齐 |
 | 10.4 | 部署前运行 / 设备未连处理 | Android `androidKicker` 等 | ⬜ | 需按 RunControl 模式补 |
 | 10.5 | QML 调试端口等 | — | ⬜ | 对标 AndroidRunner QML 通道 |
 
@@ -180,7 +180,7 @@
 
 | 闭环阶段 | Android | Harmony 进度 |
 |----------|---------|----------------|
-| 配置 SDK/工具 | ✅ 成熟 | 🔄 |
+| 配置 SDK/工具 | ✅ 成熟 | 🔄（qmake/SDK 等持久化与 hvigor 环境已加强，仍差 P0-09 引导等） |
 | 创建/维护 Kit | ✅ | 🔄 |
 | 构建产物 | ✅ APK/AAB | 🔄 HAP |
 | 部署到设备 | ✅ | 🔄 |

@@ -5,6 +5,7 @@
 #include <projectexplorer/projectexplorerconstants.h>
 #include <utils/utilsicons.h>
 #include <utils/layoutbuilder.h>
+#include <utils/stylehelper.h>
 #include <utils/hostosinfo.h>
 #include <utils/pathchooser.h>
 #include <utils/detailswidget.h>
@@ -123,6 +124,10 @@ private:
 HarmonySettingsWidget::HarmonySettingsWidget()
 {
     setWindowTitle(Tr::tr("Harmony Configuration"));
+
+    auto infoLabel = new InfoLabel(Tr::tr("All changes on this page take effect immediately."));
+    infoLabel->setFilled(true);
+
     const QIcon downloadIcon = Icons::ONLINE.icon();
     const bool showMakeControls = HostOsInfo::isWindowsHost();
 
@@ -222,7 +227,8 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     using namespace Layouting;
 
     Column {
-        Tr::tr("All changes on this page take effect immediately."),
+        infoLabel,
+        Space(StyleHelper::SpacingTokens::GapVM),
         Group {
             title(Tr::tr("Harmony Settings")),
             Grid {

@@ -32,7 +32,40 @@ using ProjectExplorer::BuildSystemTask;
 namespace Ohos::Internal {
 namespace {
 static Q_LOGGING_CATEGORY(harmonyBuildHapLog, "qtc.harmony.build.hap", QtWarningMsg)
+
+QString harmonyNodeMissingUserHint()
+{
+    return Tr::tr(
+        "Could not find Node.js (hvigor/ohpm require it). "
+        "Set the DevEco Studio path in Harmony preferences (bundled Node is often "
+        "…/tools/node/bin/node), or install Node.js and ensure \"node\" is on your PATH "
+        "when Qt Creator starts.");
 }
+
+void applyDevecoAndJavaEnv(Environment &evn)
+{
+    const FilePath deveco = HarmonyConfig::devecoStudioLocation();
+    if (!deveco.isEmpty())
+        evn.set("DEVECO_SDK_HOME", deveco.toFSPathString());
+
+    const FilePath javaHome = HarmonyConfig::javaLocation();
+    const FilePath javaExe = (javaHome / "bin" / "java").withExecutableSuffix();
+    if (!javaHome.isEmpty() && javaExe.isExecutableFile()) {
+        evn.set("JAVA_HOME", javaHome.toFSPathString());
+        evn.appendOrSetPath({javaHome / "bin"});
+    }
+}
+
+void applyHvigorWorkingDirectoryEnv(Environment &evn, const FilePath &absoluteCwd)
+{
+    if (absoluteCwd.isEmpty())
+        return;
+    const QString p = absoluteCwd.nativePath();
+    evn.set(QStringLiteral("PWD"), p);
+    // Node/libuv 与部分 hvigor 子进程依赖 cwd；与 PWD 一致可减少 macOS 上 uv_cwd EPERM
+    evn.set(QStringLiteral("INIT_CWD"), p);
+}
+} // namespace
 [[maybe_unused]] static void createOhPro(ProjectExplorer::BuildSystem *buildsystem, const QString &path)
 {
     using namespace QtSupport;
@@ -285,6 +318,37 @@ void HarmonyBuildHapStep::toMap(Utils::Store &map) const
     map.insert(BuildToolsVersionKey, m_buildToolsVersion);
 }
 
+bool HarmonyBuildHapStep::prepareOhProDirectory(FilePath *outCwd, QString *errorMessage)
+{
+    if (!outCwd || !errorMessage)
+        return false;
+    *outCwd = {};
+    const FilePath ohPro = (buildDirectory().cleanPath() / "ohpro").cleanPath();
+    if (const Result<> mk = ohPro.ensureWritableDir(); !mk) {
+        *errorMessage = Tr::tr("Could not create Harmony OHOS wrapper directory \"%1\". %2")
+                            .arg(ohPro.toUserOutput(), mk.error());
+        return false;
+    }
+    if (!ohPro.isReadableDir()) {
+        *errorMessage = Tr::tr("Harmony project directory is not accessible: \"%1\"")
+                            .arg(ohPro.toUserOutput());
+        return false;
+    }
+    FilePath cwd = ohPro.canonicalPath();
+    if (cwd.isEmpty()) {
+        cwd = ohPro.absoluteFilePath();
+        if (cwd.isEmpty())
+            cwd = ohPro;
+    }
+    if (!cwd.isReadableDir()) {
+        *errorMessage = Tr::tr("Could not resolve a usable absolute path for \"%1\".")
+                            .arg(ohPro.toUserOutput());
+        return false;
+    }
+    *outCwd = cwd;
+    return true;
+}
+
 QtTaskTree::GroupItem HarmonyBuildHapStep::defaultProcessTask()
 {
     const auto onSetup = [this](Process &process) {
@@ -298,7 +362,7 @@ QtTaskTree::GroupItem HarmonyBuildHapStep::defaultProcessTask()
 QtTaskTree::GroupItem HarmonyBuildHapStep::syncProjectTask()
 {
     const auto onSyncProject = [this] (Process &process){
-        if (auto node = HarmonyConfig::nodeLocation(); node.exists())
+        if (const FilePath node = HarmonyConfig::nodeLocation(); node.isExecutableFile())
         {
             if (auto hvigorwJs = HarmonyConfig::hvigorwJsLocation(); hvigorwJs.exists())
             {
@@ -312,10 +376,19 @@ QtTaskTree::GroupItem HarmonyBuildHapStep::syncProjectTask()
                                                  "--no_daemon",
                                                  }};
 
+                FilePath ohProCwd;
+                QString prepErr;
+                if (!prepareOhProDirectory(&ohProCwd, &prepErr)) {
+                    emit addOutput(prepErr, OutputFormat::ErrorMessage);
+                    emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, prepErr));
+                    return QtTaskTree::SetupResult::StopWithError;
+                }
+
                 process.setUseCtrlCStub(HostOsInfo::isWindowsHost());
-                process.setWorkingDirectory(buildDirectory() / "ohpro");
+                process.setWorkingDirectory(ohProCwd);
                 auto evn = buildEnvironment();
-                evn.set("DEVECO_SDK_HOME", HarmonyConfig::devecoStudioLocation().toFSPathString());
+                applyDevecoAndJavaEnv(evn);
+                applyHvigorWorkingDirectoryEnv(evn, ohProCwd);
                 process.setEnvironment(evn);
                 process.setCommand(command);
                 if (buildEnvironment().hasKey("VSLANG"))
@@ -346,8 +419,7 @@ QtTaskTree::GroupItem HarmonyBuildHapStep::syncProjectTask()
         }
         else
         {
-            const QString err = Tr::tr("Could not find node executable, "
-                                       "please check your HarmonyOS SDK configuration.");
+            const QString err = harmonyNodeMissingUserHint();
             emit addOutput(err, OutputFormat::ErrorMessage);
             emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, err));
             return QtTaskTree::SetupResult::StopWithError;
@@ -361,7 +433,7 @@ QtTaskTree::GroupItem HarmonyBuildHapStep::syncProjectTask()
 QtTaskTree::GroupItem HarmonyBuildHapStep::ohpmInstallTask()
 {
     const auto onOhpmInstall = [this] (Process &process){
-        if (auto node = HarmonyConfig::nodeLocation(); node.exists())
+        if (const FilePath node = HarmonyConfig::nodeLocation(); node.isExecutableFile())
         {
             if (auto ohpmJs = HarmonyConfig::ohpmJsLocation(); ohpmJs.exists())
             {
@@ -382,10 +454,19 @@ QtTaskTree::GroupItem HarmonyBuildHapStep::ohpmInstallTask()
                                                  strictSsl ? "true" : "false"
                                                 }};
 
+                FilePath ohProCwd;
+                QString prepErr;
+                if (!prepareOhProDirectory(&ohProCwd, &prepErr)) {
+                    emit addOutput(prepErr, OutputFormat::ErrorMessage);
+                    emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, prepErr));
+                    return QtTaskTree::SetupResult::StopWithError;
+                }
+
                 process.setUseCtrlCStub(HostOsInfo::isWindowsHost());
-                process.setWorkingDirectory(buildDirectory() / "ohpro");
+                process.setWorkingDirectory(ohProCwd);
                 auto evn = buildEnvironment();
-                evn.set("DEVECO_SDK_HOME", HarmonyConfig::devecoStudioLocation().toFSPathString());
+                applyDevecoAndJavaEnv(evn);
+                applyHvigorWorkingDirectoryEnv(evn, ohProCwd);
                 process.setEnvironment(evn);
                 process.setCommand(command);
                 if (buildEnvironment().hasKey("VSLANG"))
@@ -416,8 +497,7 @@ QtTaskTree::GroupItem HarmonyBuildHapStep::ohpmInstallTask()
         }
         else
         {
-            const QString err = Tr::tr("Could not find node executable, "
-                                       "please check your HarmonyOS SDK configuration.");
+            const QString err = harmonyNodeMissingUserHint();
             emit addOutput(err, OutputFormat::ErrorMessage);
             emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, err));
             return QtTaskTree::SetupResult::StopWithError;
@@ -433,16 +513,18 @@ bool HarmonyBuildHapStep::setupProcess(Utils::Process &process)
     using namespace Utils;
     using namespace ProjectExplorer;
     auto *params = processParameters();
-    const FilePath workingDir = params->effectiveWorkingDirectory();
+    FilePath workingDir = params->effectiveWorkingDirectory();
     if (!workingDir.exists() && !workingDir.createDir()) {
         emit addOutput(Tr::tr("Could not create directory \"%1\"").arg(workingDir.toUserOutput()),
                        OutputFormat::ErrorMessage);
         return false;
     }
+    if (FilePath canonical = workingDir.canonicalPath(); !canonical.isEmpty())
+        workingDir = canonical;
     if (!params->effectiveCommand().isExecutableFile()) {
         emit addOutput(Tr::tr("The program \"%1\" does not exist or is not executable.")
                            .arg(params->effectiveCommand().toUserOutput()),
-                           OutputFormat::ErrorMessage);
+                       OutputFormat::ErrorMessage);
         return false;
     }
 
@@ -453,7 +535,8 @@ bool HarmonyBuildHapStep::setupProcess(Utils::Process &process)
     // For example Clang uses PWD for paths in debug info, see QTCREATORBUG-23788
     Environment envWithPwd = params->environment();
     qCDebug(harmonyBuildHapLog) << "Environment PATH prepared";
-    envWithPwd.set("PWD", workingDir.path());
+    envWithPwd.set(QStringLiteral("PWD"), workingDir.nativePath());
+    envWithPwd.set(QStringLiteral("INIT_CWD"), workingDir.nativePath());
     process.setProcessMode(params->processMode());
     // if (const auto runAsRoot = aspect<RunAsRootAspect>(); runAsRoot && runAsRoot->value()) {
     //     RunControl::provideAskPassEntry(envWithPwd);
@@ -519,18 +602,24 @@ bool HarmonyBuildHapStep::init()
         emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, err));
         return false;
     }
-    if (auto node = HarmonyConfig::nodeLocation(); node.exists())
+    if (const FilePath node = HarmonyConfig::nodeLocation(); node.isExecutableFile())
     {
         if (auto hvigorwJs = HarmonyConfig::hvigorwJsLocation(); hvigorwJs.exists())
         {
             buildDirectory(); // ensure build directory exists
+            FilePath ohProCwd;
+            QString prepErr;
+            if (!prepareOhProDirectory(&ohProCwd, &prepErr)) {
+                emit addOutput(prepErr, OutputFormat::ErrorMessage);
+                emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, prepErr));
+                return false;
+            }
             auto *params = processParameters();
 
-            params->setWorkingDirectory(buildDirectory() / "ohpro");
+            params->setWorkingDirectory(ohProCwd);
             auto evn = params->environment();
-            evn.set("DEVECO_SDK_HOME", HarmonyConfig::devecoStudioLocation().toFSPathString());
-            evn.set("JAVA_HOME", HarmonyConfig::javaLocation().toFSPathString());
-            evn.appendOrSetPath({HarmonyConfig::javaLocation() / "bin"});
+            applyDevecoAndJavaEnv(evn);
+            applyHvigorWorkingDirectoryEnv(evn, ohProCwd);
             params->setEnvironment(evn);
             qCDebug(harmonyBuildHapLog) << "Step in directory:"
                                         << params->workingDirectory().toUserOutput();
@@ -566,8 +655,7 @@ bool HarmonyBuildHapStep::init()
     }
     else
     {
-        const QString err = Tr::tr("Could not find node executable, "
-                                   "please check your HarmonyOS SDK configuration.");
+        const QString err = harmonyNodeMissingUserHint();
         emit addOutput(err, OutputFormat::ErrorMessage);
         emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, err));
         return false;
