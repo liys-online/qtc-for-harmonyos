@@ -14,5 +14,9 @@
 #define HAVE_UNISTD_H 1
 #define HAVE_POLL_H 1
 
+/* libusbi.h：启用 clock_gettime(CLOCK_MONOTONIC/REALTIME) 内联实现，避免缺少
+ * usbi_get_monotonic_time / usbi_get_real_time 链接符号。 */
+#define HAVE_CLOCK_GETTIME 1
+
 /* linux_netlink.c */
 #define HAVE_ASM_TYPES_H 1
