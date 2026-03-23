@@ -94,6 +94,12 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: |
+            build/src/Qt Creator.app/Contents/PlugIns/qtcreator/libHarmony.dylib
+
   build-linux:
     runs-on: ubuntu-24.04
     steps:
@@ -154,6 +160,12 @@ jobs:
 
       - name: Build
         run: cmake --build build --parallel
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: |
+            build/src/lib/qtcreator/plugins/libHarmony.so
 
   build-windows:
     runs-on: windows-latest
@@ -224,3 +236,9 @@ jobs:
 
       - name: Build
         run: cmake --build build --parallel
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: |
+            build/src/lib/qtcreator/plugins/Harmony.dll
