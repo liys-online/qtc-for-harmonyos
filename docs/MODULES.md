@@ -57,7 +57,7 @@
 |------|------|
 | `harmonybuildconfiguration.*` | CMake 构建配置扩展 |
 | `harmonybuildhapstep.*` | HAP 构建步骤（sync / ohpm / assemble）、`prepareOhProDirectory`、`applyDevecoAndJavaEnv`、配置界面 `HarmonyBuildHapWidget` |
-| `harmonydeployqtstep.*` | 部署步骤（hdc 安装等） |
+| `harmonydeployqtstep.*` | 部署步骤（hdc 安装等）；合成 build key `HARMONY_DEFAULT_RUN_BUILD_KEY` 时不要求 ProjectNode，并按需从 **applicationTargets** 解析 **OHOS_ARCH** |
 
 ---
 
@@ -65,7 +65,9 @@
 
 | 单元 | 职责 |
 |------|------|
-| `harmonyrunconfiguration.*` | 运行配置与启动参数 |
+| `harmonyrunconfiguration.*` | 运行配置与启动参数；若 CMake **applicationTargets** 为空（常见 Qt for OH **MODULE_LIBRARY**），仍提供默认项 **`Harmony.DefaultRunTarget`**（显示名经 `decoratedTargetName`） |
+| `harmonydebugsupport.*` | **Debug 模式**：`HarmonyDebugWorkerFactory` → `debuggerRecipe`；LLDB `remote-ohos`；实际 **lldb 可执行文件** 来自 **Kit** 或 **`QTC_DEBUGGER_PATH`**；`HarmonyConfig::hostLldbExecutable()` 用于存在性检查与提示路径 |
+| `harmonydevice.*` | 设备：`freePorts`、`portsGatheringRecipe`（本机 netstat）、`toolControlChannel`→localhost（debug 通道） |
 
 ---
 
@@ -74,6 +76,7 @@
 | 路径 | 职责 |
 |------|------|
 | `harmonyutils.*` | 包名、构建目录、hdc 参数；**LLDB 前置** `probeNativeDebugShellEnvironment()`（`id` / `getenforce`）与 `nativeDebugRecipeKind()` |
+| `harmonyhdcforward.*` | **hdc fport** TCP 转发：`hdcFportForwardTcp` / `hdcFportRemoveTcpForward` / `hdcFportList`（P2-07 / DEBUG-TASKS 2） |
 | `lib/usbmonitor/` | USB 变化通知（平台相关）；日志分类 `qtc.harmony.device.usbmonitor` |
 | `lib/ohprojectecreator/` | OpenHarmony 工程/模板生成辅助 |
 | `lib/3rdparty/libusb/` | libusb 及平台配置 |

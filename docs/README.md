@@ -2,7 +2,7 @@
 
 面向 **集成方、研发与项目管理** 的公开文档入口。设计与任务状态以本目录为准；版本与兼容策略见仓库根目录 [VERSIONING.md](../VERSIONING.md)。
 
-> **著作权**：本插件为 **Li-Yaosong** 的个人项目，**与 The Qt Company Ltd. 无隶属关系**；文档与源码归属以作者及仓库许可证为准。
+> **作者**：**Li-Yaosong** — 创建者与维护者。  
 
 ---
 
@@ -30,6 +30,7 @@
 | [**QT-OH-BINARY-CATALOG.md**](QT-OH-BINARY-CATALOG.md) | **Qt for OH 二进制清单 JSON 协议**（设计稿 + 仓库内 `qt-oh-binary-catalog.v1.json`） |
 | [**HARMONY-LLDB-DEBUG.md**](HARMONY-LLDB-DEBUG.md) | **Native LLDB 调试与 Qt Creator 对接**：官方文档入口、流程归纳、P2-01 映射与验证清单（命令以官方为准） |
 | [**DEBUG-TASKS.md**](DEBUG-TASKS.md) | **调试功能任务清单**：分阶段 checkbox（P2-01 / P2-07），从命令行验收到 `HarmonyDebugWorkerFactory` |
+| [**AUTHORS.md**](AUTHORS.md) | **作者与项目性质**（个人项目；非 Qt 官方） |
 
 ---
 
@@ -51,6 +52,7 @@
 | 2026-03-20 | 新增 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md)；后同步官方《LLDB 高性能调试器》全文结构、路径表、root/user 远程步骤与 FAQ（仍以 [官网](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/debug-lldb) 为准） |
 | 2026-03-20 | 新增 [DEBUG-TASKS.md](DEBUG-TASKS.md)（P2-01 / P2-07 分阶段任务清单） |
 | 2026-03-20 | [OPERATIONS.md](OPERATIONS.md) 增 §2.4–2.5（Native 调试构建约定、user/签名风险）；[DEBUG-TASKS.md](DEBUG-TASKS.md) 阶段 0.3–0.4 完成 |
+| 2026-03-20 | **P2-07**：`harmonyhdcforward.*`（`hdc fport` 封装）；[HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md) §7.1 模板；[DEBUG-TASKS.md](DEBUG-TASKS.md) 阶段 2 完成 |
 
 ---
 

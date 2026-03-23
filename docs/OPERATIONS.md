@@ -71,7 +71,7 @@
 |------|----------|-----------------|
 | **`aa attach` / debug 流程失败** | 权限错误、进程不可 attach、或官方文档中的 **Permission denied** 类报错 | 确认设备 **开发者调试** 已开启；对照 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md) **§8 FAQ** 与官方指南。 |
 | **签名校验 / debug HAP 不被接受** | 安装成功但调试器无法注入或应用被拒绝调试 | 使用 **DevEco** 按官方流程生成并安装 **debug** 签名 HAP；检查证书/profile 是否与设备匹配。 |
-| **仅 CLI / 无 DevEco 环境** | 难以完成 user 场景下 HAP 签名与 `aa` 全链 | **降级**：先在 **root 镜像** 上按官方 **§7.1** 验证 `lldb-server` + TCP；user 场景以 **DevEco 一键调试** 为参照实现集成。 |
+| **仅 CLI / 无 DevEco 环境** | 难以完成 user 场景下 HAP 签名与 `aa` 全链 | **降级**：具备 **可 root 工程机** 时可在命令行按 **§7.1** 验证 `lldb-server` + TCP（**非** Qt Creator 自动编排）；**零售真机**以 **§7.2** / DevEco 流程为主。 |
 | **策略结论（插件）** | — | **Qt Creator 集成**阶段：对 **user + HAP** 失败时，Issues/日志中应引导用户查阅 **DevEco 签名与 debug HAP**；不暗示替换未签名的 `lldb-server`（见 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md) §3）。 |
 
 ---

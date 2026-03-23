@@ -76,6 +76,7 @@ qt_add_translations(TARGETS Harmony)
 add_qtc_plugin(Harmony
   PLUGIN_DEPENDS
     QtCreator::Core
+    QtCreator::Debugger
     QtCreator::ProjectExplorer
     QtCreator::QtSupport
     QtCreator::CMakeProjectManager
@@ -102,6 +103,7 @@ add_qtc_plugin(Harmony
     harmonydevicemanager.cpp
     harmonydevicemanager.h
     harmonyutils.h harmonyutils.cpp
+    harmonyhdcforward.h harmonyhdcforward.cpp
     harmonylogcategories.h harmonylogcategories.cpp
     harmonysdkdownloader.h harmonysdkdownloader.cpp
     harmonysdkmanagerdialog.h harmonysdkmanagerdialog.cpp
@@ -115,6 +117,7 @@ add_qtc_plugin(Harmony
     harmonydeployqtstep.h harmonydeployqtstep.cpp
     harmonyrunconfiguration.h harmonyrunconfiguration.cpp
     harmonyrunner.h harmonyrunner.cpp
+    harmonydebugsupport.h harmonydebugsupport.cpp
     ohosconstants.h
     ohostr.h
     harmonyqtcdefs.h

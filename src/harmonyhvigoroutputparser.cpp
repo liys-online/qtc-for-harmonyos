@@ -1,4 +1,4 @@
-// Copyright (C) 2026 The Qt Company / Harmony Qt Creator plugin contributors.
+// Copyright (C) 2026 Li-Yaosong
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only WITH Qt-GPL-exception-1.0
 
 #include "harmonyhvigoroutputparser.h"

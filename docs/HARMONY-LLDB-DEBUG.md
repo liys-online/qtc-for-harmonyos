@@ -242,6 +242,8 @@
 
 ### 7.1 root 镜像远程调试（TCP + `remote-ohos`）
 
+> **与 Qt Creator 集成**：当前**官方消费类设备普遍无 root**，Harmony 插件**不实现**本节的 **全自动**编排（不自动推送 `lldb-server`、不自动 **`hdc fport`**）。默认集成路径为 **§7.2**。本节与下文 **fport 模板**仍适用于 **工程机 / 可 root 镜像**下的**命令行**验证或自行脚本化。
+
 示例：`hello.cpp` 编译出 `a.out`（带 `-g`），架构 **aarch64-linux-ohos**。官方建议调试时 **关闭 SELinux**：`hdc shell setenforce 0`。
 
 **窗口 1（推送与启动 server）**
@@ -269,7 +271,21 @@ hdc shell /data/local/tmp/debugserver/lldb-server p --server --listen "*:8080"
 (lldb) quit
 ```
 
-> **说明**：若 `connect://localhost:8080` 无法连通，需结合 **hdc 端口转发**（如 `hdc fport`）将本机端口映到设备监听端口，具体语法以当前 **hdc 文档**为准（见 [HDC 指南](https://developer.huawei.com/consumer/en/doc/harmonyos-guides-V13/hdc-V13) 等）。
+> **hdc fport 模板（与 §7.1 TCP 对齐）**  
+> 设备上 `lldb-server` 已 `--listen "*:8080"` 时，若本机 `connect://localhost:8080` **无法连通**，需把**设备侧监听端口**映射到**本机端口**（占位端口 `8080` 需未被占用；**参数顺序以当前 hdc 为准**，请用 `hdc fport -h` / [HDC 指南](https://developer.huawei.com/consumer/en/doc/harmonyos-guides-V13/hdc-V13) 核对）：
+>
+> ```text
+> hdc -t <serial> fport tcp:8080 tcp:8080
+> ```
+>
+> 常见文档写法含义：**设备 TCP 8080** → **本机 TCP 8080**，再在 lldb 中执行 `platform connect connect://localhost:8080`。  
+> **维护**：`hdc fport ls` 列出规则；`hdc fport rm tcp:8080` 移除（示例，具体以 hdc 帮助为准）；`hdc fport clear` 清空全部（慎用）。  
+> **插件封装（DEBUG-TASKS 2.2）**：`Ohos::Internal::hdcFportForwardTcp` / `hdcFportRemoveTcpForward` / `hdcFportList`（源码 `harmonyhdcforward.*`）。
+
+**§7.2 与 fport（DEBUG-TASKS 2.3，结论）**
+
+- **user + abstract socket（§7.2）** 主机侧多为 **`unix-abstract-connect:///lldb-server/platform.sock`**，通常经 **hdc 通道**与设备协同，**不依赖**与 §7.1 相同的 TCP `fport`。  
+- 若实测 **abstract 连接失败**，先按 **FAQ**、设备/hdc 版本排查。仅在 **可 root** 的环境可按 **§7.1** **手工**用 TCP + `fport` 验证（插件**不会**自动做 §7.1 编排）。
 
 ### 7.2 user 镜像远程调试（HAP + abstract socket）
 
@@ -332,10 +348,11 @@ Android 参考：`src/plugins/android/androiddebugsupport.cpp`（`DebuggerRunPar
 | **`aa attach` / `aa process -D lldb-server ...`** | RunWorker 需在调试前编排 **hdc shell** 顺序（与 **Run** 步骤解耦或组合） |
 | **签名的 lldb-server** | 集成时**勿**替换为未签名二进制；优先与 DevEco 同源 SDK 路径 |
 
-**实现落点（计划）**
+**实现落点**
 
-- 新增 **`HarmonyDebugWorkerFactory`**，依赖 **Debugger** 插件。  
-- 区分 **root + TCP** 与 **user + HAP + abstract** 两条配方；壳环境可用 **`probeNativeDebugShellEnvironment`** / **`nativeDebugRecipeKind`**（§5）辅助决策。  
+- **阶段 3（MVP，已合入）**：`harmonydebugsupport.*` 注册 **`HarmonyDebugWorkerFactory`**（依赖 **Debugger** 插件）；`remote-ohos`、`AttachToRemoteServer`；**lldb 可执行文件**请在 **Kit → Debugger** 指向 DevEco `llvm/bin/lldb`，或启动 Creator 时设置 **`QTC_DEBUGGER_PATH`**（插件仅提示 `HarmonyConfig::hostLldbExecutable()` 推荐路径，**不修改** Qt Creator 其它源码）。设备 **debug 通道**见 **`HarmonyDevice::freePorts` / `toolControlChannel`**。
+- **阶段 4（进行中）**：**solib / sysroot** 见上；**默认 C++ 调试**已按 **§7.2** 自动执行 **`aa start` → `aa attach` → 后台 `aa process -D … lldb-server … unix-abstract`**，主机 **`unix-abstract-connect:///lldb-server/platform.sock`** + **`attach` PID**。**§7.1 + fport** 无自动编排（零售机无 root）。**`HARMONY_DEBUG_LEGACY=1`** 仅分配本机 TCP 调试端口，**不**含推送 server / `fport`，见 [DEBUG-TASKS.md](DEBUG-TASKS.md)。Run 链 / **4.5** 仍待。  
+- **user + HAP + abstract** 为集成主路径；**root + TCP** 仅文档与手工；壳探测 **`probeNativeDebugShellEnvironment`** / **`nativeDebugRecipeKind`**（§5）仍可用于区分环境、写日志或后续扩展。  
 - 失败信息输出到 **Issues / 应用输出**，便于对照官方 FAQ。
 
 ---
@@ -367,3 +384,6 @@ Android 参考：`src/plugins/android/androiddebugsupport.cpp`（`DebuggerRunPar
 | 2026-03-20 | **全文对齐**官方《LLDB 高性能调试器》结构与命令；修正合并的 `hdc file send`、设备路径前导 `/` 等笔误；增 §9 Qt Creator 映射。 |
 | 2026-03-20 | §5 补充插件 API：`probeNativeDebugShellEnvironment` / `nativeDebugRecipeKind`（DEBUG-TASKS 0.2）。 |
 | 2026-03-20 | §5 末链至 [OPERATIONS.md](OPERATIONS.md) §2.4–2.5（构建约定与 user/签名风险）。 |
+| 2026-03-20 | §7.1 增补 **hdc fport** 模板与插件 `harmonyhdcforward` API；§7.1 末 **§7.2 与 fport** 结论（DEBUG-TASKS 2.1–2.3）。 |
+| 2026-03-20 | §9 **实现落点**：DEBUG-TASKS 阶段 3 MVP（`HarmonyDebugWorkerFactory`）已简述。 |
+| 2026-03-20 | §7.1 / §9：阶段 4 与 **4.1–4.2**；零售机无 root → **不做 §7.1 + fport 自动编排**（§7.1 手工/工程机）。 |

@@ -4,6 +4,13 @@
 #include "harmonydeviceinfo.h"
 
 #include <projectexplorer/devicesupport/idevice.h>
+
+#include <QtTaskTree/QTaskTree>
+
+#include <QUrl>
+
+#include <utils/portlist.h>
+
 namespace Ohos::Internal {
 class HarmonyDevice : public ProjectExplorer::IDevice
 {
@@ -18,6 +25,10 @@ public:
 
     bool canHandleDeployments() const;
     ProjectExplorer::IDeviceWidget *createWidget() override;
+
+    QtTaskTree::ExecutableItem portsGatheringRecipe(
+        const QtTaskTree::Storage<Utils::PortsOutputData> &output) const override;
+    QUrl toolControlChannel(const ControlChannelHint &) const override;
 };
 /**
  * @brief setupDevicesWatcher

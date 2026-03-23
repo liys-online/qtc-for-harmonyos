@@ -94,7 +94,7 @@
 | 7.3 | 物理设备枚举 | `HarmonyDeviceManager` + `hdc` | 🔄 | 解析依赖 hdc 输出格式 |
 | 7.4 | `adb track-devices` 式持续监听 | USB + 轮询 hdc | 🔄 | USB 与序列号映射较粗 |
 | 7.5 | AVD / 模拟器创建与启动 | — | ⬜ | 对标 `avdmanager` / `avdcreatordialog` |
-| 7.6 | 设备文件访问 / 端口转发 | `AndroidFileAccess` 等 | ⬜ | 可对 `hdc file` / `fport` |
+| 7.6 | 设备文件访问 / 端口转发 | `AndroidFileAccess` 等 | 🔄 | **`hdc fport`**：`harmonyhdcforward.*`（P2-07）；`hdc file` 仍待 |
 
 ---
 
@@ -138,7 +138,7 @@
 
 | # | Android 能力 / 典型文件 | Harmony 对应 | 进度 | 备注 |
 |---|---------------------------|--------------|------|------|
-| 11.1 | `AndroidDebugWorkerFactory`（LLDB 远程） | `HarmonyDebugWorkerFactory`（计划） | ⬜ | 任务拆解见 [DEBUG-TASKS.md](DEBUG-TASKS.md)；协议见 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md) |
+| 11.1 | `AndroidDebugWorkerFactory`（LLDB 远程） | `harmonydebugsupport.*`（`HarmonyDebugWorkerFactory`） | 🔄 | **§7.2** 自动编排（HAP、`aa`、`abstract`、PID）；**不做** §7.1+fport 全自动（零售无 root）；`HARMONY_DEBUG_LEGACY` 仅 TCP 端口 |
 | 11.2 | `AndroidQmlToolingSupportFactory` | — | ⬜ | — |
 | 11.3 | RunnerWorker 内日志（logcat） | — | ⬜ | 可对 `hilog` |
 

@@ -6,9 +6,11 @@
 #include <projectexplorer/runconfiguration.h>
 #include <projectexplorer/buildconfiguration.h>
 #include <projectexplorer/buildsystem.h>
+#include <projectexplorer/devicesupport/devicekitaspects.h>
 #include <projectexplorer/environmentkitaspect.h>
 #include <projectexplorer/project.h>
 #include <projectexplorer/runconfigurationaspects.h>
+#include <projectexplorer/task.h>
 #include <projectexplorer/target.h>
 #include <utils/commandline.h>
 using namespace ProjectExplorer;
@@ -85,8 +87,13 @@ public:
 
         setUpdater([this] {
             const ProjectExplorer::BuildTargetInfo bti = buildTargetInfo();
-            setDisplayName(bti.displayName);
-            setDefaultDisplayName(bti.displayName);
+            // Qt for OH / HAP 工程在 CMake 侧常为 MODULE_LIBRARY 等，不会进入 applicationTargets；
+            // FixedRunConfigurationFactory 提供无 buildKey 的条目，此时 displayName 为空，用默认名。
+            const QString name = bti.displayName.isEmpty()
+                ? Tr::tr("Harmony Application")
+                : bti.displayName;
+            setDisplayName(name);
+            setDefaultDisplayName(name);
         });
 
         setCommandLineGetter([this, bc] {
@@ -147,13 +154,56 @@ public:
     StringAspect bundleNameOverride{this};
     StringAspect abilityNameOverride{this};
 };
-class HarmonyRunConfigurationFactory : public ProjectExplorer::RunConfigurationFactory
+namespace {
+
+bool harmonyRunConfigCanAddDefault(BuildConfiguration *bc)
+{
+    Target *target = bc->target();
+    if (!target)
+        return false;
+    Project *project = target->project();
+    Kit *kit = target->kit();
+    if (!project || !kit)
+        return false;
+    if (containsType(project->projectIssues(kit), Task::TaskType::Error))
+        return false;
+    return RunDeviceTypeKitAspect::deviceTypeId(kit) == Ohos::Constants::HARMONY_DEVICE_TYPE;
+}
+} // namespace
+
+class HarmonyRunConfigurationFactory final : public RunConfigurationFactory
 {
 public:
     HarmonyRunConfigurationFactory()
     {
         registerRunConfiguration<HarmonyRunConfiguration>(Ohos::Constants::HARMONY_RUNCONFIG_ID);
         addSupportedTargetDeviceType(Ohos::Constants::HARMONY_DEVICE_TYPE);
+    }
+
+protected:
+    QList<RunConfigurationCreationInfo> availableCreators(BuildConfiguration *bc) const override
+    {
+        QList<RunConfigurationCreationInfo> items = RunConfigurationFactory::availableCreators(bc);
+        if (!items.isEmpty())
+            return items;
+        // CMake 的 applicationTargets 仅含 Executable；Qt for OH 常为 MODULE_LIBRARY，列表为空。
+        if (!harmonyRunConfigCanAddDefault(bc))
+            return items;
+
+        RunConfigurationCreationInfo rci;
+        rci.factory = this;
+        rci.buildKey = QString::fromLatin1(Constants::HARMONY_DEFAULT_RUN_BUILD_KEY);
+        rci.displayName = decoratedTargetName(Tr::tr("Harmony Application"), bc->kit());
+        rci.creationMode = RunConfigurationCreationInfo::AlwaysCreate;
+        items.append(rci);
+        return items;
+    }
+
+    bool supportsBuildKey(BuildConfiguration *bc, const QString &key) const override
+    {
+        if (key == QString::fromLatin1(Constants::HARMONY_DEFAULT_RUN_BUILD_KEY))
+            return harmonyRunConfigCanAddDefault(bc);
+        return RunConfigurationFactory::supportsBuildKey(bc, key);
     }
 };
 

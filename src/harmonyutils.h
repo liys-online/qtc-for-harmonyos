@@ -50,6 +50,13 @@ Utils::FilePath harmonyBuildDirectory(const ProjectExplorer::BuildConfiguration 
 Utils::FilePath buildDirectory(const ProjectExplorer::BuildConfiguration *bc);
 
 /**
+ * Active CMake/build-system key for \c extraData lookups. When the run configuration uses the
+ * synthetic \c HARMONY_DEFAULT_RUN_BUILD_KEY (no \c ProjectNode), falls back to the first
+ * \c applicationTargets entry that has a project node.
+ */
+QString buildKeyForCMakeExtraData(const ProjectExplorer::BuildConfiguration *bc);
+
+/**
  * Locate a built \c .hap under the ohpro root: \c build-profile.json5 \c modules (entry-type first),
  * then classic \c entry/…/outputs/default, then newest \c *.hap under the tree.
  * \a diagnosticOut optional multi-line trace of what was tried (for deploy error UI).
@@ -60,11 +67,35 @@ QStringList applicationAbis(const ProjectExplorer::Kit *k);
 
 QStringList hdcSelector(const QString &serialNumber);
 
+/** Bundle name for debug / `aa`（运行配置覆盖优先，否则 \c AppScope/app.json5）。 */
+QString harmonyDebuggerBundleName(const ProjectExplorer::BuildConfiguration *bc);
+/** Ability 名（运行配置覆盖优先，否则从 module.json5 推断，再退回 EntryAbility）。 */
+QString harmonyDebuggerAbilityName(const ProjectExplorer::BuildConfiguration *bc);
+
+/**
+ * 设备序列号：构建配置里缓存的部署目标优先，否则当前 Kit 所选运行设备。
+ */
+QString harmonyEffectiveDeviceSerial(const ProjectExplorer::BuildConfiguration *bc);
+
+/**
+ * 供调试选择 \c lldb-server 架构：在 \c hapDevicePreferredAbi（ohpro \c entry/libs、ProjectNode）基础上，
+ * 回退 **CMake \c OHOS_ARCH**（含合成 build key）、**Kit \c applicationAbis**、**部署缓存的设备 ABI**。
+ */
+QString harmonyDebuggerPreferredAbi(const ProjectExplorer::BuildConfiguration *bc);
+
+/**
+ * 查询应用主进程 PID（供 LLDB \c attach）。依次尝试 \c bm dump、\c aa dump、\c ps 解析。
+ * @return 有效 PID，失败返回 \c -1
+ */
+qint64 harmonyQueryApplicationPid(const Utils::FilePath &hdc,
+                                  const QString &serialNumber,
+                                  const QString &bundleName);
+
 /**
  * @name Native 调试设备壳环境探测（DEBUG-TASKS 0.2）
  *
- * 通过 `hdc shell id` / `getenforce` 粗判 **root vs user**、**SELinux 状态**，供后续在官方 §7.1（root + TCP）
- * 与 §7.2（user + HAP + abstract）之间选配方。判定规则与 `HARMONY-LLDB-DEBUG.md` §5（官方矩阵）一致。
+ * 通过 `hdc shell id` / `getenforce` 粗判 **root vs user**、**SELinux 状态**。集成上主路径为 **§7.2**；§7.1 仅工程机/手工。
+ * 判定规则与 `HARMONY-LLDB-DEBUG.md` §5（官方矩阵）一致。
  * @{
  */
 enum class HarmonyShellUidClass {

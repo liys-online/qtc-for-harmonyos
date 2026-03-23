@@ -152,12 +152,12 @@ bool HarmonyDeployQtStep::init()
     QStringList selectedAbis;
     // QStringList selectedAbis = bs->property(Constants::HarmonyAbis).toStringList();
 
-    const QString buildKey = buildConfiguration()->activeBuildKey();
+    const QString dataBuildKey = Internal::buildKeyForCMakeExtraData(buildConfiguration());
     // if (selectedAbis.isEmpty())
     //     selectedAbis = bs->extraData(buildKey, Constants::HarmonyAbis).toStringList();
 
     if (selectedAbis.isEmpty()) {
-        const QString arch = bs->extraData(buildKey, Constants::OHOS_ARCH).toString().trimmed();
+        const QString arch = bs->extraData(dataBuildKey, Constants::OHOS_ARCH).toString().trimmed();
         if (!arch.isEmpty())
             selectedAbis.append(arch);
     }
@@ -224,11 +224,7 @@ bool HarmonyDeployQtStep::init()
 
     m_uninstallPreviousPackageRun = m_uninstallPreviousPackage();
 
-    const ProjectNode *node = project()->findNodeForBuildKey(buildKey);
-    if (!node) {
-        reportWarningOrError(Tr::tr("The deployment step's project node is invalid."), Task::Error);
-        return false;
-    }
+    // No ProjectNode is required: HAP path comes from harmonyBuildDirectory / findBuiltHapPackage.
     m_hdcPath = HarmonyConfig::hdcToolPath();
     if (!m_hdcPath.isExecutableFile()) {
         reportWarningOrError(

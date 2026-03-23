@@ -7,13 +7,22 @@
 #include "ohprojectecreator/ohprojectecreator.h"
 #include <cmakeprojectmanager/cmakeprojectconstants.h>
 #include <coreplugin/icontext.h>
+#include "harmonydevice.h"
+
 #include <projectexplorer/buildconfiguration.h>
 #include <projectexplorer/buildsystem.h>
+#include <projectexplorer/devicesupport/devicekitaspects.h>
+#include <projectexplorer/devicesupport/idevice.h>
+#include <projectexplorer/kit.h>
 #include <projectexplorer/project.h>
 #include <projectexplorer/projectnodes.h>
+#include <projectexplorer/runconfiguration.h>
+#include <projectexplorer/target.h>
 
 #include <qtsupport/qtkitaspect.h>
+#include <utils/id.h>
 #include <utils/qtcprocess.h>
+#include <utils/store.h>
 #include <QDir>
 #include <QRegularExpression>
 #include <chrono>
@@ -55,6 +64,113 @@ QStringList hdcSelector(const QString &serialNumber)
     // if (serialNumber.startsWith(QLatin1String("????")))
     //     return {"-d"};
     return {"-t", serialNumber};
+}
+
+QString harmonyDebuggerBundleName(const BuildConfiguration *bc)
+{
+    if (!bc)
+        return {};
+    RunConfiguration *rc = bc->activeRunConfiguration();
+    const Store sd = rc ? rc->settingsData().value(Id(Constants::HARMONY_RUN_BUNDLE_OVERRIDE)) : Store{};
+    const QString o = sd.value(Key("Harmony.Run.BundleNameOverrideKey")).toString().trimmed();
+    if (!o.isEmpty())
+        return o;
+    return packageName(bc);
+}
+
+QString harmonyDebuggerAbilityName(const BuildConfiguration *bc)
+{
+    if (!bc)
+        return QStringLiteral("EntryAbility");
+    RunConfiguration *rc = bc->activeRunConfiguration();
+    const Store sd = rc ? rc->settingsData().value(Id(Constants::HARMONY_RUN_ABILITY_OVERRIDE)) : Store{};
+    const QString o = sd.value(Key("Harmony.Run.AbilityNameOverrideKey")).toString().trimmed();
+    if (!o.isEmpty())
+        return o;
+    QString a = defaultHarmonyAbilityName(bc);
+    if (a.isEmpty())
+        a = QStringLiteral("EntryAbility");
+    return a;
+}
+
+QString harmonyEffectiveDeviceSerial(const BuildConfiguration *bc)
+{
+    if (!bc)
+        return {};
+    QString serial = deviceSerialNumber(bc);
+    if (!serial.isEmpty())
+        return serial.trimmed();
+    if (Kit *kit = bc->kit()) {
+        if (const IDevice::ConstPtr dev = RunDeviceKitAspect::device(kit))
+            serial = HarmonyDevice::harmonyDeviceInfoFromDevice(dev).serialNumber;
+    }
+    return serial.trimmed();
+}
+
+namespace {
+static QString runHdcShellOutput(const FilePath &hdc, const QString &serial, const QStringList &shellArgs)
+{
+    if (!hdc.isExecutableFile() || serial.isEmpty())
+        return {};
+    CommandLine cmd{hdc, hdcSelector(serial)};
+    cmd.addArg(QStringLiteral("shell"));
+    cmd.addArgs(shellArgs);
+    Process p;
+    p.setCommand(cmd);
+    p.setWorkingDirectory(hdc.parentDir());
+    p.runBlocking(std::chrono::seconds(30));
+    return QString::fromUtf8(p.allRawOutput());
+}
+
+static qint64 parsePidFromKeyValueDump(const QString &out)
+{
+    static const QRegularExpression re(QStringLiteral(R"((?:pid|PID)\s*[:：=]\s*(\d+))"));
+    const QRegularExpressionMatch m = re.match(out);
+    if (m.hasMatch())
+        return m.captured(1).toLongLong();
+    return -1;
+}
+
+static qint64 parsePidFromPs(const QString &out, const QString &bundle)
+{
+    const QStringList lines = out.split('\n', Qt::SkipEmptyParts);
+    for (const QString &line : lines) {
+        if (!line.contains(bundle, Qt::CaseInsensitive))
+            continue;
+        const QString simp = line.simplified();
+        const QStringList tok = simp.split(' ', Qt::SkipEmptyParts);
+        for (const QString &t : tok) {
+            bool ok = false;
+            const qint64 v = t.toLongLong(&ok);
+            if (ok && v > 50)
+                return v;
+        }
+    }
+    return -1;
+}
+} // namespace
+
+qint64 harmonyQueryApplicationPid(const FilePath &hdc, const QString &serialNumber, const QString &bundleName)
+{
+    if (bundleName.isEmpty())
+        return -1;
+
+    const QString bmOut = runHdcShellOutput(hdc, serialNumber, {QStringLiteral("bm"), QStringLiteral("dump"),
+                                                                 QStringLiteral("-n"), bundleName});
+    if (qint64 pid = parsePidFromKeyValueDump(bmOut); pid > 0)
+        return pid;
+
+    const QString aaOut = runHdcShellOutput(hdc, serialNumber, {QStringLiteral("aa"), QStringLiteral("dump"),
+                                                                QStringLiteral("-b"), bundleName});
+    if (qint64 pid = parsePidFromKeyValueDump(aaOut); pid > 0)
+        return pid;
+
+    QString psOut = runHdcShellOutput(hdc, serialNumber, {QStringLiteral("ps"), QStringLiteral("-A")});
+    if (qint64 pid = parsePidFromPs(psOut, bundleName); pid > 0)
+        return pid;
+
+    psOut = runHdcShellOutput(hdc, serialNumber, {QStringLiteral("ps"), QStringLiteral("-ef")});
+    return parsePidFromPs(psOut, bundleName);
 }
 
 static const ProjectNode *currentProjectNode(const BuildConfiguration *bc)
@@ -193,6 +309,26 @@ Utils::FilePath buildDirectory(const ProjectExplorer::BuildConfiguration *bc)
     return buildDir;
 }
 
+QString buildKeyForCMakeExtraData(const BuildConfiguration *bc)
+{
+    if (!bc)
+        return {};
+    const QString buildKey = bc->activeBuildKey();
+    if (buildKey != QString::fromLatin1(Constants::HARMONY_DEFAULT_RUN_BUILD_KEY))
+        return buildKey;
+    const BuildSystem *bs = bc->buildSystem();
+    const Project *proj = bc->project();
+    if (!bs || !proj)
+        return buildKey;
+    for (const BuildTargetInfo &ti : bs->applicationTargets()) {
+        if (ti.buildKey.isEmpty())
+            continue;
+        if (proj->findNodeForBuildKey(ti.buildKey))
+            return ti.buildKey;
+    }
+    return buildKey;
+}
+
 bool isQt5CmakeProject(const ProjectExplorer::Target *target)
 {
     const QtSupport::QtVersion *qt = QtSupport::QtKitAspect::qtVersion(target->kit());
@@ -237,6 +373,44 @@ QString hapDevicePreferredAbi(const ProjectExplorer::BuildConfiguration *bc)
             apkAbis << abiDir.fileName();
     }
     return preferredAbi(apkAbis, bc);
+}
+
+QString harmonyDebuggerPreferredAbi(const BuildConfiguration *bc)
+{
+    if (!bc)
+        return {};
+
+    QString abi = hapDevicePreferredAbi(bc).trimmed();
+    if (!abi.isEmpty())
+        return abi;
+
+    if (const BuildSystem *bs = bc->buildSystem()) {
+        abi = bs->extraData(buildKeyForCMakeExtraData(bc), Constants::OHOS_ARCH).toString().trimmed();
+        if (!abi.isEmpty())
+            return abi;
+    }
+
+    if (Target *target = bc->target()) {
+        if (Kit *kit = target->kit()) {
+            const QStringList kitAbis = applicationAbis(kit);
+            for (const QString &a : kitAbis) {
+                const QString t = HarmonyConfig::ohosLldbTripleForAbi(a.trimmed());
+                if (!t.isEmpty())
+                    return a.trimmed();
+            }
+        }
+    }
+
+    const QStringList devAbis = bc->extraData(HarmonyDeviceAbis).toStringList();
+    for (const QString &a : devAbis) {
+        const QString t = HarmonyConfig::ohosLldbTripleForAbi(a.trimmed());
+        if (!t.isEmpty())
+            return a.trimmed();
+    }
+    if (!devAbis.isEmpty())
+        return devAbis.first().trimmed();
+
+    return {};
 }
 
 void setDeviceAbis(ProjectExplorer::BuildConfiguration *bc, const QStringList &deviceAbis)

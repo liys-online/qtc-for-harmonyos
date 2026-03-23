@@ -2,9 +2,19 @@
 #include "harmonydevicemanager.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
+
 #include <projectexplorer/devicesupport/idevicewidget.h>
 #include <projectexplorer/devicesupport/idevicefactory.h>
+
+#include <QtTaskTree/QTaskTree>
+
+#include <utils/commandline.h>
+#include <utils/filepath.h>
+#include <utils/portlist.h>
+#include <utils/url.h>
+
 using namespace ProjectExplorer;
+using namespace QtTaskTree;
 using namespace Utils;
 namespace Ohos::Internal {
 
@@ -35,6 +45,9 @@ HarmonyDevice::HarmonyDevice()
     setMachineType(IDevice::Hardware);
     setOsType(OsType::OsTypeOtherUnix);
     setDeviceState(DeviceDisconnected);
+    // Local TCP ports for RunControl debug/QML channel allocation. Default Harmony C++ debug uses §7.2
+    // (abstract socket), not fport; ports remain for legacy env / other workers or future use.
+    setFreePorts(PortList::fromString(QStringLiteral("45450-45550")));
     addDeviceAction(DeviceAction(
         Tr::tr("Refresh"),
         [](const IDevice::Ptr &device) { updateDeviceState(device); }));
@@ -137,6 +150,25 @@ void setupHarmonyDeviceManager(const QObject *guard)
 void setupDevicesWatcher()
 {
     instance()->setupDevicesWatcher();
+}
+
+ExecutableItem HarmonyDevice::portsGatheringRecipe(const Storage<PortsOutputData> &output) const
+{
+    const Storage<PortsInputData> input;
+    const auto onSetup = [this, input] {
+        const CommandLine cmd{FilePath::fromUserInput(QStringLiteral("netstat")),
+                              QStringList{QStringLiteral("-a"), QStringLiteral("-n")}};
+        *input = {freePorts(), cmd};
+    };
+    return Group{input, onGroupSetup(onSetup), portsFromProcessRecipe(input, output)};
+}
+
+QUrl HarmonyDevice::toolControlChannel(const ControlChannelHint &) const
+{
+    QUrl url;
+    url.setScheme(Utils::urlTcpScheme());
+    url.setHost(QStringLiteral("localhost"));
+    return url;
 }
 
 }

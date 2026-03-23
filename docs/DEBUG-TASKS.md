@@ -12,7 +12,7 @@
 |----|------|
 | **语言** | 仅 **C/C++（含 Qt `.so`）**；不含 ArkTS / QML 调试（见 P2-02）。 |
 | **设备** | **真机（aarch64 为主）** 与 **模拟器（x86_64 lldb-server）** 分阶段验证。 |
-| **镜像** | **Phase A** 优先 **root + TCP** 跑通；**Phase B** 再攻 **user + HAP + abstract socket**（与官方 §7.2 一致）。 |
+| **镜像** | **消费类真机**当前多为 **user、无 root** → 插件以 **§7.2（debug HAP + abstract）** 为默认自动编排。**§7.1（root + TCP + fport）** 仅适用于**可 root 的工程机 / 特殊镜像**；因官方零售设备**不开放 root**，**不在 Qt Creator 内实现 §7.1 全自动编排**（`harmonyhdcforward` 与文档仍供**手工**命令行或将来环境变化时使用）。 |
 | **lldb-server** | 仅使用 **SDK 内华为签名** 二进制，路径见 [HARMONY-LLDB-DEBUG.md §3](HARMONY-LLDB-DEBUG.md)。 |
 
 ---
@@ -64,33 +64,28 @@
 
 ## 4. 阶段 2 — hdc 与端口（P2-07）
 
-- [ ] **2.1** 调研当前 hdc **`fport`** 语法（本机 ↔ 设备），与 **§7.1** 中 `lldb-server --listen "*:8080"` 对齐，形成**固定映射模板**。  
-- [ ] **2.2** 实现**可复用**工具函数（例如 `HarmonyUtils` 或 `HarmonyHdcPortForward`）：`startForward(localPort, remotePort)` / `stopForward`（含异常与日志 `qtc.harmony.*`）。  
-- [ ] **2.3** 定义 **user + abstract socket** 场景下是否仍需 fport，或 hdc 已透明转发 —— **以 1.5–1.6 实测为准** 写结论到 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md) 修订说明。  
+- [x] **2.1** 调研 hdc **`fport`** 语法并与 **§7.1** `lldb-server --listen "*:8080"` 对齐：**固定模板**与维护命令见 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md) §7.1 下「hdc fport 模板」。  
+- [x] **2.2** 实现可复用封装：`harmonyhdcforward.*` — `hdcFportForwardTcp` / `hdcFportRemoveTcpForward` / `hdcFportList`（日志 `qtc.harmony.device`）。  
+- [x] **2.3** **user + abstract socket** 与 fport 关系：**结论**已写入 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md) §7.1 末段（通常不依赖 fport；以实测为准）。  
 
 ---
 
 ## 5. 阶段 3 — Debugger 插件接入（MVP）
 
-- [ ] **3.1** `Harmony` 插件 **CMake**：`PLUGIN_DEPENDS` 增加 **QtCreator::Debugger**（及 Android 插件已用的同级依赖，按 IDE 版本对齐）。  
-- [ ] **3.2** 新增 **`harmonydebugsupport.cpp/.h`**（命名可对齐 `androiddebugsupport`）：实现 **`HarmonyDebugWorkerFactory`**，`addSupportedRunMode(DEBUG_RUN_MODE)`，`addSupportedRunConfig(HARMONY_RUNCONFIG_ID)`。  
-- [ ] **3.3** 在 **`debuggerRunParameters(RunControl *)`** 中设置最小集：  
-  - `DebuggerRunParameters::fromRunControl(runControl)`  
-  - `setLldbPlatform("remote-ohos")`（与官方一致）  
-  - `setStartMode(AttachToRemoteServer)` 或官方推荐的等价模式  
-  - `setupPortsGatherer(runControl)`（若需本机端口）  
-  - 调试器可执行文件：`rp.setLldbCommand` / 等价 API（以 Qt Creator 19+ API 为准）指向 **0.1** 解析的 `lldb`  
-- [ ] **3.4** 在 **`ohos.cpp`**（或现有 `setupHarmony*` 聚合处）调用 **`setupHarmonyDebugWorker()`**，与 `setupHarmonyRunWorker()` 并列注册。  
-- [ ] **3.5** **MVP 验收**：**Debug** 运行配置能**启动调试器进程**；若参数不全，至少**明确报错**（输出面板 / Issues），不静默失败。  
+- [x] **3.1** `Harmony` 插件 **CMake**：`PLUGIN_DEPENDS` 已含 **QtCreator::Debugger**（`src/CMakeLists.txt`）。  
+- [x] **3.2** **`harmonydebugsupport.cpp/.h`**：`HarmonyDebugWorkerFactory`，`DEBUG_RUN_MODE` + `HARMONY_RUNCONFIG_ID` + `STDPROCESS` 执行类型。  
+- [x] **3.3** **`harmonyDebuggerRunParameters`**：`fromRunControl`、`setupPortsGatherer`、`setLldbPlatform("remote-ohos")`、`AttachToRemoteServer`、`setSkipDebugServer(true)`、`setUseExtendedRemote(true)`、清空 inferior（避免 hdc 被当作 symbol file）。**LLDB 可执行文件**沿用 **Kit 调试器**（或启动 Creator 时的环境变量 **`QTC_DEBUGGER_PATH`**）；插件内 **`HarmonyConfig::hostLldbExecutable()`** 仅作校验与**应用输出提示路径**（**不修改** Qt Creator 其它插件/核心源码）。  
+- [x] **3.4** **`ohos.cpp`**：`setupHarmonyDebugWorker()` 与 `setupHarmonyRunWorker()` 并列。  
+- [x] **3.5** **MVP**：未找到 host LLDB 时 **`runControl->errorTask(...)`** 明确报错；设备侧 **`HarmonyDevice`** 仍保留 **`freePorts` / `netstat` / `toolControlChannel`**（与其它通道或后续扩展兼容）。**默认 C++ 调试**走 **§7.2**，**不**依赖上述 TCP 通道与 **fport 自动编排**（零售机无 root，§7.1 全自动不在范围内）。  
 
 ---
 
 ## 6. 阶段 4 — 参数与运行链整合
 
-- [ ] **4.1** **solib-search-path**：对标 Android `getSoLibSearchPath`，聚合 **CMake 构建目录**、`harmonyBuildDirectory` / `ohpro` 下 **`.so` 输出路径**、Qt 版本提供的 so 路径（若有 API）。  
-- [ ] **4.2** **sysroot**：按 **OHOS NDK / Qt OH** 布局设置 `rp.setSysRoot`（需与工具链文档一致）。  
-- [ ] **4.3** **inferior / attach**：从 **RunConfiguration** 或 **app.json5 / 包名** 解析 **bundle name**、**Ability**；编排 **`aa start` → `aa attach` → `aa process -D ... lldb-server ...`**（user 场景）或与 **root TCP** 二选一。  
-- [ ] **4.4** **PID 获取**：调试启动后从 `hdc shell` 或 `aa` 相关查询拿到 **pid** 传给 `attach`（具体命令以实测为准）。  
+- [x] **4.1** **solib-search-path**：`harmonydebugsupport.cpp` 在 C++ 调试时聚合 **CMake `buildDirectory` / `bc->buildDirectory()`**、**`harmonyBuildDirectory`**、**`entry/libs/<preferredAbi>`**、**`entry/build/default/intermediates/libs/default/<preferredAbi>`**（hvigor 打 HAP 前 native 布局）、**活动运行配置 workingDirectory**、**`QtVersion::qtSoPaths()`**（与 Android 思路一致；尚未从 ProjectNode 读专用 so 路径键）。  
+- [x] **4.2** **sysroot**：若 Kit `SysRoot` 为空或路径不可读，则按 **Kit `Harmony.NDK`** 尝试 **`$NDK/sysroot`**、**`$NDK/llvm/sysroot`**（与常见 OpenHarmony NDK 布局一致；若你方 SDK 不同，可再补候选路径）。  
+- [x] **4.3** **inferior / attach（user + abstract，默认）**：`harmonydebugsupport.cpp` 在 **C++ 调试** 且未设置 **`HARMONY_DEBUG_LEGACY`** 时，按官方 **§7.2** 顺序：`mkdir` → `hdc file send` **lldb-server** → `chmod` → 推送 **debug HAP** → **`bm install -p <设备上 .hap 路径>`** → **`aa start -a/-b`** → **`aa attach -b`** → **`sh -c 'aa process … -D "<lldb-server> platform --listen unix-abstract:///lldb-server/platform.sock" &'`**；主机 LLDB **`unix-abstract-connect:///lldb-server/platform.sock`**（**不**走 TCP `setupPortsGatherer`）。**不设** root + TCP + **fport** 的自动编排（当前官方零售机无 root）。**`HARMONY_DEBUG_LEGACY=1`**：仅启用 **`setupPortsGatherer`** 分配本机调试端口，**不会**自动推送 `lldb-server` 或执行 `fport`；供 **root 工程机**上**已手动**按 §7.1 起服后实验，或排障对比，**零售机请勿依赖**。  
+- [x] **4.4** **PID 获取**：`harmonyutils::harmonyQueryApplicationPid` — 依次 **`bm dump -n`**、**`aa dump -b`**、**`ps -A` / `ps -ef`** 解析；结果写入 **`RunControl::setAttachPid`** → LLDB **remote attach**。若你机输出格式不同，可把样例贴 issue 以改进解析。  
 - [ ] **4.5** 与 **`HarmonyProcessRunnerFactory`** 关系：**Debug** 模式下是否 **先部署再调试用 hdc**，避免与 **Run** 重复安装 —— 定一种策略并文档化。  
 - [ ] **4.6** **环境变量**：如需向 lldb 子进程注入 `HDC_SERVER_PORT` 等，对标 Android `modifyDebuggerEnvironment`。  
 
@@ -113,7 +108,7 @@
 | 0.1 路径 | `harmonyconfigurations.*` 或 `harmonydebugpaths.*` |
 | 0.2 设备壳探测 | `harmonyutils.*`（`HarmonyNativeDebugShellProbe`） |
 | 0.3 / 0.4 构建与风险 | [OPERATIONS.md](OPERATIONS.md) §2.4、§2.5 |
-| 2.x fport | `harmonyutils.*` 或 `harmonyhdcforward.*` |
+| 2.x fport | `harmonyhdcforward.*`（`hdcFportForwardTcp` 等） |
 | 3.x Factory | `harmonydebugsupport.cpp/.h`、`ohos.cpp`、`src/CMakeLists.txt` |
 | 4.x 参数 | `harmonydebugsupport.cpp`、`harmonyrunconfiguration.*`、`harmonyutils.*` |
 
@@ -127,3 +122,7 @@
 | 2026-03-20 | **0.1 代码落地**：`harmonyconfigurations.*` + `ohosconstants.h` 增加 LLDB 路径与 ABI→triple 映射。 |
 | 2026-03-20 | **0.2**：`harmonyutils.*` 增加 `probeNativeDebugShellEnvironment` / `nativeDebugRecipeKind`（`id` + `getenforce`）。 |
 | 2026-03-20 | **0.3 / 0.4**：`OPERATIONS.md` 增 §2.4（符号、strip、debug HAP）与 §2.5（user/签名风险与降级）。 |
+| 2026-03-20 | **2.1–2.3**：`harmonyhdcforward.*` + `HARMONY-LLDB-DEBUG.md` fport 模板与 §7.2 结论。 |
+| 2026-03-20 | **3.1–3.5 MVP**：`harmonydebugsupport.*`、`HarmonyDevice` 调试端口/通道；依赖 **Debugger** 插件；LLDB 路径由 **Kit / QTC_DEBUGGER_PATH** 配置。 |
+| 2026-03-20 | **4.1 / 4.2**：`harmonydebugsupport` 设置 **solib search path** 与 **NDK sysroot 回退**；`harmonyutils` 新增 **`buildKeyForCMakeExtraData`**（部署与后续调试共用合成 build key）。 |
+| 2026-03-20 | **4.3 / 4.4** + **范围**：默认 **§7.2**；**`harmonyQueryApplicationPid`**、bundle/ability、**`HARMONY_DEBUG_LEGACY`**。零售机无 root → **不做 §7.1 + fport 全自动编排**（§7.1 / `harmonyhdcforward` 以手工与文档为主）。 |

@@ -56,6 +56,8 @@ const char HARMONY_BUILD_HAP_ID[] = "Qt4ProjectManager.HarmonyBuildHapStep";
 const char HARMONY_DEPLOY_QT_ID[] = "Qt4ProjectManager.HarmonyDeployQtStep";
 
 const char HARMONY_RUNCONFIG_ID[] = "Qt4ProjectManager.HarmonyRunConfiguration";
+/** Synthetic build key when CMake has no applicationTargets (e.g. Qt for OH MODULE_LIBRARY). */
+const char HARMONY_DEFAULT_RUN_BUILD_KEY[] = "Harmony.DefaultRunTarget";
 /** Run configuration: optional override for `aa start -b` (empty → AppScope/app.json5). */
 const char HARMONY_RUN_BUNDLE_OVERRIDE[] = "Harmony.Run.BundleNameOverride";
 /** Run configuration: optional override for `aa start -a` (empty → module.json5 heuristics). */
