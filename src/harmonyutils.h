@@ -2,6 +2,7 @@
 #define HARMONYUTILS_H
 
 #include <QtCore/qglobal.h>
+#include <QString>
 namespace ProjectExplorer {
 class BuildConfiguration;
 class Target;
