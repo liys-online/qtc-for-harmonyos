@@ -14,7 +14,7 @@ HarmonyQtVersion::HarmonyQtVersion() {}
 
 bool HarmonyQtVersion::supportsMultipleQtAbis() const
 {
-    return qtVersion() == QVersionNumber(5, 15, 12);
+    return qtAbis().size() > 1;
 }
 
 void HarmonyQtVersion::addToBuildEnvironment(const ProjectExplorer::Kit *k, Utils::Environment &env) const

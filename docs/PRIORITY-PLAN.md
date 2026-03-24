@@ -60,7 +60,7 @@
 | P1-12 | P1 | ID | 配置 ID 前缀统一与迁移 | **运行配置**：`settingsKey` 与 `setId` 字符串一致（如 `Harmony.AaStartArgs`、`Harmony.Run.BundleNameOverride`），`HarmonyMigratingStringAspect` / `BaseStringListAspect` 在 `fromMap` 读旧 `*Key` 后缀键；**HAP 步骤**：`Harmony.BuildHap.TargetSdk` / `Harmony.BuildHap.BuildToolsVersion`（旧 `BuildTargetSdk` / `BuildToolsVersion`）；**部署步骤**：`Harmony.Deploy.UninstallPreviousPackage`（旧 `UninstallPreviousPackage`）；`harmonyutils` 读 Bundle/Ability 覆盖时兼容旧键 | — | — | 打开并保存工程后即落盘新键；CMake 工程 `extraData`（如 `HarmonyApplicationArgs`）未改 | 已完成 |
 | P1-13 | P1 | CMake BC | `HarmonyCMakeBuildConfiguration` 实用页签 | **Projects → Build**：`HarmonyCMakeSummaryWidget`（标题 **Harmony**）— Qt 版本、Kit NDK、`OHOS_ARCH`（Kit CMake + 工程 `extraData`）、`CMAKE_TOOLCHAIN_FILE`；按钮打开 **Harmony 偏好** / **当前 Kit**；**刷新**；顺序与 iOS 一致：Harmony 子页在 CMake 默认「Build Environment / Custom Parsers」之前 | — | `IosCMakeBuildConfiguration` | — | 已完成 |
 | P1-14 | P1 | 解析 | hvigor/ohpm OutputTaskParser | Issues 可点击进源文件 | `harmonyhvigoroutputparser.*` + `HarmonyBuildHapStep::setupOutputFormatter` | `javaparser.cpp` | 错误格式随工具升级变化 | 已完成 |
-| P1-15 | P1 | Qt 版本 | `supportsMultipleQtAbis` 去硬编码 | 按版本范围或特性检测 | — | `androidqtversion.cpp` | — | 待开始 |
+| P1-15 | P1 | Qt 版本 | `supportsMultipleQtAbis` 去硬编码 | **`HarmonyQtVersion`**：`qtAbis().size() > 1`（随 qmake / `qt6ct` JSON 等解析结果变化，不再绑定 `5.15.12`） | — | `androidqtversion.cpp`（Android 仍用版本区间） | 单 ABI 安装恒为 `false` | 已完成 |
 | P2-01 | P2 | 调试 | `HarmonyDebugWorkerFactory` | **§7.2 user + debug HAP + abstract** 已自动编排；**§7.1 root+TCP+fport 全自动不做**（零售机无 root） | **阶段 3–4** 见 [DEBUG-TASKS.md](DEBUG-TASKS.md) | `androiddebugsupport.cpp` | QML/其它语言、Run 链去重（4.5）仍待 | 部分完成 |
 | P2-02 | P2 | 分析 | QML Profiler / Preview RunWorker | 若 Qt for Harmony 支持 QML 远程调试 | P2-01 | `androidqmltoolingsupport.cpp` | **可能无法实现**：取决于 Qt Harmony 运行时是否暴露同等端口 | 待开始 |
 | P2-03 | P2 | SDK | SDK 包管理 UI | 安装/更新 API 包；HTTP 列表 + 下载（见 SDK-PACKAGE-MANAGER.md） | 设置页「Manage SDK Packages…」对话框 | `androidsdkmanager*.cpp` | 解压/自动注册 SDK 待做；端点可后续改设置项 | 部分完成 |
@@ -123,6 +123,7 @@
 | 1.5 | 2026-03-24 | **P1-10（UI）**：偏好与 HAP 步骤的 deviceTypes 自单行输入改为 **预设复选框**；步骤侧增加「使用偏好与 Kit、不覆盖」；存储与 `effectiveModuleDeviceTypes()` 逻辑不变。 |
 | 1.6 | 2026-03-24 | **P1-12**：`.user` / 工程内 **Harmony 构建·部署·运行** 配置 Store 键统一为 `Harmony.*` 规范名；`fromMap` 兼容旧键，**保存后**写入新键（见 [OPERATIONS.md](OPERATIONS.md)）。 |
 | 1.7 | 2026-03-24 | **P1-13**：`HarmonyCMakeBuildConfiguration::createSubConfigWidgets` 增加 **Harmony CMake summary** 子页（`harmonybuildconfiguration.cpp` 内 `HarmonyCMakeSummaryWidget`）。 |
+| 1.8 | 2026-03-24 | **P1-15**：`HarmonyQtVersion::supportsMultipleQtAbis` 改为 `qtAbis().size() > 1`，去掉对 `5.15.12` 的硬编码。 |
 
 ---
 
@@ -150,3 +151,4 @@
 | **ohpro deviceTypes（P1-10）** | `Harmony.OhModuleDeviceTypes`（`QStringList`）；Kit `Harmony.ModuleDeviceTypes`；`Harmony.BuildOhModuleDeviceTypesLine`（逗号串）；**UI**：`HarmonySettingsWidget` 预设复选框 + `HarmonyBuildHapWidget`「跟随偏好/Kit」+ 覆盖复选框；`ohModuleDeviceTypePresetIds` / `parseOhModuleDeviceTypesLine` / `joinOhModuleDeviceTypesLine`（`harmonyutils`） |
 | **工程 Store 键（P1-12）** | 运行 aspects：`Harmony.AaStartArgs` 等（旧 `Harmony.AaStartArgsKey` 等仍可读）；HAP：`Harmony.BuildHap.TargetSdk` / `Harmony.BuildHap.BuildToolsVersion`；部署：`Harmony.Deploy.UninstallPreviousPackage` |
 | **CMake 构建配置 UI（P1-13）** | `HarmonyCMakeBuildConfiguration`：`HarmonyCMakeSummaryWidget`（只读摘要 + 快捷打开设置）；其后仍为通用 **Build environment** / **Custom parsers** |
+| **多 ABI 判定（P1-15）** | `HarmonyQtVersion::supportsMultipleQtAbis`：以 **`qtAbis()`** 是否多于一项为准（与 qmake / 元数据一致） |

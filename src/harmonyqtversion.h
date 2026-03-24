@@ -7,11 +7,7 @@ class HarmonyQtVersion : public QtSupport::QtVersion
 {
 public:
     HarmonyQtVersion();
-    /**
-     * @brief supportsMultipleQtAbis
-     * 支持多个Qt ABI
-     * @return
-     */
+    /** True when qmake / Qt metadata exposes more than one target ABI (no fixed Qt version number). */
     bool supportsMultipleQtAbis() const override;
     /**
      * @brief addToBuildEnvironment

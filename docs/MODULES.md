@@ -36,7 +36,7 @@
 
 | 单元 | 职责 |
 |------|------|
-| `harmonyqtversion.*` | Harmony Qt 版本检测、`targetAbi()`（qdevice.pri）、`addToBuildEnvironment` 注入 `JAVA_HOME`/PATH |
+| `harmonyqtversion.*` | Harmony Qt 版本检测、`targetAbi()`（qdevice.pri）、`addToBuildEnvironment` 注入 `JAVA_HOME`/PATH；**P1-15** `supportsMultipleQtAbis` → `qtAbis().size() > 1` |
 | `harmonytoolchain.*` | OHOS 交叉工具链检测与注册 |
 
 ---
