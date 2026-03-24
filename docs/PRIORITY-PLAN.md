@@ -57,7 +57,7 @@
 | P1-09 | P1 | 构建 | ohpm registry / strict_ssl 可配置 | **Preferences → Harmony**：registry 行编辑 + strict SSL 复选框；`HarmonyConfig` 持久化；`HarmonyBuildHapStep::ohpmInstallTask` 使用 `effectiveOhpmRegistryUrl()`；非法 URL 构建前报错 | — | sdkmanager 代理思路 | 企业内网源见 [OPERATIONS.md](OPERATIONS.md) §2.2 | 已完成 |
 | P1-10 | P1 | 构建 | `deviceTypes` 等非硬编码 | **Preferences**：默认 `module.json5` deviceTypes 为 **预设多选**（`ohModuleDeviceTypePresetIds`：phone/tablet/2in1/wearable/tv/car）；未选或空存储仍等价 **2in1**；**Kit**：`Harmony.ModuleDeviceTypes` 在 `updateAutomaticKitList` 同步；**构建步骤**：可选 **跟随偏好/Kit** 或 **预设多选覆盖**（持久化为 `Harmony.BuildOhModuleDeviceTypesLine` 逗号串）→ `effectiveModuleDeviceTypes()`；`harmonyutils` `parse/joinOhModuleDeviceTypesLine`；`createOhPro` 用全局默认 | — | — | 从已有工程 `module.json5` 自动推断仍待（可续 P2） | 已完成 |
 | P1-11 | P1 | 常量 | `ohosconstants.h` 瘦身 | 未用 `Parameter` 迁出或删除 | — | `androidconstants.h` | 删除前确认无外部引用 | 待开始 |
-| P1-12 | P1 | ID | 配置 ID 前缀统一与迁移 | `Harmony.*` + `fromMap` 读旧键 | — | — | 用户旧工程需迁移说明 | 待开始 |
+| P1-12 | P1 | ID | 配置 ID 前缀统一与迁移 | **运行配置**：`settingsKey` 与 `setId` 字符串一致（如 `Harmony.AaStartArgs`、`Harmony.Run.BundleNameOverride`），`HarmonyMigratingStringAspect` / `BaseStringListAspect` 在 `fromMap` 读旧 `*Key` 后缀键；**HAP 步骤**：`Harmony.BuildHap.TargetSdk` / `Harmony.BuildHap.BuildToolsVersion`（旧 `BuildTargetSdk` / `BuildToolsVersion`）；**部署步骤**：`Harmony.Deploy.UninstallPreviousPackage`（旧 `UninstallPreviousPackage`）；`harmonyutils` 读 Bundle/Ability 覆盖时兼容旧键 | — | — | 打开并保存工程后即落盘新键；CMake 工程 `extraData`（如 `HarmonyApplicationArgs`）未改 | 已完成 |
 | P1-13 | P1 | CMake BC | `HarmonyCMakeBuildConfiguration` 实用页签 | 与 iOS/Android CMake 扩展对齐的最小集 | — | iOS CMake BC | — | 待开始 |
 | P1-14 | P1 | 解析 | hvigor/ohpm OutputTaskParser | Issues 可点击进源文件 | `harmonyhvigoroutputparser.*` + `HarmonyBuildHapStep::setupOutputFormatter` | `javaparser.cpp` | 错误格式随工具升级变化 | 已完成 |
 | P1-15 | P1 | Qt 版本 | `supportsMultipleQtAbis` 去硬编码 | 按版本范围或特性检测 | — | `androidqtversion.cpp` | — | 待开始 |
@@ -121,6 +121,7 @@
 | 1.3 | 2026-03-24 | **P1-09**：ohpm `--registry` / `--strict_ssl` 偏好设置 + `HarmonyConfig` 键；`OPERATIONS.md` §2.2 企业镜像说明。 |
 | 1.4 | 2026-03-24 | **P1-10**：ohpro `deviceTypes` — 全局偏好、`Harmony.ModuleDeviceTypes` Kit 字段、`HarmonyBuildHapStep` 覆盖行 + `effectiveModuleDeviceTypes()`。 |
 | 1.5 | 2026-03-24 | **P1-10（UI）**：偏好与 HAP 步骤的 deviceTypes 自单行输入改为 **预设复选框**；步骤侧增加「使用偏好与 Kit、不覆盖」；存储与 `effectiveModuleDeviceTypes()` 逻辑不变。 |
+| 1.6 | 2026-03-24 | **P1-12**：`.user` / 工程内 **Harmony 构建·部署·运行** 配置 Store 键统一为 `Harmony.*` 规范名；`fromMap` 兼容旧键，**保存后**写入新键（见 [OPERATIONS.md](OPERATIONS.md)）。 |
 
 ---
 
@@ -146,3 +147,4 @@
 | **hdc list targets 解析（P1-08）** | `parseHdcListTargetsLine` / `hdcListTargetsStateToConnectionState` 独立于 `HarmonyDeviceManager`；`WITH_TESTS` 下 mock 行单测；验收：`qtcreator -test Harmony`（需整树 `-DWITH_TESTS=ON` 编过） |
 | **ohpm 源与 TLS（P1-09）** | 偏好设置 + `Harmony.OhpmRegistryUrl` / `Harmony.OhpmStrictSsl`；构建步骤 `ohpm install --registry` / `--strict_ssl` |
 | **ohpro deviceTypes（P1-10）** | `Harmony.OhModuleDeviceTypes`（`QStringList`）；Kit `Harmony.ModuleDeviceTypes`；`Harmony.BuildOhModuleDeviceTypesLine`（逗号串）；**UI**：`HarmonySettingsWidget` 预设复选框 + `HarmonyBuildHapWidget`「跟随偏好/Kit」+ 覆盖复选框；`ohModuleDeviceTypePresetIds` / `parseOhModuleDeviceTypesLine` / `joinOhModuleDeviceTypesLine`（`harmonyutils`） |
+| **工程 Store 键（P1-12）** | 运行 aspects：`Harmony.AaStartArgs` 等（旧 `Harmony.AaStartArgsKey` 等仍可读）；HAP：`Harmony.BuildHap.TargetSdk` / `Harmony.BuildHap.BuildToolsVersion`；部署：`Harmony.Deploy.UninstallPreviousPackage` |

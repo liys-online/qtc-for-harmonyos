@@ -63,7 +63,12 @@ const char HARMONY_BUILDCONFIGURATION_ID[] = "Qt4ProjectManager.HarmonyBuildConf
 const char HARMONY_BUILD_HAP_ID[] = "Qt4ProjectManager.HarmonyBuildHapStep";
 /** Optional per-build-configuration override: comma-separated \c deviceTypes for \c OhProjecteCreator (empty → Kit / global). */
 const char HarmonyBuildOhModuleDeviceTypesLine[] = "Harmony.BuildOhModuleDeviceTypesLine";
+/** Canonical \c HarmonyBuildHapStep store keys (P1-12). Legacy: \c BuildTargetSdk / \c BuildToolsVersion. */
+const char HarmonyBuildHapTargetSdkKey[] = "Harmony.BuildHap.TargetSdk";
+const char HarmonyBuildHapBuildToolsVersionKey[] = "Harmony.BuildHap.BuildToolsVersion";
 const char HARMONY_DEPLOY_QT_ID[] = "Qt4ProjectManager.HarmonyDeployQtStep";
+/** Canonical \c HarmonyDeployQtStep BoolAspect store key (P1-12). Legacy: \c UninstallPreviousPackage. */
+const char HarmonyDeployUninstallPreviousPackageKey[] = "Harmony.Deploy.UninstallPreviousPackage";
 
 const char HARMONY_RUNCONFIG_ID[] = "Qt4ProjectManager.HarmonyRunConfiguration";
 /** Synthetic build key when CMake has no applicationTargets (e.g. Qt for OH MODULE_LIBRARY). */

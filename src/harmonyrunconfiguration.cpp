@@ -16,17 +16,43 @@
 using namespace ProjectExplorer;
 using namespace Utils;
 namespace Ohos::Internal {
+
+/** P1-12: canonical \c settingsKey() matches \c setId(); \a legacyProjectStoreKey is read if canonical absent. */
+class HarmonyMigratingStringAspect final : public StringAspect
+{
+public:
+    HarmonyMigratingStringAspect(AspectContainer *container, const Key &legacyProjectStoreKey)
+        : StringAspect(container), m_legacyProjectStoreKey(legacyProjectStoreKey)
+    {}
+
+    void fromMap(const Store &map) override
+    {
+        Store copy = map;
+        if (!m_legacyProjectStoreKey.isEmpty() && !copy.contains(settingsKey())
+            && copy.contains(m_legacyProjectStoreKey))
+            copy.insert(settingsKey(), copy.value(m_legacyProjectStoreKey));
+        StringAspect::fromMap(copy);
+    }
+
+private:
+    Key m_legacyProjectStoreKey;
+};
+
 class BaseStringListAspect final : public Utils::StringAspect
 {
 public:
-    explicit BaseStringListAspect(AspectContainer *container)
-        : StringAspect(container)
+    explicit BaseStringListAspect(AspectContainer *container, const Key &legacyProjectStoreKey = {})
+        : StringAspect(container), m_legacyProjectStoreKey(legacyProjectStoreKey)
     {}
 
     void fromMap(const Store &map) final
     {
+        Store copy = map;
+        if (!m_legacyProjectStoreKey.isEmpty() && !copy.contains(settingsKey())
+            && copy.contains(m_legacyProjectStoreKey))
+            copy.insert(settingsKey(), copy.value(m_legacyProjectStoreKey));
         // Pre Qt Creator 5.0 hack: Reads QStringList as QString
-        setValue(map.value(settingsKey()).toStringList().join('\n'));
+        setValue(copy.value(settingsKey()).toStringList().join('\n'));
     }
 
     void toMap(Store &map) const final
@@ -34,6 +60,9 @@ public:
         // Pre Qt Creator 5.0 hack: Writes QString as QStringList
         map.insert(settingsKey(), value().split('\n'));
     }
+
+private:
+    Key m_legacyProjectStoreKey;
 };
 class HarmonyRunConfiguration : public RunConfiguration
 {
@@ -53,30 +82,30 @@ public:
         });
 
         amStartArgs.setId(Constants::HARMONY_AA_START_ARGS);
-        amStartArgs.setSettingsKey("Harmony.AaStartArgsKey");
+        amStartArgs.setSettingsKey(Constants::HARMONY_AA_START_ARGS);
         amStartArgs.setLabelText(Tr::tr("Ability assistant start arguments:"));
         amStartArgs.setDisplayStyle(StringAspect::LineEditDisplay);
         amStartArgs.setHistoryCompleter("Harmony.AaStartArgs.History");
 
         preStartShellCmd.setDisplayStyle(StringAspect::TextEditDisplay);
         preStartShellCmd.setId(Constants::HARMONY_PRESTARTSHELLCMDLIST);
-        preStartShellCmd.setSettingsKey("Harmony.PreStartShellCmdListKey");
+        preStartShellCmd.setSettingsKey(Constants::HARMONY_PRESTARTSHELLCMDLIST);
         preStartShellCmd.setLabelText(Tr::tr("Pre-launch on-device shell commands:"));
 
         postStartShellCmd.setDisplayStyle(StringAspect::TextEditDisplay);
         postStartShellCmd.setId(Constants::HARMONY_POSTFINISHSHELLCMDLIST);
-        postStartShellCmd.setSettingsKey("Harmony.PostStartShellCmdListKey");
+        postStartShellCmd.setSettingsKey(Constants::HARMONY_POSTFINISHSHELLCMDLIST);
         postStartShellCmd.setLabelText(Tr::tr("Post-quit on-device shell commands:"));
 
         bundleNameOverride.setId(Constants::HARMONY_RUN_BUNDLE_OVERRIDE);
-        bundleNameOverride.setSettingsKey("Harmony.Run.BundleNameOverrideKey");
+        bundleNameOverride.setSettingsKey(Constants::HARMONY_RUN_BUNDLE_OVERRIDE);
         bundleNameOverride.setLabelText(Tr::tr("Bundle name override:"));
         bundleNameOverride.setToolTip(Tr::tr("If empty, the bundle name from AppScope/app.json5 is used."));
         bundleNameOverride.setDisplayStyle(StringAspect::LineEditDisplay);
         bundleNameOverride.setHistoryCompleter("Harmony.Run.BundleName.History");
 
         abilityNameOverride.setId(Constants::HARMONY_RUN_ABILITY_OVERRIDE);
-        abilityNameOverride.setSettingsKey("Harmony.Run.AbilityNameOverrideKey");
+        abilityNameOverride.setSettingsKey(Constants::HARMONY_RUN_ABILITY_OVERRIDE);
         abilityNameOverride.setLabelText(Tr::tr("Ability name override:"));
         abilityNameOverride.setToolTip(
             Tr::tr("If empty, the first suitable ability name is read from module.json5 under the ohpro "
@@ -148,11 +177,11 @@ public:
 
     EnvironmentAspect environment{this};
     ArgumentsAspect extraAppArgs{this};
-    StringAspect amStartArgs{this};
-    BaseStringListAspect preStartShellCmd{this};
-    BaseStringListAspect postStartShellCmd{this};
-    StringAspect bundleNameOverride{this};
-    StringAspect abilityNameOverride{this};
+    HarmonyMigratingStringAspect amStartArgs{this, Key("Harmony.AaStartArgsKey")};
+    BaseStringListAspect preStartShellCmd{this, Key("Harmony.PreStartShellCmdListKey")};
+    BaseStringListAspect postStartShellCmd{this, Key("Harmony.PostStartShellCmdListKey")};
+    HarmonyMigratingStringAspect bundleNameOverride{this, Key("Harmony.Run.BundleNameOverrideKey")};
+    HarmonyMigratingStringAspect abilityNameOverride{this, Key("Harmony.Run.AbilityNameOverrideKey")};
 };
 namespace {
 

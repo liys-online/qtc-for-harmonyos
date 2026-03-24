@@ -72,7 +72,11 @@ QString harmonyDebuggerBundleName(const BuildConfiguration *bc)
         return {};
     RunConfiguration *rc = bc->activeRunConfiguration();
     const Store sd = rc ? rc->settingsData().value(Id(Constants::HARMONY_RUN_BUNDLE_OVERRIDE)) : Store{};
-    const QString o = sd.value(Key("Harmony.Run.BundleNameOverrideKey")).toString().trimmed();
+    const Key kNew(Constants::HARMONY_RUN_BUNDLE_OVERRIDE);
+    const Key kLegacy("Harmony.Run.BundleNameOverrideKey");
+    QString o = sd.value(kNew).toString().trimmed();
+    if (o.isEmpty())
+        o = sd.value(kLegacy).toString().trimmed();
     if (!o.isEmpty())
         return o;
     return packageName(bc);
@@ -84,7 +88,11 @@ QString harmonyDebuggerAbilityName(const BuildConfiguration *bc)
         return QStringLiteral("EntryAbility");
     RunConfiguration *rc = bc->activeRunConfiguration();
     const Store sd = rc ? rc->settingsData().value(Id(Constants::HARMONY_RUN_ABILITY_OVERRIDE)) : Store{};
-    const QString o = sd.value(Key("Harmony.Run.AbilityNameOverrideKey")).toString().trimmed();
+    const Key kNew(Constants::HARMONY_RUN_ABILITY_OVERRIDE);
+    const Key kLegacy("Harmony.Run.AbilityNameOverrideKey");
+    QString o = sd.value(kNew).toString().trimmed();
+    if (o.isEmpty())
+        o = sd.value(kLegacy).toString().trimmed();
     if (!o.isEmpty())
         return o;
     QString a = defaultHarmonyAbilityName(bc);

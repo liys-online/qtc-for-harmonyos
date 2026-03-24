@@ -58,8 +58,8 @@
 | 单元 | 职责 |
 |------|------|
 | `harmonybuildconfiguration.*` | CMake 构建配置扩展 |
-| `harmonybuildhapstep.*` | HAP 构建步骤（sync / ohpm / assemble）、`prepareOhProDirectory`、`applyDevecoAndJavaEnv`、配置界面 `HarmonyBuildHapWidget`；**P1-10** `effectiveModuleDeviceTypes()`（步骤覆盖行 → Kit → `HarmonyConfig`）；UI：**跟随偏好/Kit** 与 **module device types 预设复选框** |
-| `harmonydeployqtstep.*` | 部署步骤（hdc 安装等）；合成 build key `HARMONY_DEFAULT_RUN_BUILD_KEY` 时不要求 ProjectNode，并按需从 **applicationTargets** 解析 **OHOS_ARCH** |
+| `harmonybuildhapstep.*` | HAP 构建步骤（sync / ohpm / assemble）、`prepareOhProDirectory`、`applyDevecoAndJavaEnv`、配置界面 `HarmonyBuildHapWidget`；**P1-10** `effectiveModuleDeviceTypes()`（步骤覆盖行 → Kit → `HarmonyConfig`）；UI：**跟随偏好/Kit** 与 **module device types 预设复选框**；**P1-12** Store：`Harmony.BuildHap.TargetSdk` / `Harmony.BuildHap.BuildToolsVersion`（兼容旧 `BuildTargetSdk` / `BuildToolsVersion`） |
+| `harmonydeployqtstep.*` | 部署步骤（hdc 安装等）；合成 build key `HARMONY_DEFAULT_RUN_BUILD_KEY` 时不要求 ProjectNode，并按需从 **applicationTargets** 解析 **OHOS_ARCH**；**P1-12** `Harmony.Deploy.UninstallPreviousPackage`（兼容 `UninstallPreviousPackage`） |
 
 ---
 
@@ -67,7 +67,7 @@
 
 | 单元 | 职责 |
 |------|------|
-| `harmonyrunconfiguration.*` | 运行配置与启动参数；若 CMake **applicationTargets** 为空（常见 Qt for OH **MODULE_LIBRARY**），仍提供默认项 **`Harmony.DefaultRunTarget`**（显示名经 `decoratedTargetName`） |
+| `harmonyrunconfiguration.*` | 运行配置与启动参数；若 CMake **applicationTargets** 为空（常见 Qt for OH **MODULE_LIBRARY**），仍提供默认项 **`Harmony.DefaultRunTarget`**（显示名经 `decoratedTargetName`）；**P1-12** `settingsKey` 与 `Harmony.*` Id 对齐，`HarmonyMigratingStringAspect` / `BaseStringListAspect` 读旧 `*Key` 后缀 Store 项 |
 | `harmonydebugsupport.*` | **Debug 模式**：`HarmonyDebugWorkerFactory` → `debuggerRecipe`；LLDB `remote-ohos`；实际 **lldb 可执行文件** 来自 **Kit** 或 **`QTC_DEBUGGER_PATH`**；`HarmonyConfig::hostLldbExecutable()` 用于存在性检查与提示路径 |
 | `harmonydevice.*` | 设备：`freePorts`、`portsGatheringRecipe`（本机 netstat）、`toolControlChannel`→localhost（debug 通道） |
 

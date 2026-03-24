@@ -126,7 +126,7 @@
 
 | # | Android 能力 / 典型文件 | Harmony 对应 | 进度 | 备注 |
 |---|---------------------------|--------------|------|------|
-| 10.1 | `AndroidRunConfiguration` + Aspects | `HarmonyRunConfiguration`（含 Bundle/Ability 覆盖与 `module.json5` 默认 Ability） | 🔄 | 字段齐全度接近 |
+| 10.1 | `AndroidRunConfiguration` + Aspects | `HarmonyRunConfiguration`（含 Bundle/Ability 覆盖与 `module.json5` 默认 Ability） | 🔄 | 字段齐全度接近；**P1-12** Store 键与 `Harmony.*` Id 对齐，旧 `*Key` 后缀可读 |
 | 10.2 | `RunWorkerFactory` + 实际启动 | `harmonyrunner.cpp` + `ProcessRunnerFactory` | 🔄 | 已能发起 `hdc shell` 启动；非 Android 级编排 |
 | 10.3 | `am start` / `aa start` 参数与多步骤 shell | `aa start` + `preStartShellCmd` 合并；`postStartShellCmd` 在 hdc 会话结束后执行 | 🔄 | 与 Android 编排粒度仍不同，行为已对齐 |
 | 10.4 | 部署前运行 / 设备未连处理 | Android `androidKicker` 等 | ⬜ | 需按 RunControl 模式补 |

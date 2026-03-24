@@ -387,8 +387,20 @@ private:
     QHash<QString, QCheckBox *> m_moduleDeviceTypeCheckBoxes;
 };
 
-const char BuildTargetSdkKey[] = "BuildTargetSdk";
-const char BuildToolsVersionKey[] = "BuildToolsVersion";
+namespace {
+void migrateLegacyHarmonyBuildHapMap(Utils::Store &m)
+{
+    const Key newTs(Constants::HarmonyBuildHapTargetSdkKey);
+    const Key oldTs("BuildTargetSdk");
+    if (!m.contains(newTs) && m.contains(oldTs))
+        m.insert(newTs, m.value(oldTs));
+    const Key newTv(Constants::HarmonyBuildHapBuildToolsVersionKey);
+    const Key oldTv("BuildToolsVersion");
+    if (!m.contains(newTv) && m.contains(oldTv))
+        m.insert(newTv, m.value(oldTv));
+}
+} // namespace
+
 HarmonyBuildHapStep::HarmonyBuildHapStep(ProjectExplorer::BuildStepList *bc, Utils::Id id)
     : AbstractProcessStep(bc, id)
 {
@@ -397,21 +409,23 @@ HarmonyBuildHapStep::HarmonyBuildHapStep(ProjectExplorer::BuildStepList *bc, Uti
 
 void HarmonyBuildHapStep::fromMap(const Utils::Store &map)
 {
-    m_buildTargetSdk = map.value(BuildTargetSdkKey).toString();
-     m_buildToolsVersion = map.value(BuildToolsVersionKey).toString();
-    m_ohModuleDeviceTypesLine = map.value(Constants::HarmonyBuildOhModuleDeviceTypesLine).toString();
+    Utils::Store m = map;
+    migrateLegacyHarmonyBuildHapMap(m);
+    m_buildTargetSdk = m.value(Key(Constants::HarmonyBuildHapTargetSdkKey)).toString();
+    m_buildToolsVersion = m.value(Key(Constants::HarmonyBuildHapBuildToolsVersionKey)).toString();
+    m_ohModuleDeviceTypesLine = m.value(Constants::HarmonyBuildOhModuleDeviceTypesLine).toString();
     if (m_buildTargetSdk.isEmpty()) {
         m_buildTargetSdk = HarmonyConfig::apiLevelNameFor(HarmonyConfig::devecoStudioVersion().first);
     }
-    ProjectExplorer::BuildStep::fromMap(map);
+    ProjectExplorer::BuildStep::fromMap(m);
 
 }
 
 void HarmonyBuildHapStep::toMap(Utils::Store &map) const
 {
     ProjectExplorer::AbstractProcessStep::toMap(map);
-    map.insert(BuildTargetSdkKey, m_buildTargetSdk);
-    map.insert(BuildToolsVersionKey, m_buildToolsVersion);
+    map.insert(Key(Constants::HarmonyBuildHapTargetSdkKey), m_buildTargetSdk);
+    map.insert(Key(Constants::HarmonyBuildHapBuildToolsVersionKey), m_buildToolsVersion);
     map.insert(Constants::HarmonyBuildOhModuleDeviceTypesLine, m_ohModuleDeviceTypesLine);
 }
 

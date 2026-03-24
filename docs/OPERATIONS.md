@@ -25,6 +25,15 @@
 
 **hvigor 子进程环境（实现要点）**：`DEVECO_SDK_HOME`；有效 JDK 时 `JAVA_HOME` 与 `PATH` 含 `$JAVA_HOME/bin`；工作目录为构建目录下已创建的 **`ohpro`** 规范绝对路径，并设置 **`PWD`** / **`INIT_CWD`**（减轻 Node `uv_cwd` 类错误）。
 
+### 1.1 工程配置 Store 键（P1-12）
+
+旧版本在 **项目 `.user` / 会话 Store** 中使用的部分 Harmony 键名不规范。当前行为：
+
+- **打开工程**：`HarmonyBuildHapStep`、`HarmonyDeployQtStep` 与运行配置相关 aspect 在 `fromMap` 中**同时接受旧键**（例如 `BuildTargetSdk` / `BuildToolsVersion`、`UninstallPreviousPackage`、`Harmony.AaStartArgsKey`、`Harmony.Run.BundleNameOverrideKey` 等），表现与升级前一致。
+- **保存工程**后：落盘为规范 **`Harmony.*` 键**（如 `Harmony.BuildHap.TargetSdk`、`Harmony.Deploy.UninstallPreviousPackage`、与 `setId` 一致的 `Harmony.AaStartArgs` / `Harmony.Run.BundleNameOverride` 等）。一般**无需**手工改配置文件。
+
+**未纳入本项**：CMake / 工程 `extraData` 里与构建目录相关的键（如 `HarmonyApplicationArgs`）仍为历史字符串，以免破坏既有 CMake 解析。
+
 ---
 
 ## 2. 构建管线（HAP）

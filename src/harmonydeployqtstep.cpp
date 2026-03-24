@@ -41,8 +41,6 @@ using namespace QtTaskTree;
 using namespace std::chrono_literals;
 namespace Ohos::Internal {
 
-const char UninstallPreviousPackageKey[] = "UninstallPreviousPackage";
-
 const QLatin1String InstallFailedInconsistentCertificatesString("INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES");
 const QLatin1String InstallFailedUpdateIncompatible("INSTALL_FAILED_UPDATE_INCOMPATIBLE");
 const QLatin1String InstallFailedPermissionModelDowngrade("INSTALL_FAILED_PERMISSION_MODEL_DOWNGRADE");
@@ -82,6 +80,7 @@ public:
 
 private:
     // BuildStep interface
+    void fromMap(const Store &map) override;
     bool init() final;
 
 
@@ -113,10 +112,20 @@ HarmonyDeployQtStep::HarmonyDeployQtStep(BuildStepList *parent, Id id)
     setImmutable(true);
     setUserExpanded(true);
 
-    m_uninstallPreviousPackage.setSettingsKey(UninstallPreviousPackageKey);
+    m_uninstallPreviousPackage.setSettingsKey(Constants::HarmonyDeployUninstallPreviousPackageKey);
     m_uninstallPreviousPackage.setLabel(Tr::tr("Uninstall the existing app before deployment"),
                                         BoolAspect::LabelPlacement::AtCheckBox);
     m_uninstallPreviousPackage.setValue(false);
+}
+
+void HarmonyDeployQtStep::fromMap(const Store &map)
+{
+    Store m = map;
+    const Key newK(Constants::HarmonyDeployUninstallPreviousPackageKey);
+    const Key oldK("UninstallPreviousPackage");
+    if (!m.contains(newK) && m.contains(oldK))
+        m.insert(newK, m.value(oldK));
+    BuildStep::fromMap(m);
 }
 
 bool HarmonyDeployQtStep::init()
