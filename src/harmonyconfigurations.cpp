@@ -1370,6 +1370,24 @@ void HarmonyConfigurations::updateAutomaticKitList()
                 BuildDeviceKitAspect::setDeviceId(k, DeviceManager::defaultDesktopDevice()->id());
 
                 CMakeConfigurationKitAspect::setConfiguration(k, cmakeConfig);
+
+                // On Windows, adapt Harmony Qt Kit to use MinGW Makefiles if possible.
+                if (HostOsInfo::isWindowsHost()) {
+                    using namespace CMakeProjectManager;
+                    // Force generator to MinGW Makefiles so CMake uses mingw32-make
+                    CMakeGeneratorKitAspect::setGenerator(k, QStringLiteral("MinGW Makefiles"));
+
+                    // If a makeLocation (MinGW root) is configured, ensure CMAKE_MAKE_PROGRAM points to mingw32-make.exe
+                    const FilePath root = HarmonyConfig::makeLocation();
+                    if (!root.isEmpty()) {
+                        const FilePath mingwMake = root.pathAppended("bin/mingw32-make.exe");
+                        if (mingwMake.isExecutableFile()) {
+                            cmakeConfig.insert(CMakeConfigItem("CMAKE_MAKE_PROGRAM", CMakeConfigItem::FILEPATH,
+                                                               mingwMake.toUserOutput().toUtf8()));
+                            CMakeConfigurationKitAspect::setConfiguration(k, cmakeConfig);
+                        }
+                    }
+                }
                 
                 // 设置粘性属性，防止用户意外修改关键设置
                 k->setSticky(QtKitAspect::id(), true);
