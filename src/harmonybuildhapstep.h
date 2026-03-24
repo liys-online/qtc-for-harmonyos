@@ -23,6 +23,12 @@ public:
 
     QString buildToolsVersion() const;
     void setBuildToolsVersion(const QString &version);
+
+    QString moduleDeviceTypesLine() const;
+    void setModuleDeviceTypesLine(const QString &line);
+    /** For \c OhProjecteCreator: step line → else Kit → else global preferences (default \c 2in1). */
+    QStringList effectiveModuleDeviceTypes() const;
+
 protected:
     QtTaskTree::GroupItem defaultProcessTask();
     QtTaskTree::GroupItem syncProjectTask();
@@ -41,6 +47,7 @@ private:
     friend class HarmonyBuildHapWidget;
     QString m_buildTargetSdk;
     QString m_buildToolsVersion;
+    QString m_ohModuleDeviceTypesLine;
 };
 
 void setupHarmonyBuildHapStep();

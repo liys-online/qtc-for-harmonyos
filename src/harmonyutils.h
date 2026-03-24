@@ -145,6 +145,12 @@ HarmonyNativeDebugShellProbe probeNativeDebugShellEnvironment(const QString &dev
 HarmonyNativeDebugRecipeKind nativeDebugRecipeKind(const HarmonyNativeDebugShellProbe &probe);
 /** @} */
 
+/** Split comma-separated \c module.json5 \c deviceTypes tokens (trim, skip empty). */
+QStringList parseOhModuleDeviceTypesLine(const QString &line);
+QString joinOhModuleDeviceTypesLine(const QStringList &types);
+/** Preset \c deviceTypes ids for UI checkboxes (OpenHarmony \c module.json5 common values). */
+QStringList ohModuleDeviceTypePresetIds();
+
 }
 
 #endif // HARMONYUTILS_H

@@ -29,6 +29,7 @@
 #include "ohostr.h"
 #include <QDir>
 #include <QJsonDocument>
+#include <QVariant>
 #include <QVersionNumber>
 
 #include <algorithm>
@@ -299,6 +300,7 @@ struct HarmonyConfigData{
     QStringList m_sdkList;
     QString m_ohpmRegistryUrl;
     bool m_ohpmStrictSsl = true;
+    QStringList m_ohModuleDeviceTypes;
 };
 static HarmonyConfigData &config()
 {
@@ -318,6 +320,10 @@ void HarmonyConfigData::load(const QtcSettings &settings)
     m_ohpmStrictSsl = settings.contains(Constants::OhpmStrictSslKey)
                           ? settings.value(Constants::OhpmStrictSslKey).toBool()
                           : true;
+    if (settings.contains(Constants::OhModuleDeviceTypesKey))
+        m_ohModuleDeviceTypes = settings.value(Constants::OhModuleDeviceTypesKey).toStringList();
+    else
+        m_ohModuleDeviceTypes.clear();
     // PersistentSettingsReader reader;
 
     // if (reader.load(sdkSettingsFileName())
@@ -347,6 +353,7 @@ void HarmonyConfigData::save(QtcSettings &settings) const
     settings.setValue(Constants::OhosSdkRootKey, m_ohosSdkRoot.toFSPathString());
     settings.setValue(Constants::OhpmRegistryUrlKey, m_ohpmRegistryUrl);
     settings.setValue(Constants::OhpmStrictSslKey, m_ohpmStrictSsl);
+    settings.setValue(Constants::OhModuleDeviceTypesKey, m_ohModuleDeviceTypes);
 }
 
 FilePath devecoStudioLocation()
@@ -921,6 +928,38 @@ void setOhpmStrictSsl(bool on)
     HarmonyConfigurations::persistSettings();
 }
 
+namespace {
+QStringList cleanedOhModuleDeviceTypes(const QStringList &in)
+{
+    QStringList out;
+    for (const QString &s : in) {
+        const QString t = s.trimmed();
+        if (!t.isEmpty())
+            out.append(t);
+    }
+    return out;
+}
+} // namespace
+
+QStringList ohModuleDeviceTypesUserList()
+{
+    return config().m_ohModuleDeviceTypes;
+}
+
+QStringList ohModuleDeviceTypes()
+{
+    if (config().m_ohModuleDeviceTypes.isEmpty())
+        return {QStringLiteral("2in1")};
+    return config().m_ohModuleDeviceTypes;
+}
+
+void setOhModuleDeviceTypes(const QStringList &types)
+{
+    config().m_ohModuleDeviceTypes = cleanedOhModuleDeviceTypes(types);
+    HarmonyConfigurations::persistSettings();
+    HarmonyConfigurations::syncToolchainsQtAndKits();
+}
+
 FilePath javaLocation()
 {
     const FilePath stored = devecoStudioLocation();
@@ -1448,6 +1487,8 @@ void HarmonyConfigurations::updateAutomaticKitList()
                 // 设置NDK和SDK路径
                 k->setValueSilently(Constants::HARMONY_KIT_NDK, expectedNdkPath.toSettings());
                 k->setValueSilently(Constants::HARMONY_KIT_SDK, ohQt->qmakeFilePath().toSettings());
+                k->setValueSilently(Constants::HARMONY_KIT_MODULE_DEVICE_TYPES,
+                                    QVariant::fromValue(HarmonyConfig::ohModuleDeviceTypes()));
             };
 
             if (existingKit) {

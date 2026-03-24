@@ -35,6 +35,10 @@ const char OhosSdkRootKey[] = "Harmony.OhosSdkRoot";
 const char OhpmRegistryUrlKey[] = "Harmony.OhpmRegistryUrl";
 /** Persisted; default true when key absent (matches previous hardcoded behavior). */
 const char OhpmStrictSslKey[] = "Harmony.OhpmStrictSsl";
+/** Comma-separated ohpro \c module.deviceTypes (e.g. \c phone,\c 2in1). Empty stored list → default \c 2in1 at runtime. */
+const char OhModuleDeviceTypesKey[] = "Harmony.OhModuleDeviceTypes";
+/** Kit copy of effective module device types (refreshed when kits sync). */
+const char HARMONY_KIT_MODULE_DEVICE_TYPES[] = "Harmony.ModuleDeviceTypes";
 /** Default catalog: GitCode raw \c qt-oh-binary-catalog.v1.json (primary source). */
 const char QtOhBinaryCatalogDefaultGitcodeUrl[] =
     "https://raw.gitcode.com/Li-Yaosong/qtc-for-harmonyos/raw/main/docs/qt-oh-binary-catalog.v1.json";
@@ -57,6 +61,8 @@ const char HARMONY_KIT_SDK[] = "Harmony.SDK";
 
 const char HARMONY_BUILDCONFIGURATION_ID[] = "Qt4ProjectManager.HarmonyBuildConfiguration";
 const char HARMONY_BUILD_HAP_ID[] = "Qt4ProjectManager.HarmonyBuildHapStep";
+/** Optional per-build-configuration override: comma-separated \c deviceTypes for \c OhProjecteCreator (empty → Kit / global). */
+const char HarmonyBuildOhModuleDeviceTypesLine[] = "Harmony.BuildOhModuleDeviceTypesLine";
 const char HARMONY_DEPLOY_QT_ID[] = "Qt4ProjectManager.HarmonyDeployQtStep";
 
 const char HARMONY_RUNCONFIG_ID[] = "Qt4ProjectManager.HarmonyRunConfiguration";

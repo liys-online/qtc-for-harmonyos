@@ -954,4 +954,26 @@ HarmonyNativeDebugRecipeKind nativeDebugRecipeKind(const HarmonyNativeDebugShell
     return HarmonyNativeDebugRecipeKind::FavorRootTcpListening;
 }
 
+QStringList parseOhModuleDeviceTypesLine(const QString &line)
+{
+    QStringList out;
+    for (const QString &part : line.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+        const QString t = part.trimmed();
+        if (!t.isEmpty())
+            out.append(t);
+    }
+    return out;
+}
+
+QString joinOhModuleDeviceTypesLine(const QStringList &types)
+{
+    return types.join(QStringLiteral(", "));
+}
+
+QStringList ohModuleDeviceTypePresetIds()
+{
+    return {QStringLiteral("phone"), QStringLiteral("tablet"), QStringLiteral("2in1"),
+            QStringLiteral("wearable"), QStringLiteral("tv"), QStringLiteral("car")};
+}
+
 }

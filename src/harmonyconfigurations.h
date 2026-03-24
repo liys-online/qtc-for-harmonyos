@@ -193,6 +193,14 @@ namespace Ohos::Internal {
         void setOhpmStrictSsl(bool on);
 
         /**
+         * \c module.json5 \c deviceTypes for \c OhProjecteCreator: user list from settings; if empty, \c {"2in1"}.
+         */
+        QStringList ohModuleDeviceTypes();
+        /** Raw stored list (may be empty); for preferences UI. */
+        QStringList ohModuleDeviceTypesUserList();
+        void setOhModuleDeviceTypes(const QStringList &types);
+
+        /**
          * 根据任意候选 DevEco 根路径预览 \c sdk/default （不写入配置）。
          * 用于设置页在用户选择路径时显示 LLDB 诊断；与 \c devecoBundledSdkDefaultRoot() 逻辑一致。
          */

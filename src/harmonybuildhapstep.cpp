@@ -14,8 +14,14 @@
 #include <projectexplorer/buildsystem.h>
 #include <projectexplorer/runconfigurationaspects.h>
 #include <projectexplorer/runcontrol.h>
+#include <projectexplorer/buildconfiguration.h>
 
+#include <QCheckBox>
+#include <QGridLayout>
+#include <QHash>
+#include <QSignalBlocker>
 #include <QUrl>
+#include <QWidget>
 #include <qpushbutton.h>
 #include <utils/algorithm.h>
 #include <utils/layoutbuilder.h>
@@ -26,6 +32,10 @@
 #include <ohprojectecreator/ohprojectecreator.h>
 
 #include "harmonyconfigurations.h"
+
+#include <projectexplorer/kit.h>
+#include <utils/id.h>
+#include <QVariant>
 
 // 勿在此 using namespace QtTaskTree：会与 Layouting::Group（layoutbuilder）歧义。
 using namespace Utils;
@@ -91,7 +101,7 @@ void applyHvigorWorkingDirectoryEnv(Environment &evn, const FilePath &absoluteCw
             proInfo.qtHostPath = ohQt->hostPrefixPath().toUserOutput();
         }
     }
-    proInfo.deviceTypes = {"2in1"};
+    proInfo.deviceTypes = HarmonyConfig::ohModuleDeviceTypes();
     ohPro->create(proInfo);
 }
 class HarmonyBuildHapWidget : public QWidget
@@ -261,17 +271,65 @@ public:
                     proInfo.qtHostPath = ohQt->hostPrefixPath().toUserOutput();
                 }
             }
-            proInfo.deviceTypes = {"2in1"};
+            proInfo.deviceTypes = m_step->effectiveModuleDeviceTypes();
             const QString buildKey = m_step->buildConfiguration()->activeBuildKey();
             proInfo.entrylib = buildKey.isEmpty() ? "libentry.so" : QString("lib%1.so").arg(buildKey);
             ohPro->create(proInfo);
         });
         connect(m_step, &HarmonyBuildHapStep::createTemplates, createHarmonyTemplatesButton, &QPushButton::click);
+
+        m_followKitModuleDeviceTypes = new QCheckBox(
+            Tr::tr("Use Harmony preferences and Kit for module device types (no step override)"));
+        m_followKitModuleDeviceTypes->setToolTip(
+            Tr::tr("When checked, the build step does not store an override; effective device types use the "
+                   "Kit field, then global Harmony preferences (empty preference means 2in1). Uncheck to pick "
+                   "presets for this step only."));
+        m_moduleDeviceTypesOverrideWidget = new QWidget;
+        {
+            auto *grid = new QGridLayout(m_moduleDeviceTypesOverrideWidget);
+            grid->setContentsMargins(0, 0, 0, 0);
+            int i = 0;
+            for (const QString &id : ohModuleDeviceTypePresetIds()) {
+                auto *cb = new QCheckBox(id);
+                m_moduleDeviceTypeCheckBoxes.insert(id, cb);
+                grid->addWidget(cb, i / 3, i % 3);
+                ++i;
+                connect(cb, &QCheckBox::toggled, this, [this] {
+                    if (!m_followKitModuleDeviceTypes->isChecked())
+                        applyModuleDeviceTypesOverrideFromCheckBoxes();
+                });
+            }
+        }
+        connect(m_followKitModuleDeviceTypes, &QCheckBox::toggled, this, [this](bool followKit) {
+            if (followKit) {
+                m_step->setModuleDeviceTypesLine(QString());
+                for (QCheckBox *cb : m_moduleDeviceTypeCheckBoxes)
+                    if (cb) {
+                        const QSignalBlocker b(cb);
+                        cb->setChecked(false);
+                    }
+                m_moduleDeviceTypesOverrideWidget->setEnabled(false);
+            } else {
+                m_moduleDeviceTypesOverrideWidget->setEnabled(true);
+                const QStringList eff = m_step->effectiveModuleDeviceTypes();
+                for (const QString &id : ohModuleDeviceTypePresetIds()) {
+                    if (QCheckBox *cb = m_moduleDeviceTypeCheckBoxes.value(id)) {
+                        const QSignalBlocker b(cb);
+                        cb->setChecked(eff.contains(id));
+                    }
+                }
+                applyModuleDeviceTypesOverrideFromCheckBoxes();
+            }
+        });
+        reloadModuleDeviceTypesUiFromStep();
+
         Group applicationGroup {
             title(Tr::tr("Application")),
             Form {
                 Tr::tr("Harmony compatible Sdk Version:"), buildToolsSdkComboBox, br,
                 Tr::tr("Harmony target Sdk Version:"), targetSDKComboBox, br,
+                m_followKitModuleDeviceTypes, br,
+                Tr::tr("Override module device types:"), m_moduleDeviceTypesOverrideWidget, br,
                 Tr::tr("Harmony customization:"), createHarmonyTemplatesButton,
             }
         };
@@ -289,8 +347,44 @@ public:
         auto projectPath = m_step->buildDirectory() / "ohpro";
         openDevEcoProject(projectPath.toUserOutput());
     }
+
+    void reloadModuleDeviceTypesUiFromStep()
+    {
+        if (!m_followKitModuleDeviceTypes || m_moduleDeviceTypeCheckBoxes.isEmpty())
+            return;
+        const bool followKit = m_step->moduleDeviceTypesLine().trimmed().isEmpty();
+        {
+            const QSignalBlocker b(m_followKitModuleDeviceTypes);
+            m_followKitModuleDeviceTypes->setChecked(followKit);
+        }
+        m_moduleDeviceTypesOverrideWidget->setEnabled(!followKit);
+        const QStringList tokens = parseOhModuleDeviceTypesLine(m_step->moduleDeviceTypesLine());
+        for (const QString &id : ohModuleDeviceTypePresetIds()) {
+            if (QCheckBox *cb = m_moduleDeviceTypeCheckBoxes.value(id)) {
+                const QSignalBlocker b(cb);
+                cb->setChecked(!followKit && tokens.contains(id));
+            }
+        }
+    }
+
+    void applyModuleDeviceTypesOverrideFromCheckBoxes()
+    {
+        QStringList out;
+        for (const QString &id : ohModuleDeviceTypePresetIds()) {
+            if (QCheckBox *cb = m_moduleDeviceTypeCheckBoxes.value(id))
+                if (cb->isChecked())
+                    out.append(id);
+        }
+        const QString line = joinOhModuleDeviceTypesLine(out);
+        if (m_step->moduleDeviceTypesLine() != line)
+            m_step->setModuleDeviceTypesLine(line);
+    }
+
 private:
     HarmonyBuildHapStep *m_step = nullptr;
+    QCheckBox *m_followKitModuleDeviceTypes = nullptr;
+    QWidget *m_moduleDeviceTypesOverrideWidget = nullptr;
+    QHash<QString, QCheckBox *> m_moduleDeviceTypeCheckBoxes;
 };
 
 const char BuildTargetSdkKey[] = "BuildTargetSdk";
@@ -305,6 +399,7 @@ void HarmonyBuildHapStep::fromMap(const Utils::Store &map)
 {
     m_buildTargetSdk = map.value(BuildTargetSdkKey).toString();
      m_buildToolsVersion = map.value(BuildToolsVersionKey).toString();
+    m_ohModuleDeviceTypesLine = map.value(Constants::HarmonyBuildOhModuleDeviceTypesLine).toString();
     if (m_buildTargetSdk.isEmpty()) {
         m_buildTargetSdk = HarmonyConfig::apiLevelNameFor(HarmonyConfig::devecoStudioVersion().first);
     }
@@ -317,6 +412,7 @@ void HarmonyBuildHapStep::toMap(Utils::Store &map) const
     ProjectExplorer::AbstractProcessStep::toMap(map);
     map.insert(BuildTargetSdkKey, m_buildTargetSdk);
     map.insert(BuildToolsVersionKey, m_buildToolsVersion);
+    map.insert(Constants::HarmonyBuildOhModuleDeviceTypesLine, m_ohModuleDeviceTypesLine);
 }
 
 bool HarmonyBuildHapStep::prepareOhProDirectory(FilePath *outCwd, QString *errorMessage)
@@ -590,6 +686,34 @@ void HarmonyBuildHapStep::setBuildToolsVersion(const QString &version)
     if (m_buildToolsVersion != version) {
         m_buildToolsVersion = version;
     }
+}
+
+QString HarmonyBuildHapStep::moduleDeviceTypesLine() const
+{
+    return m_ohModuleDeviceTypesLine;
+}
+
+void HarmonyBuildHapStep::setModuleDeviceTypesLine(const QString &line)
+{
+    m_ohModuleDeviceTypesLine = line;
+}
+
+QStringList HarmonyBuildHapStep::effectiveModuleDeviceTypes() const
+{
+    const QStringList fromLine = parseOhModuleDeviceTypesLine(m_ohModuleDeviceTypesLine);
+    if (!fromLine.isEmpty())
+        return fromLine;
+    if (ProjectExplorer::BuildConfiguration *bc = buildConfiguration()) {
+        if (ProjectExplorer::Kit *k = bc->kit()) {
+            const QVariant v = k->value(Id(Constants::HARMONY_KIT_MODULE_DEVICE_TYPES));
+            if (v.canConvert<QStringList>()) {
+                const QStringList kl = v.toStringList();
+                if (!kl.isEmpty())
+                    return kl;
+            }
+        }
+    }
+    return HarmonyConfig::ohModuleDeviceTypes();
 }
 
 QWidget *HarmonyBuildHapStep::createConfigWidget()

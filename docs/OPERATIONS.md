@@ -44,6 +44,8 @@
 
 **ohpm 源与 TLS**：`ohpm install` 使用的 `--registry`、`--strict_ssl` 在 **Preferences → Harmony** 可配置（registry 留空则使用默认 `https://ohpm.openharmony.cn/ohpm`；企业内网镜像可填完整 HTTPS URL）。详见 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) **P1-09**。
 
+**ohpro `deviceTypes`**：生成模板时写入 `module.json5` 的列表可在 **Preferences → Harmony** 设默认值（逗号分隔；空则等价 `2in1`），同步到 **Kit** 的 `Harmony.ModuleDeviceTypes`；各 **构建配置** 的 Harmony HAP 步骤可再填「Module device types」覆盖。详见 **P1-10**。
+
 每步启动前会 **确保构建目录下的 `ohpro` 子目录已创建** 并采用 **规范绝对路径** 作为 cwd；与主步骤一致注入 **DevEco / Java** 相关环境变量（见 §1）。
 
 标准输出/错误回传至 Qt Creator **构建输出**；**hvigor / ohpm / ArkTS 风格错误行** 由 `HarmonyHvigorOhpmOutputParser` 解析进 **Issues**（可点击已解析的绝对路径跳转编辑器）；其它格式仍看原始日志。详见 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) **P1-14**（已完成）。

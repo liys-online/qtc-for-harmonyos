@@ -14,13 +14,16 @@
 #include <QToolButton>
 #include <QDesktopServices>
 #include "harmonyconfigurations.h"
+#include "harmonyutils.h"
 #include "harmonysdkmanagerdialog.h"
 #include "harmonyqttsdkmanagerdialog.h"
 #include <QCheckBox>
+#include <QGridLayout>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QSignalBlocker>
 #include <QVBoxLayout>
+#include <QWidget>
 #include <QTimer>
 #include <QPushButton>
 #include <QListWidget>
@@ -189,6 +192,28 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         Tr::tr("Turn off only if your registry uses HTTPS with a private CA (prefer installing the "
                "CA system-wide)."));
 
+    m_ohModuleDeviceTypesWidget = new QWidget;
+    {
+        auto *grid = new QGridLayout(m_ohModuleDeviceTypesWidget);
+        grid->setContentsMargins(0, 0, 0, 0);
+        int i = 0;
+        for (const QString &id : ohModuleDeviceTypePresetIds()) {
+            auto *cb = new QCheckBox(id);
+            cb->setToolTip(
+                Tr::tr("When checked, \"%1\" is included in the default ohpro module.json5 \"deviceTypes\" "
+                       "for new Kits and templates. Empty selection uses \"2in1\".")
+                    .arg(id));
+            m_moduleDeviceTypeCheckBoxes.insert(id, cb);
+            grid->addWidget(cb, i / 3, i % 3);
+            ++i;
+            connect(cb, &QCheckBox::toggled, this,
+                    &HarmonySettingsWidget::persistOhModuleDeviceTypesFromCheckBoxes);
+        }
+    }
+    m_ohModuleDeviceTypesWidget->setToolTip(
+        Tr::tr("Default ohpro module.json5 \"deviceTypes\". Kits pick this up when refreshed; leave only "
+               "\"2in1\" or clear all for the legacy default."));
+
     auto downloadSdkToolButton = new QToolButton;
     downloadSdkToolButton->setIcon(downloadIcon);
     downloadSdkToolButton->setToolTip(Tr::tr("Open OpenHarmony SDK download URL in the system's browser."));
@@ -291,6 +316,10 @@ HarmonySettingsWidget::HarmonySettingsWidget()
                 m_ohpmStrictSslCheck,
                 st,
                 br,
+                Tr::tr("Default module device types:"),
+                m_ohModuleDeviceTypesWidget,
+                st,
+                br,
                 Column { Tr::tr("OpenHarmony SDK list:"), st },
                 m_sdkListWidget,
                 Column {
@@ -390,11 +419,13 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     connect(HarmonyConfigurations::instance(), &HarmonyConfigurations::updated, this, [this] {
         reloadQmakeListFromConfig();
         reloadOhpmControlsFromConfig();
+        reloadOhModuleDeviceTypesFromConfig();
         updateSdkList();
         updateLldbDiagnostics();
     }, Qt::QueuedConnection);
 
     reloadOhpmControlsFromConfig();
+    reloadOhModuleDeviceTypesFromConfig();
     updateLldbDiagnostics();
 }
 
@@ -670,6 +701,30 @@ void HarmonySettingsWidget::reloadOhpmControlsFromConfig()
     m_ohpmStrictSslCheck->setChecked(HarmonyConfig::ohpmStrictSsl());
 }
 
+void HarmonySettingsWidget::reloadOhModuleDeviceTypesFromConfig()
+{
+    if (m_moduleDeviceTypeCheckBoxes.isEmpty())
+        return;
+    QStringList userList = HarmonyConfig::ohModuleDeviceTypesUserList();
+    if (userList.isEmpty())
+        userList = QStringList{QStringLiteral("2in1")};
+    for (auto it = m_moduleDeviceTypeCheckBoxes.cbegin(); it != m_moduleDeviceTypeCheckBoxes.cend(); ++it) {
+        const QSignalBlocker b(it.value());
+        it.value()->setChecked(userList.contains(it.key()));
+    }
+}
+
+void HarmonySettingsWidget::persistOhModuleDeviceTypesFromCheckBoxes()
+{
+    QStringList out;
+    for (const QString &id : ohModuleDeviceTypePresetIds()) {
+        if (QCheckBox *cb = m_moduleDeviceTypeCheckBoxes.value(id))
+            if (cb->isChecked())
+                out.append(id);
+    }
+    HarmonyConfig::setOhModuleDeviceTypes(out);
+}
+
 void HarmonySettingsWidget::onOhosSdkRootChanged()
 {
     const FilePath p = m_ohosSdkRootChooser->filePath().cleanPath();
@@ -719,6 +774,7 @@ void HarmonySettingsWidget::validateSdk()
         checkSdkItem(sdk);
     }
     reloadOhpmControlsFromConfig();
+    reloadOhModuleDeviceTypesFromConfig();
     updateLldbDiagnostics();
 }
 

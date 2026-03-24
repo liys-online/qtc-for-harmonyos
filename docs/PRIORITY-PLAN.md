@@ -55,7 +55,7 @@
 | P1-07 | P1 | 设备 | 设备图标资源 | 已移除 `:/android/images/androiddevice*.png`；现用 `:/projectexplorer/images/desktopdevice(.png|@2x.png)`（不依赖 Android 插件加载） | 资源文件 | `androiddevice` 工厂 | 独立 Harmony 品牌素材仍可后续替换 | 部分完成 |
 | P1-08 | P1 | 设备 | hdc 输出解析健壮性 | `harmonyhdctargetsparser.*`：`parseHdcListTargetsLine` / 状态映射；`harmonydevicemanager` 仅消费结构化结果；`WITH_TESTS` 下 `harmonyhdctargetsparser_test`（mock 行，无 hdc）；运行：`qtcreator -test Harmony` | — | `adb` 解析思路 | 新 hdc 格式：增 QTest 数据行 + 必要时在解析器内加分支 | 已完成 |
 | P1-09 | P1 | 构建 | ohpm registry / strict_ssl 可配置 | **Preferences → Harmony**：registry 行编辑 + strict SSL 复选框；`HarmonyConfig` 持久化；`HarmonyBuildHapStep::ohpmInstallTask` 使用 `effectiveOhpmRegistryUrl()`；非法 URL 构建前报错 | — | sdkmanager 代理思路 | 企业内网源见 [OPERATIONS.md](OPERATIONS.md) §2.2 | 已完成 |
-| P1-10 | P1 | 构建 | `deviceTypes` 等非硬编码 | 来 Kit/设置/模板 | — | — | — | 待开始 |
+| P1-10 | P1 | 构建 | `deviceTypes` 等非硬编码 | **Preferences**：默认 `module.json5` deviceTypes（逗号分隔，空→`2in1`）；**Kit**：`Harmony.ModuleDeviceTypes` 在 `updateAutomaticKitList` 同步；**构建步骤**：`HarmonyBuildHapStep` 可选覆盖行 → `effectiveModuleDeviceTypes()`；`harmonyutils` `parse/joinOhModuleDeviceTypesLine`；`createOhPro` 用全局默认 | — | — | 从已有工程 `module.json5` 自动推断仍待（可续 P2） | 已完成 |
 | P1-11 | P1 | 常量 | `ohosconstants.h` 瘦身 | 未用 `Parameter` 迁出或删除 | — | `androidconstants.h` | 删除前确认无外部引用 | 待开始 |
 | P1-12 | P1 | ID | 配置 ID 前缀统一与迁移 | `Harmony.*` + `fromMap` 读旧键 | — | — | 用户旧工程需迁移说明 | 待开始 |
 | P1-13 | P1 | CMake BC | `HarmonyCMakeBuildConfiguration` 实用页签 | 与 iOS/Android CMake 扩展对齐的最小集 | — | iOS CMake BC | — | 待开始 |
@@ -119,6 +119,7 @@
 | 1.1 | 2026-03-24 | **P1-06**：设备 Refresh 调用 `queryDevice()`；**P1-07**：工厂图标改 ProjectExplorer 通用设备图，去掉 Android 资源依赖（专属 Harmony 图标仍可选）。 |
 | 1.2 | 2026-03-24 | **P1-08**：`harmonyhdctargetsparser.*` + `harmonyhdctargetsparser_test`（`extend_qtc_plugin` / `addTestCreator`）；`harmonydevicemanager` 消费解析结果。 |
 | 1.3 | 2026-03-24 | **P1-09**：ohpm `--registry` / `--strict_ssl` 偏好设置 + `HarmonyConfig` 键；`OPERATIONS.md` §2.2 企业镜像说明。 |
+| 1.4 | 2026-03-24 | **P1-10**：ohpro `deviceTypes` — 全局偏好、`Harmony.ModuleDeviceTypes` Kit 字段、`HarmonyBuildHapStep` 覆盖行 + `effectiveModuleDeviceTypes()`。 |
 
 ---
 
@@ -143,3 +144,4 @@
 | **设备 Refresh + 图标（P1-06 / P1-07）** | `HarmonyDevice` 的 Refresh 动作 → `instance()->queryDevice()`；`HarmonyDeviceFactory::setCombinedIcon` 使用 ProjectExplorer `desktopdevice`（见 §3 P1-06/P1-07） |
 | **hdc list targets 解析（P1-08）** | `parseHdcListTargetsLine` / `hdcListTargetsStateToConnectionState` 独立于 `HarmonyDeviceManager`；`WITH_TESTS` 下 mock 行单测；验收：`qtcreator -test Harmony`（需整树 `-DWITH_TESTS=ON` 编过） |
 | **ohpm 源与 TLS（P1-09）** | 偏好设置 + `Harmony.OhpmRegistryUrl` / `Harmony.OhpmStrictSsl`；构建步骤 `ohpm install --registry` / `--strict_ssl` |
+| **ohpro deviceTypes（P1-10）** | `Harmony.OhModuleDeviceTypes`；Kit `Harmony.ModuleDeviceTypes`；`Harmony.BuildOhModuleDeviceTypesLine`；`parseOhModuleDeviceTypesLine` / `joinOhModuleDeviceTypesLine`（`harmonyutils`） |
