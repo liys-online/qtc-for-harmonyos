@@ -90,7 +90,16 @@ QString harmonyDebuggerPreferredAbi(const ProjectExplorer::BuildConfiguration *b
  */
 qint64 harmonyQueryApplicationPid(const Utils::FilePath &hdc,
                                   const QString &serialNumber,
-                                  const QString &bundleName);
+                                  const QString &bundleName,
+                                  QString *sourceOut = nullptr);
+
+/**
+ * Best-effort verification that \a pid still exists and belongs to \a bundleName.
+ */
+bool harmonyPidLooksLikeBundleProcess(const Utils::FilePath &hdc,
+                                      const QString &serialNumber,
+                                      const QString &bundleName,
+                                      qint64 pid);
 
 /**
  * @name Native 调试设备壳环境探测（DEBUG-TASKS 0.2）

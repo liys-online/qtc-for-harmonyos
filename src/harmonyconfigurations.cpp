@@ -14,6 +14,10 @@
 #include <cmakeprojectmanager/cmakekitaspect.h>
 #include <projectexplorer/abi.h>
 
+#include <debugger/debuggeritem.h>
+#include <debugger/debuggeritemmanager.h>
+#include <debugger/debuggerkitaspect.h>
+
 #include <qtsupport/qtversionfactory.h>
 #include <qtsupport/qtversionmanager.h>
 #include <qtsupport/qtkitaspect.h>
@@ -73,6 +77,54 @@ static bool harmonySdkListContainsNormalized(const QStringList &list, const File
             return true;
     }
     return false;
+}
+
+static FilePath standardLldbDapPath()
+{
+    const FilePath sdkDefault = HarmonyConfig::devecoBundledSdkDefaultRoot();
+    if (!sdkDefault.isReadableDir())
+        return {};
+
+    const FilePath llvmBin = sdkDefault / "openharmony" / "native" / "llvm" / "bin";
+    if (!llvmBin.isReadableDir())
+        return {};
+
+    const FilePath candidates[] = {
+        (llvmBin / "lldb-dap").withExecutableSuffix(),
+        (llvmBin / "lldb-vscode").withExecutableSuffix(),
+    };
+    for (const FilePath &fp : candidates) {
+        if (fp.isExecutableFile())
+            return fp;
+    }
+    return {};
+}
+
+static QVariant preferredHarmonyDebuggerId()
+{
+    // 1) Prefer standard LLDB DAP adapter (Qt Creator can launch it directly).
+    const FilePath lldbDap = standardLldbDapPath();
+    if (lldbDap.isExecutableFile()) {
+        if (const Debugger::DebuggerItem *existing = Debugger::DebuggerItemManager::findByCommand(lldbDap))
+            return existing->id();
+
+        Debugger::DebuggerItem item;
+        item.setCommand(lldbDap);
+        item.setEngineType(Debugger::LldbDapEngineType);
+        item.setUnexpandedDisplayName(QObject::tr("Harmony LLDB DAP"));
+        item.setDetectionSource({ProjectExplorer::DetectionSource::FromSystem,
+                                 QStringLiteral("HarmonyConfiguration")});
+        item.createId();
+        return Debugger::DebuggerItemManager::registerDebugger(item);
+    }
+
+    // 2) Fallback to any existing LLDB DAP debugger item.
+    if (const Debugger::DebuggerItem *lldbDap
+        = Debugger::DebuggerItemManager::findByEngineType(Debugger::LldbDapEngineType)) {
+        return lldbDap->id();
+    }
+
+    return {};
 }
 const Key changeTimeStamp("ChangeTimeStamp");
 const QLatin1String ArmToolsDisplayName("armeabi-v7a");
@@ -1311,6 +1363,8 @@ void HarmonyConfigurations::updateAutomaticKitList()
                 RunDeviceTypeKitAspect::setDeviceTypeId(k, Constants::HARMONY_DEVICE_TYPE);
                 ToolchainKitAspect::setBundle(k, bundle);
                 QtKitAspect::setQtVersion(k, ohQt);
+                if (const QVariant debuggerId = preferredHarmonyDebuggerId(); debuggerId.isValid())
+                    Debugger::DebuggerKitAspect::setDebugger(k, debuggerId);
 
                 // 设置构建设备为默认桌面设备
                 BuildDeviceKitAspect::setDeviceId(k, DeviceManager::defaultDesktopDevice()->id());

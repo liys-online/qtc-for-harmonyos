@@ -124,53 +124,250 @@ static QString runHdcShellOutput(const FilePath &hdc, const QString &serial, con
 
 static qint64 parsePidFromKeyValueDump(const QString &out)
 {
-    static const QRegularExpression re(QStringLiteral(R"((?:pid|PID)\s*[:：=]\s*(\d+))"));
+    // Keep this strict: avoid matching appId/uid/gid-like fields from bm dump JSON.
+    static const QRegularExpression re(
+        QStringLiteral(R"((?:^|[{\s,"'])(?:pid|PID)(?:\s*["'])?\s*[:：=]\s*(\d+))"));
     const QRegularExpressionMatch m = re.match(out);
     if (m.hasMatch())
         return m.captured(1).toLongLong();
     return -1;
 }
 
+static QList<qint64> parsePidListFromPidof(const QString &out)
+{
+    const QStringList tok = out.simplified().split(' ', Qt::SkipEmptyParts);
+    QList<qint64> pids;
+    for (const QString &t : tok) {
+        bool ok = false;
+        const qint64 v = t.toLongLong(&ok);
+        if (ok && v > 0)
+            pids.append(v);
+    }
+    return pids;
+}
+
+static qint64 pickBestPidFromPsForBundle(const QString &psOut,
+                                         const QString &bundle,
+                                         const QList<qint64> &candidates)
+{
+    if (bundle.isEmpty() || candidates.isEmpty())
+        return -1;
+    struct Candidate
+    {
+        qint64 pid = -1;
+        int rank = -1; // higher is better
+    };
+    Candidate best;
+    const QStringList lines = psOut.split('\n', Qt::SkipEmptyParts);
+    for (const QString &line : lines) {
+        const QString simp = line.simplified();
+        const QStringList tok = simp.split(' ', Qt::SkipEmptyParts);
+        if (tok.isEmpty())
+            continue;
+        qint64 linePid = -1;
+        for (const QString &t : tok) {
+            bool ok = false;
+            const qint64 v = t.toLongLong(&ok);
+            if (ok && v > 0) {
+                linePid = v;
+                break;
+            }
+        }
+        if (linePid <= 0 || !candidates.contains(linePid))
+            continue;
+        const QString cmdToken = tok.constLast();
+        int rank = 1;
+        if (cmdToken.compare(bundle, Qt::CaseInsensitive) == 0)
+            rank = 3; // main process
+        else if (cmdToken.startsWith(bundle + QLatin1Char(':'), Qt::CaseInsensitive))
+            rank = 2; // sub process
+        if (rank > best.rank) {
+            best.rank = rank;
+            best.pid = linePid;
+        }
+    }
+    return best.pid;
+}
+
 static qint64 parsePidFromPs(const QString &out, const QString &bundle)
 {
+    struct Candidate
+    {
+        qint64 pid = -1;
+        int rank = -1; // higher is better
+    };
+
+    Candidate best;
     const QStringList lines = out.split('\n', Qt::SkipEmptyParts);
     for (const QString &line : lines) {
         if (!line.contains(bundle, Qt::CaseInsensitive))
             continue;
         const QString simp = line.simplified();
         const QStringList tok = simp.split(' ', Qt::SkipEmptyParts);
+        if (tok.isEmpty())
+            continue;
+
+        const QString cmdToken = tok.constLast();
+        int rank = -1;
+        if (cmdToken.compare(bundle, Qt::CaseInsensitive) == 0) {
+            // Exact package process name: best candidate.
+            rank = 3;
+        } else if (cmdToken.startsWith(bundle + QLatin1Char(':'), Qt::CaseInsensitive)) {
+            // App sub-process (e.g. bundle:render / bundle:service): second best.
+            rank = 2;
+        } else if (line.contains(bundle, Qt::CaseInsensitive)) {
+            // Weak fallback for unexpected ps layouts.
+            rank = 1;
+        }
+
+        // Typical `ps -A` format on OHOS is: PID TTY TIME CMD.
+        bool okFirst = false;
+        const qint64 first = tok.constFirst().toLongLong(&okFirst);
+        if (okFirst && first > 0) {
+            if (rank > best.rank) {
+                best.pid = first;
+                best.rank = rank;
+            }
+            continue;
+        }
+
+        // Fallback for unexpected formats where PID is not the first token.
         for (const QString &t : tok) {
             bool ok = false;
             const qint64 v = t.toLongLong(&ok);
-            if (ok && v > 50)
+            if (ok && v > 0) {
+                if (rank > best.rank) {
+                    best.pid = v;
+                    best.rank = rank;
+                }
+                break;
+            }
+        }
+    }
+    return best.pid;
+}
+
+static qint64 parsePidFromAaProcessDump(const QString &out, const QString &bundle)
+{
+    // Accept both legacy "pid #12345" and newer key/value variants like "pid: 12345".
+    static const QRegularExpression pidRe(
+        QStringLiteral(R"((?:^|[\s,;])pid(?:\s*#|\s*[:=]\s*|\s+)(\d+))"),
+        QRegularExpression::CaseInsensitiveOption);
+
+    const QStringList lines = out.split('\n');
+    bool inTargetBlock = false;
+    for (const QString &raw : lines) {
+        const QString line = raw.trimmed();
+        if (line.startsWith(QStringLiteral("process name ["))) {
+            inTargetBlock = line.contains(QLatin1Char('[') + bundle + QLatin1Char(']'),
+                                          Qt::CaseInsensitive);
+            continue;
+        }
+        if (!inTargetBlock)
+            continue;
+
+        const QRegularExpressionMatch m = pidRe.match(line);
+        if (m.hasMatch()) {
+            bool ok = false;
+            const qint64 v = m.captured(1).toLongLong(&ok);
+            if (ok && v > 0)
                 return v;
         }
     }
     return -1;
 }
+
+static bool lineContainsPidAndBundle(const QString &line, qint64 pid, const QString &bundle)
+{
+    if (pid <= 0 || bundle.isEmpty())
+        return false;
+    if (!line.contains(bundle, Qt::CaseInsensitive))
+        return false;
+    const QStringList tok = line.simplified().split(' ', Qt::SkipEmptyParts);
+    for (const QString &t : tok) {
+        bool ok = false;
+        if (t.toLongLong(&ok) == pid && ok)
+            return true;
+    }
+    return false;
+}
 } // namespace
 
-qint64 harmonyQueryApplicationPid(const FilePath &hdc, const QString &serialNumber, const QString &bundleName)
+qint64 harmonyQueryApplicationPid(const FilePath &hdc,
+                                  const QString &serialNumber,
+                                  const QString &bundleName,
+                                  QString *sourceOut)
 {
     if (bundleName.isEmpty())
         return -1;
+    auto hit = [sourceOut](qint64 pid, const QString &source) {
+        if (pid > 0 && sourceOut)
+            *sourceOut = source;
+        return pid;
+    };
+
+    // Prefer direct runtime pid lookup first when available.
+    const QString pidofOut = runHdcShellOutput(hdc, serialNumber, {QStringLiteral("pidof"), bundleName});
+    const QList<qint64> pidofPids = parsePidListFromPidof(pidofOut);
+    if (!pidofPids.isEmpty()) {
+        const QString psA = runHdcShellOutput(hdc, serialNumber, {QStringLiteral("ps"), QStringLiteral("-A")});
+        if (qint64 pid = pickBestPidFromPsForBundle(psA, bundleName, pidofPids); pid > 0)
+            return hit(pid, QStringLiteral("pidof+ps"));
+        // pidof typically returns main process first; keep that as fallback.
+        return hit(pidofPids.constFirst(), QStringLiteral("pidof"));
+    }
+
+    // Prefer process-runtime view from ability manager.
+    const QString aaProcOut
+        = runHdcShellOutput(hdc, serialNumber, {QStringLiteral("aa"), QStringLiteral("dump"),
+                                                QStringLiteral("-r")});
+    if (qint64 pid = parsePidFromAaProcessDump(aaProcOut, bundleName); pid > 0) {
+        return hit(pid, QStringLiteral("aa dump -r"));
+    }
 
     const QString bmOut = runHdcShellOutput(hdc, serialNumber, {QStringLiteral("bm"), QStringLiteral("dump"),
                                                                  QStringLiteral("-n"), bundleName});
-    if (qint64 pid = parsePidFromKeyValueDump(bmOut); pid > 0)
-        return pid;
+    if (qint64 pid = parsePidFromKeyValueDump(bmOut); pid > 0) {
+        return hit(pid, QStringLiteral("bm dump -n"));
+    }
 
     const QString aaOut = runHdcShellOutput(hdc, serialNumber, {QStringLiteral("aa"), QStringLiteral("dump"),
                                                                 QStringLiteral("-b"), bundleName});
-    if (qint64 pid = parsePidFromKeyValueDump(aaOut); pid > 0)
-        return pid;
+    if (qint64 pid = parsePidFromKeyValueDump(aaOut); pid > 0) {
+        return hit(pid, QStringLiteral("aa dump -b"));
+    }
 
     QString psOut = runHdcShellOutput(hdc, serialNumber, {QStringLiteral("ps"), QStringLiteral("-A")});
-    if (qint64 pid = parsePidFromPs(psOut, bundleName); pid > 0)
-        return pid;
+    if (qint64 pid = parsePidFromPs(psOut, bundleName); pid > 0) {
+        return hit(pid, QStringLiteral("ps -A"));
+    }
 
     psOut = runHdcShellOutput(hdc, serialNumber, {QStringLiteral("ps"), QStringLiteral("-ef")});
-    return parsePidFromPs(psOut, bundleName);
+    if (qint64 pid = parsePidFromPs(psOut, bundleName); pid > 0)
+        return hit(pid, QStringLiteral("ps -ef"));
+    return -1;
+}
+
+bool harmonyPidLooksLikeBundleProcess(const FilePath &hdc,
+                                      const QString &serialNumber,
+                                      const QString &bundleName,
+                                      qint64 pid)
+{
+    if (pid <= 0 || bundleName.isEmpty())
+        return false;
+    const QString psA = runHdcShellOutput(hdc, serialNumber, {QStringLiteral("ps"), QStringLiteral("-A")});
+    const QStringList aLines = psA.split('\n', Qt::SkipEmptyParts);
+    for (const QString &line : aLines) {
+        if (lineContainsPidAndBundle(line, pid, bundleName))
+            return true;
+    }
+    const QString psEf = runHdcShellOutput(hdc, serialNumber, {QStringLiteral("ps"), QStringLiteral("-ef")});
+    const QStringList efLines = psEf.split('\n', Qt::SkipEmptyParts);
+    for (const QString &line : efLines) {
+        if (lineContainsPidAndBundle(line, pid, bundleName))
+            return true;
+    }
+    return false;
 }
 
 static const ProjectNode *currentProjectNode(const BuildConfiguration *bc)
