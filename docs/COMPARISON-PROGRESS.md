@@ -103,7 +103,7 @@
 | # | Android 能力 / 典型文件 | Harmony 对应 | 进度 | 备注 |
 |---|---------------------------|--------------|------|------|
 | 8.1 | `AndroidPackageInstallationStep`（install 到 android-build） | ➖ / 部分由 CMake | ➖ | OHOS 侧工程结构不同 |
-| 8.2 | `AndroidBuildApkStep`（androiddeployqt + Gradle） | `HarmonyBuildHapStep`（hvigor/ohpm） | 🔄 | 签名 UI 大量注释；sync→ohpm→assemble；**已加固** Node 多路径、Java 自动、`DEVECO_SDK_HOME`/`JAVA_HOME`、`ohpro` 目录与 `PWD`/`INIT_CWD`；**P1-09** ohpm registry/ssl；**P1-10** `deviceTypes` 偏好 + Kit + 构建步骤覆盖 |
+| 8.2 | `AndroidBuildApkStep`（androiddeployqt + Gradle） | `HarmonyBuildHapStep`（hvigor/ohpm） | 🔄 | 签名 UI 大量注释；sync→ohpm→assemble；**已加固** Node 多路径、Java 自动、`DEVECO_SDK_HOME`/`JAVA_HOME`、`ohpro` 目录与 `PWD`/`INIT_CWD`；**P1-09** ohpm registry/ssl；**P1-10** `deviceTypes` 偏好 + Kit + 步骤覆盖（**预设复选框** +「跟随偏好/Kit」） |
 | 8.3 | Keystore / 签名向导 | — / DevEco 按钮 | 🔄 | 对标 `KeystoreCertificateDialog` 未完整 |
 | 8.4 | 构建输出解析（错误进 Issues） | `HarmonyHvigorOhpmOutputParser` + `HarmonyBuildHapStep::setupOutputFormatter` | ✅ | 配置类失败仍 `addOutput`+`BuildSystemTask`；hvigor/ohpm/ArkTS 常见行进 **Issues** 并可点击绝对路径源文件（相对路径依赖 `addSearchDir` + `FileInProjectFinder`） |
 | 8.5 | 日志分类 `QLoggingCategory` | `harmonyBuildHapLog` 等 | 🔄 | 已部分引入，未全文件统一 |

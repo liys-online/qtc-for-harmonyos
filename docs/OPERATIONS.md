@@ -44,7 +44,7 @@
 
 **ohpm 源与 TLS**：`ohpm install` 使用的 `--registry`、`--strict_ssl` 在 **Preferences → Harmony** 可配置（registry 留空则使用默认 `https://ohpm.openharmony.cn/ohpm`；企业内网镜像可填完整 HTTPS URL）。详见 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) **P1-09**。
 
-**ohpro `deviceTypes`**：生成模板时写入 `module.json5` 的列表可在 **Preferences → Harmony** 设默认值（逗号分隔；空则等价 `2in1`），同步到 **Kit** 的 `Harmony.ModuleDeviceTypes`；各 **构建配置** 的 Harmony HAP 步骤可再填「Module device types」覆盖。详见 **P1-10**。
+**ohpro `deviceTypes`**：生成模板时写入 `module.json5` 的列表在 **Preferences → Harmony** 通过 **默认 module device types** 多选框设定（预设 phone / tablet / 2in1 / wearable / tv / car；**未勾选任何项**时行为与仅 **2in1** 一致），并同步到 **Kit** 的 `Harmony.ModuleDeviceTypes`。各 **构建配置** 的 Harmony HAP 步骤可勾选 **使用偏好与 Kit（不写入步骤覆盖）**，或取消勾选后用同一套预设 **覆盖** 本步骤（内部仍以逗号串存 `Harmony.BuildOhModuleDeviceTypesLine`）。详见 **P1-10**。
 
 每步启动前会 **确保构建目录下的 `ohpro` 子目录已创建** 并采用 **规范绝对路径** 作为 cwd；与主步骤一致注入 **DevEco / Java** 相关环境变量（见 §1）。
 

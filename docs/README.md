@@ -56,6 +56,7 @@
 | 2026-03-24 | **P1-08**：`harmonyhdctargetsparser.*` + `harmonyhdctargetsparser_test`；[PRIORITY-PLAN.md](PRIORITY-PLAN.md) §6 修订 1.2、[MODULES.md](MODULES.md) §4、[COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md) 7.3 / 14.4 |
 | 2026-03-24 | **P1-09**：ohpm registry / strict SSL（`HarmonyConfig` + 设置页 + `HarmonyBuildHapStep`）；[OPERATIONS.md](OPERATIONS.md) §2.2；[PRIORITY-PLAN.md](PRIORITY-PLAN.md) 修订 1.3 |
 | 2026-03-24 | **P1-10**：ohpro `deviceTypes`（偏好、`Harmony.ModuleDeviceTypes` Kit、`HarmonyBuildHapStep` 覆盖、`harmonyutils` 解析）；[PRIORITY-PLAN.md](PRIORITY-PLAN.md) 修订 1.4 |
+| 2026-03-24 | **P1-10（文档）**：偏好与 HAP 步骤 **deviceTypes 复选框 UI** 与 [OPERATIONS.md](OPERATIONS.md)、[MODULES.md](MODULES.md)、[COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md) 同步；[PRIORITY-PLAN.md](PRIORITY-PLAN.md) 修订 1.5 |
 
 ---
 
