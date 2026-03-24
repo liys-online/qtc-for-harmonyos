@@ -71,7 +71,7 @@
 | # | Android 能力 / 典型文件 | Harmony 对应 | 进度 | 备注 |
 |---|---------------------------|--------------|------|------|
 | 5.1 | Android 专用 KitAspect（ABI、签名等） | 无独立 `harmonykitaspect` 模块 | ⬜ | 能力分散在配置/Kit 自动创建中，待对标拆分 |
-| 5.2 | Kit 与设备、Qt、工具链组合 | Kit + `QtKitAspect` 等 | 🔄 | 自动 Kit CMake 项含 **`OHOS_ARCH` 规范化**、Unix **`CMAKE_MAKE_PROGRAM`**；与 qmake 列表联动仍待全场景验证 |
+| 5.2 | Kit 与设备、Qt、工具链组合 | Kit + `QtKitAspect` 等 | 🔄 | 自动 Kit CMake 项含 **`OHOS_ARCH` 规范化**、Unix **`CMAKE_MAKE_PROGRAM`**；**P1-13** CMake 构建配置 **Harmony 摘要**子页；与 qmake 列表联动仍待全场景验证 |
 
 ---
 

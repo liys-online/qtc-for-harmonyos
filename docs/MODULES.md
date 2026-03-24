@@ -57,7 +57,7 @@
 
 | 单元 | 职责 |
 |------|------|
-| `harmonybuildconfiguration.*` | CMake 构建配置扩展 |
+| `harmonybuildconfiguration.*` | **P1-13** `HarmonyCMakeBuildConfiguration`：`createSubConfigWidgets` 注入 **Harmony CMake summary**（`HarmonyCMakeSummaryWidget`：Qt、NDK、`OHOS_ARCH`、工具链路径、打开 Harmony/Kits 设置）；与 `CMakeBuildConfiguration::createSubConfigWidgets` 衔接 |
 | `harmonybuildhapstep.*` | HAP 构建步骤（sync / ohpm / assemble）、`prepareOhProDirectory`、`applyDevecoAndJavaEnv`、配置界面 `HarmonyBuildHapWidget`；**P1-10** `effectiveModuleDeviceTypes()`（步骤覆盖行 → Kit → `HarmonyConfig`）；UI：**跟随偏好/Kit** 与 **module device types 预设复选框**；**P1-12** Store：`Harmony.BuildHap.TargetSdk` / `Harmony.BuildHap.BuildToolsVersion`（兼容旧 `BuildTargetSdk` / `BuildToolsVersion`） |
 | `harmonydeployqtstep.*` | 部署步骤（hdc 安装等）；合成 build key `HARMONY_DEFAULT_RUN_BUILD_KEY` 时不要求 ProjectNode，并按需从 **applicationTargets** 解析 **OHOS_ARCH**；**P1-12** `Harmony.Deploy.UninstallPreviousPackage`（兼容 `UninstallPreviousPackage`） |
 

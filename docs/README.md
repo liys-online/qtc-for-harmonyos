@@ -58,6 +58,7 @@
 | 2026-03-24 | **P1-10**：ohpro `deviceTypes`（偏好、`Harmony.ModuleDeviceTypes` Kit、`HarmonyBuildHapStep` 覆盖、`harmonyutils` 解析）；[PRIORITY-PLAN.md](PRIORITY-PLAN.md) 修订 1.4 |
 | 2026-03-24 | **P1-10（文档）**：偏好与 HAP 步骤 **deviceTypes 复选框 UI** 与 [OPERATIONS.md](OPERATIONS.md)、[MODULES.md](MODULES.md)、[COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md) 同步；[PRIORITY-PLAN.md](PRIORITY-PLAN.md) 修订 1.5 |
 | 2026-03-24 | **P1-12**：工程内 Harmony **构建 / 部署 / 运行** Store 键统一为 `Harmony.*`，`fromMap` 兼容旧键；[OPERATIONS.md](OPERATIONS.md) §1.1、[MODULES.md](MODULES.md)、[PRIORITY-PLAN.md](PRIORITY-PLAN.md) 修订 1.6 |
+| 2026-03-24 | **P1-13**：Harmony **CMake 构建配置** 增加 **Harmony** 摘要子页；[MODULES.md](MODULES.md)、[PRIORITY-PLAN.md](PRIORITY-PLAN.md) 修订 1.7 |
 
 ---
 

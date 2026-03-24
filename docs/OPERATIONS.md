@@ -42,6 +42,7 @@
 
 - 工程为 **CMake** 工程；由 Qt / Harmony 相关 CMake 包提供变量与目标。
 - Kit 指定 **Qt 版本**、**OHOS 工具链**及目标 ABI（策略可与 Android 多 ABI 对齐演进）。
+- **Projects → Build**（CMake 构建配置）在通用 CMake 页之外，Harmony Kit 另有 **Harmony** 子页（**P1-13**）：只读摘要（Qt、NDK、`OHOS_ARCH`、工具链文件）与 **打开 Harmony 设置** / **配置当前 Kit** / **刷新**；其后仍为 **Build environment**、**Custom parsers** 等通用子页。
 
 ### 2.2 步骤（HarmonyBuildHapStep）
 

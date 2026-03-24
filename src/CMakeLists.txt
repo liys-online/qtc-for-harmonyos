@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.20)
-
 # Remove when sharing with others.
 
 # Qt Creator 安装前缀（目录下应有 lib/cmake/QtCreator/，且含 QtCreatorConfig.cmake）：
@@ -7,6 +5,7 @@ cmake_minimum_required(VERSION 3.20)
 # - 其它：SDK / Tools 根目录
 # - 未指定时：按 Qt 安装树 .../Tools/QtCreator 推断（与 Maintenance Tool 布局一致）
 
+set(HARMONY_QTCREATOR_TOOLS_DIR_VERSION "19.0.0")
 set(_HARMONY_QTC_FROM_CACHE FALSE)
 if(DEFINED QtCreator)
   set(_HARMONY_QTC_FROM_CACHE TRUE)
@@ -23,7 +22,11 @@ else()
   set(QT_INSTALL_PATH "${CMAKE_PREFIX_PATH}")
   get_filename_component(PARENT_DIR "${QT_INSTALL_PATH}" DIRECTORY)
   get_filename_component(GRANDPARENT_DIR "${PARENT_DIR}" DIRECTORY)
-  set(QtCreator "${GRANDPARENT_DIR}/Tools/QtCreator")
+  if(APPLE)
+    set(QtCreator "${GRANDPARENT_DIR}/Qt Creator.app/Contents/Resources")
+  else()
+    set(QtCreator "${GRANDPARENT_DIR}/Tools/QtCreator ${HARMONY_QTCREATOR_TOOLS_DIR_VERSION}")
+  endif()
   set(QtCreatorConfig "${QtCreator}/lib/cmake/QtCreator/QtCreatorConfig.cmake")
 endif()
 
@@ -48,7 +51,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(Qt6 COMPONENTS Widgets Network REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network LinguistTools)
 
 # Add a CMake option that enables building your plugin with tests.
 # You don't want your released plugin binaries to contain tests,
@@ -69,10 +72,6 @@ if(WITH_TESTS)
   add_subdirectory(../test/qt_oh_binary_catalog_generator qt_oh_binary_catalog_generator)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS LinguistTools)
-qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES zh_CN)
-qt_add_translations(TARGETS Harmony)
-
 add_qtc_plugin(Harmony
   PLUGIN_DEPENDS
     QtCreator::Core
@@ -87,7 +86,6 @@ add_qtc_plugin(Harmony
     QtCreator::Utils
   SOURCES
     Harmony.json.in
-    qrc.qrc
     ../lib/ohprojectecreator/resource.qrc
     ohos.cpp
     harmonydevice.cpp
@@ -144,3 +142,25 @@ extend_qtc_plugin(Harmony
     harmonyhdctargetsparser_test.cpp
     harmonyhdctargetsparser_test.h
 )
+
+# 更新 .ts：构建 harmony_ts_zh_CN 或 harmony_ts_all（非默认 ALL，需手动选该目标）。
+add_translation_targets(Harmony
+  TARGETS Harmony
+  TS_LANGUAGES zh_CN
+  QM_LANGUAGES zh_CN
+  INSTALL_DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/harmony_qm_install"
+  OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+  TS_TARGET_PREFIX harmony_ts_
+  QM_TARGET_PREFIX harmony_qm_
+  ALL_QM_TARGET harmony_generate_qm_files
+)
+
+set(_harmony_zh_cn_qm "${CMAKE_CURRENT_BINARY_DIR}/Harmony_zh_CN.qm")
+# Qt 6：绝对路径的资源文件必须设 QT_RESOURCE_ALIAS，否则与 ohos.cpp 中 :/Harmony_zh_CN.qm 一致。
+set_source_files_properties("${_harmony_zh_cn_qm}" PROPERTIES
+  GENERATED TRUE
+  QT_RESOURCE_ALIAS "Harmony_zh_CN.qm")
+qt_add_resources(Harmony harmony_i18n_qm
+  PREFIX "/"
+  FILES "${_harmony_zh_cn_qm}")
+add_dependencies(Harmony harmony_generate_qm_files)
