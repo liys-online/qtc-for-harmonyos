@@ -189,6 +189,10 @@ protected:
         // CMake 的 applicationTargets 仅含 Executable；Qt for OH 常为 MODULE_LIBRARY，列表为空。
         if (!harmonyRunConfigCanAddDefault(bc))
             return items;
+        // 在尚无解析数据时若仍返回 AlwaysCreate，Qt Creator 无法把已有 RC 记入 existing
+        // （见 BuildConfiguration::updateDefaultRunConfigurations），会导致每次打开项目重复添加。
+        if (!bc->buildSystem()->hasParsingData())
+            return items;
 
         RunConfigurationCreationInfo rci;
         rci.factory = this;
