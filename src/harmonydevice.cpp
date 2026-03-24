@@ -1,5 +1,6 @@
 #include "harmonydevice.h"
 #include "harmonydevicemanager.h"
+#include "harmonylogcategories.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
 
@@ -34,7 +35,9 @@ HarmonyDeviceWidget::HarmonyDeviceWidget(const IDevice::Ptr &device)
 
 static void updateDeviceState(const IDevice::ConstPtr &device)
 {
-    Q_UNUSED(device);
+    // hdc 无单设备查询 API：刷新即全量 list targets（与计划 P1-06 一致）。
+    qCDebug(harmonyDeviceLog) << "Refresh requested for device" << (device ? device->id().toString() : QString());
+    instance()->queryDevice();
 }
 HarmonyDevice::HarmonyDevice()
 {
@@ -129,8 +132,9 @@ public:
         : IDeviceFactory(Constants::HARMONY_DEVICE_TYPE)
     {
         setDisplayName(Tr::tr("HarmonyOS Device"));
-        setCombinedIcon(":/android/images/androiddevicesmall.png",
-                        ":/android/images/androiddevice.png");
+        // 不引用 Android 插件资源；使用 ProjectExplorer 内置通用设备图标（本插件已依赖 PE）。
+        setCombinedIcon(":/projectexplorer/images/desktopdevice.png",
+                        ":/projectexplorer/images/desktopdevice@2x.png");
         setConstructionFunction(&HarmonyDevice::create);
 
         setCreator(HarmonyDevice::create);
