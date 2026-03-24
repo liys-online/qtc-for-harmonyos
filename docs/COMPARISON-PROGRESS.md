@@ -61,7 +61,7 @@
 | # | Android 能力 / 典型文件 | Harmony 对应 | 进度 | 备注 |
 |---|---------------------------|--------------|------|------|
 | 4.1 | `AndroidQtVersion` 检测 ABI / builtWith | `HarmonyQtVersion` | 🔄 | qconfig / qdevice.pri；**已收紧** `targetAbi()` 解析（跳过 `#` 注释、支持 `OHOS_ARCH=`） |
-| 4.2 | 多 ABI / 版本边界判断 | `HarmonyQtVersion::supportsMultipleQtAbis` | 🔄 | **P1-15**：`qtAbis().size() > 1`（Android 仍为 Qt 5.14–6 区间） |
+| 4.2 | 多 ABI / 版本边界判断 | `HarmonyQtVersion::supportsMultipleQtAbis` | ✅ | **P1-15 已完成**：以 `qtAbis().size() > 1` 为准（随 qmake / 元数据解析；Android 侧仍为版本区间） |
 | 4.3 | Qt 版本工厂注册 | `harmonyqtversion` | ✅ | 与 Android 模式一致 |
 
 ---
