@@ -1215,11 +1215,11 @@ void HarmonyConfigurations::updateHarmonyDevice()
     /*
      * Add a deault Harmony device
      */
-    HarmonyDevice *defaultDevice = new HarmonyDevice();
-    defaultDevice->setupId(IDevice::AutoDetected, Constants::HARMONY_DEVICE_ID);
-    defaultDevice->setMachineType(IDevice::Emulator);
-    defaultDevice->setDeviceState(IDevice::DeviceStateUnknown);
-    devMgr->addDevice(IDevicePtr(defaultDevice));
+    // HarmonyDevice *defaultDevice = new HarmonyDevice();
+    // defaultDevice->setupId(IDevice::AutoDetected, Constants::HARMONY_DEVICE_ID);
+    // defaultDevice->setMachineType(IDevice::Emulator);
+    // defaultDevice->setDeviceState(IDevice::DeviceStateUnknown);
+    // devMgr->addDevice(IDevicePtr(defaultDevice));
     setupDevicesWatcher();
 }
 
