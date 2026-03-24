@@ -1,8 +1,8 @@
 {
     "Id" : "harmony",
     "Name" : "Harmony",
-    "Version" : "0.0.1",
-    "CompatVersion" : "0.0.1",
+    "Version" : "1.0.0-alpha",
+    "CompatVersion" : "1.0.0-alpha",
     "Vendor" : "Li-Yaosong",
     "VendorId" : "li-yaosong",
     "Copyright" : "(C) Li-Yaosong",
