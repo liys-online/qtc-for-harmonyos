@@ -27,7 +27,7 @@
 | 1.2 | `Q_PLUGIN_METADATA` + `*.json.in` 依赖声明 | `Harmony.json.in` + `CMakeLists.txt` 列入 `SOURCES` | ✅ | 需与主工程 `add_qtc_plugin` 流程一致 |
 | 1.3 | `kitsRestored` 后 InfoBar 引导未配置 SDK | `ohos.cpp`（Harmony Qt 已注册但无有效 SDK 时） | ✅ | 对标 Android `askUserAboutAndroidSetup` |
 | 1.4 | `extensionsInitialized` 收尾逻辑 | `ohos.cpp` | ⬜ | 当前多为空 |
-| 1.5 | `#ifdef WITH_TESTS` 注册测试 | — | ⬜ | Harmony 侧暂无 |
+| 1.5 | `#ifdef WITH_TESTS` 注册测试 | `ohos.cpp`：`addTestCreator(createHarmonyHdcTargetsParserTest)` | 🔄 | **P1-08**：`harmonyhdctargetsparser_test`；对标 Android 全量 `*_test` 仍差 |
 | 1.6 | 翻译加载 | `loadTranslations()` | 🔄 | 需确认资源与生命周期（如 translator 归属） |
 
 ---
@@ -171,7 +171,7 @@
 |---|-----|------|------|
 | 14.1 | 统一 `QLoggingCategory` 替代调试向 `writeSilently` | ✅ | `harmonylogcategories.*`；Kit 同步走 `qCDebug`；**OHOS_ARCH** 纠正走 `writeFlashing`；usbmonitor 用 `qtc.harmony.device.usbmonitor` |
 | 14.2 | `ohosconstants.h` 巨型未用常量清理 | ⬜ | 可对 `Parameter` 等拆分或删除 |
-| 14.3 | ID 前缀统一（`Qt4ProjectManager.*` → `Harmony.*`） | ⬜ | 需迁移旧设置 |
+| 14.3 | ID 前缀统一（`Qt4ProjectManager.*` → `Harmony.*`） | ✅ | **P1-12**：工程内 Harmony **构建 / 部署 / 运行** Store 键已统一为 `Harmony.*`，`fromMap` 兼容旧键；CMake `extraData` 等未改名见 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) |
 | 14.4 | 单元测试 | 🔄 | **P1-08**：`harmonyhdctargetsparser_test`（`WITH_TESTS` + `-test Harmony`）；对标 Android 全量 `*_test.cpp` 仍差 |
 
 ---
@@ -180,12 +180,12 @@
 
 | 闭环阶段 | Android | Harmony 进度 |
 |----------|---------|----------------|
-| 配置 SDK/工具 | ✅ 成熟 | 🔄（qmake/SDK 等持久化与 hvigor 环境已加强，仍差 P0-09 引导等） |
+| 配置 SDK/工具 | ✅ 成熟 | 🔄 **P0 级配置与引导已具备**（SDK 路径、Kit 同步、hvigor/ohpm 环境等）；SDK 包管理「解压/自动注册」等仍见 **P2-03** |
 | 创建/维护 Kit | ✅ | 🔄 |
 | 构建产物 | ✅ APK/AAB | 🔄 HAP |
 | 部署到设备 | ✅ | 🔄 |
-| 运行 | ✅ | 🔄（已打通基础，缺完整 Worker 行为） |
-| 调试 | ✅ | ⬜ |
+| 运行 | ✅ | 🔄 主路径已打通；**P0-01** 仍为**部分完成**（非 Android 级 Run 编排） |
+| 调试 | ✅ | 🔄 **Native LLDB MVP**（`harmonydebugsupport.*`）；QML / 与 Android 对等度仍差 |
 | 编辑器/向导 | ✅ 较全 | 🔄 / ⬜ |
 
 ---

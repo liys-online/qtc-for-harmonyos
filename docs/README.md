@@ -13,6 +13,8 @@
 | **产品 / 项目管理** | [ARCHITECTURE.md](ARCHITECTURE.md) → [COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md) → [PRIORITY-PLAN.md](PRIORITY-PLAN.md) |
 | **研发 / 代码评审** | [ARCHITECTURE.md](ARCHITECTURE.md) → [MODULES.md](MODULES.md) → [OPERATIONS.md](OPERATIONS.md) → [ANDROID-PARITY.md](ANDROID-PARITY.md) |
 | **技术支持 / 运维** | [OPERATIONS.md](OPERATIONS.md) → [VERSIONING.md](../VERSIONING.md) |
+| **插件使用者（应用开发者）** | [USER-MANUAL.md](USER-MANUAL.md) → [OPERATIONS.md](OPERATIONS.md) |
+| **发布 / 制品负责人** | [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md) → [BUILD-REPRODUCIBILITY.md](BUILD-REPRODUCIBILITY.md) → [QA-MANUAL-SMOKE.md](QA-MANUAL-SMOKE.md) → [RELEASE-NOTES-1.0.0-alpha.md](RELEASE-NOTES-1.0.0-alpha.md) → [POST-RELEASE.md](POST-RELEASE.md) |
 
 ---
 
@@ -20,6 +22,7 @@
 
 | 文档 | 说明 |
 |------|------|
+| [**USER-MANUAL.md**](USER-MANUAL.md) | **用户手册**：安装与偏好、工程/构建/部署/运行、调试入口、常见问题（面向使用者） |
 | [**ARCHITECTURE.md**](ARCHITECTURE.md) | **架构与设计**：目标、原则、分层、扩展点、数据流、已知限制 |
 | [**MODULES.md**](MODULES.md) | **源码模块**：主要文件职责与 `lib/` 说明 |
 | [**OPERATIONS.md**](OPERATIONS.md) | **构建 / 部署 / 运行**：外部依赖与主流程；**§2.4–2.5** Native 调试符号、debug HAP 与 user/签名风险 |
@@ -31,6 +34,11 @@
 | [**HARMONY-LLDB-DEBUG.md**](HARMONY-LLDB-DEBUG.md) | **Native LLDB 调试与 Qt Creator 对接**：官方文档入口、流程归纳、P2-01 映射与验证清单（命令以官方为准） |
 | [**DEBUG-TASKS.md**](DEBUG-TASKS.md) | **调试功能任务清单**：分阶段 checkbox（P2-01 / P2-07），从命令行验收到 `HarmonyDebugWorkerFactory` |
 | [**AUTHORS.md**](AUTHORS.md) | **作者与项目性质**（个人项目；非 Qt 官方） |
+| [**RELEASE-CHECKLIST.md**](RELEASE-CHECKLIST.md) | **发布检查清单**：版本与元数据、构建复现、验收矩阵、分发与 Release Notes（alpha→正式版） |
+| [**BUILD-REPRODUCIBILITY.md**](BUILD-REPRODUCIBILITY.md) | **构建可复现**：标准 CMake、`IDE_VERSION`、产物路径、发版记录模板、构建后 `Harmony.json` 复核 |
+| [**QA-MANUAL-SMOKE.md**](QA-MANUAL-SMOKE.md) | **手工烟测**：主路径勾选表、支持矩阵、可选 `-test Harmony` |
+| [**RELEASE-NOTES-1.0.0-alpha.md**](RELEASE-NOTES-1.0.0-alpha.md) | **1.0.0-alpha** Release 正文模板（GitHub / GitCode 粘贴用） |
+| [**POST-RELEASE.md**](POST-RELEASE.md) | **发布后**：Issue 归类、链接与元数据同步 |
 
 ---
 
@@ -60,6 +68,11 @@
 | 2026-03-24 | **P1-12**：工程内 Harmony **构建 / 部署 / 运行** Store 键统一为 `Harmony.*`，`fromMap` 兼容旧键；[OPERATIONS.md](OPERATIONS.md) §1.1、[MODULES.md](MODULES.md)、[PRIORITY-PLAN.md](PRIORITY-PLAN.md) 修订 1.6 |
 | 2026-03-24 | **P1-13**：Harmony **CMake 构建配置** 增加 **Harmony** 摘要子页；[MODULES.md](MODULES.md)、[PRIORITY-PLAN.md](PRIORITY-PLAN.md) 修订 1.7 |
 | 2026-03-24 | **P1-15**：`HarmonyQtVersion::supportsMultipleQtAbis` 按 **`qtAbis()`** 数量判定；[PRIORITY-PLAN.md](PRIORITY-PLAN.md) 修订 1.8、[COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md) 4.2 |
+| 2026-03-24 | **1.0.0-alpha 发布准备**：[`../src/Harmony.json.in`](../src/Harmony.json.in) 版本 **1.0.0-alpha**、GPLv3 许可与英文 Description、**DocumentationUrl** 指向本文档入口；插件 [`README.md`](../README.md) 增 alpha 提示 |
+| 2026-03-24 | 新增 [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md)（发布检查清单）；本页「建议阅读路径」「文档一览」已索引 |
+| 2026-03-24 | 落实发布配套：[AUTHORS.md](AUTHORS.md)、[BUILD-REPRODUCIBILITY.md](BUILD-REPRODUCIBILITY.md)、[QA-MANUAL-SMOKE.md](QA-MANUAL-SMOKE.md)、[RELEASE-NOTES-1.0.0-alpha.md](RELEASE-NOTES-1.0.0-alpha.md)、[POST-RELEASE.md](POST-RELEASE.md)；[RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md) §10/§11 更新；[COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md) 1.5 / 14.3 / §15 与计划表对齐 |
+| 2026-03-24 | 新增 [USER-MANUAL.md](USER-MANUAL.md)（用户手册）；本页「建议阅读路径」「文档一览」已索引 |
+| 2026-03-24 | [USER-MANUAL.md](USER-MANUAL.md) 增 **§2 使用演示**（图 2-1～2-12 占位）；配图目录 [images/user-manual/README.md](images/user-manual/README.md) |
 
 ---
 
