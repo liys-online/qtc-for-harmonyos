@@ -15,6 +15,7 @@
 #include <projectexplorer/runconfigurationaspects.h>
 #include <projectexplorer/runcontrol.h>
 
+#include <QUrl>
 #include <qpushbutton.h>
 #include <utils/algorithm.h>
 #include <utils/layoutbuilder.h>
@@ -437,22 +438,24 @@ QtTaskTree::GroupItem HarmonyBuildHapStep::ohpmInstallTask()
         {
             if (auto ohpmJs = HarmonyConfig::ohpmJsLocation(); ohpmJs.exists())
             {
-                /*
-                 * TODO: 未来支持用户自定义ohpm源
-                 */
-                QUrl registryUrl = QUrl::fromUserInput("https://ohpm.openharmony.cn/ohpm");
-                /*
-                 * TODO: 未来支持用户自定义是否开启ssl
-                 */
-                bool strictSsl = true;
-                const CommandLine command {node, {ohpmJs.toUserOutput(),
-                                                 "install",
-                                                 "--all",
-                                                 "--registry",
-                                                 registryUrl.toString(),
-                                                 "--strict_ssl",
-                                                 strictSsl ? "true" : "false"
-                                                }};
+                const QString registryStr = HarmonyConfig::effectiveOhpmRegistryUrl();
+                const QUrl registryUrl = QUrl::fromUserInput(registryStr);
+                if (!registryUrl.isValid() || registryUrl.scheme().isEmpty()) {
+                    const QString err = Tr::tr("Invalid ohpm registry URL in Harmony preferences: \"%1\"")
+                                            .arg(registryStr);
+                    emit addOutput(err, OutputFormat::ErrorMessage);
+                    emit addTask(BuildSystemTask(ProjectExplorer::Task::Error, err));
+                    return QtTaskTree::SetupResult::StopWithError;
+                }
+                const bool strictSsl = HarmonyConfig::ohpmStrictSsl();
+                const CommandLine command{node,
+                                          {ohpmJs.toUserOutput(),
+                                           QStringLiteral("install"),
+                                           QStringLiteral("--all"),
+                                           QStringLiteral("--registry"),
+                                           registryUrl.toString(),
+                                           QStringLiteral("--strict_ssl"),
+                                           strictSsl ? QStringLiteral("true") : QStringLiteral("false")}};
 
                 FilePath ohProCwd;
                 QString prepErr;

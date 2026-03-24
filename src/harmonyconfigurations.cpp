@@ -297,6 +297,8 @@ struct HarmonyConfigData{
      * SDK路径列表
      */
     QStringList m_sdkList;
+    QString m_ohpmRegistryUrl;
+    bool m_ohpmStrictSsl = true;
 };
 static HarmonyConfigData &config()
 {
@@ -312,6 +314,10 @@ void HarmonyConfigData::load(const QtcSettings &settings)
     m_sdkList = settings.value(Constants::SDKLocationsKey).toStringList();
     m_defaultSdkLocation = FilePath::fromString(settings.value(Constants::DefaultSDKLocationKey).toString());
     m_ohosSdkRoot = FilePath::fromString(settings.value(Constants::OhosSdkRootKey).toString());
+    m_ohpmRegistryUrl = settings.value(Constants::OhpmRegistryUrlKey).toString();
+    m_ohpmStrictSsl = settings.contains(Constants::OhpmStrictSslKey)
+                          ? settings.value(Constants::OhpmStrictSslKey).toBool()
+                          : true;
     // PersistentSettingsReader reader;
 
     // if (reader.load(sdkSettingsFileName())
@@ -339,6 +345,8 @@ void HarmonyConfigData::save(QtcSettings &settings) const
     settings.setValue(Constants::SDKLocationsKey, m_sdkList);
     settings.setValue(Constants::DefaultSDKLocationKey, m_defaultSdkLocation.toFSPathString());
     settings.setValue(Constants::OhosSdkRootKey, m_ohosSdkRoot.toFSPathString());
+    settings.setValue(Constants::OhpmRegistryUrlKey, m_ohpmRegistryUrl);
+    settings.setValue(Constants::OhpmStrictSslKey, m_ohpmStrictSsl);
 }
 
 FilePath devecoStudioLocation()
@@ -878,6 +886,39 @@ FilePath nodeLocation()
 FilePath ohpmJsLocation()
 {
     return devecoToolsLocation() / "ohpm" / "bin" / "pm-cli.js";
+}
+
+QString defaultOhpmRegistryUrl()
+{
+    return QStringLiteral("https://ohpm.openharmony.cn/ohpm");
+}
+
+QString ohpmRegistryUrl()
+{
+    return config().m_ohpmRegistryUrl;
+}
+
+QString effectiveOhpmRegistryUrl()
+{
+    const QString s = config().m_ohpmRegistryUrl.trimmed();
+    return s.isEmpty() ? defaultOhpmRegistryUrl() : s;
+}
+
+void setOhpmRegistryUrl(const QString &url)
+{
+    config().m_ohpmRegistryUrl = url.trimmed();
+    HarmonyConfigurations::persistSettings();
+}
+
+bool ohpmStrictSsl()
+{
+    return config().m_ohpmStrictSsl;
+}
+
+void setOhpmStrictSsl(bool on)
+{
+    config().m_ohpmStrictSsl = on;
+    HarmonyConfigurations::persistSettings();
 }
 
 FilePath javaLocation()

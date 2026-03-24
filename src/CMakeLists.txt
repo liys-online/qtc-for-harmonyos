@@ -102,6 +102,8 @@ add_qtc_plugin(Harmony
     harmonyqtversion.h
     harmonydevicemanager.cpp
     harmonydevicemanager.h
+    harmonyhdctargetsparser.cpp
+    harmonyhdctargetsparser.h
     harmonyutils.h harmonyutils.cpp
     harmonyhdcforward.h harmonyhdcforward.cpp
     harmonylogcategories.h harmonylogcategories.cpp
@@ -133,5 +135,12 @@ target_compile_definitions(Harmony PRIVATE
   QTC_IDE_VERSION_MAJOR=${HARMONY_IDE_VERSION_MAJOR}
   QTC_IDE_VERSION_MINOR=${HARMONY_IDE_VERSION_MINOR}
   QTC_IDE_VERSION_PATCH=${HARMONY_IDE_VERSION_PATCH}
-  HARMONY_QTC_USE_QTTASKTREE=1
+    HARMONY_QTC_USE_QTTASKTREE=1
+)
+
+extend_qtc_plugin(Harmony
+  CONDITION WITH_TESTS
+  SOURCES
+    harmonyhdctargetsparser_test.cpp
+    harmonyhdctargetsparser_test.h
 )

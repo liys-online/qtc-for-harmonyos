@@ -22,8 +22,8 @@
 
 | 单元 | 职责 |
 |------|------|
-| `harmonyconfigurations.*` | 全局配置读写、SDK/DevEco 路径、`persistSettings()`、`javaLocation()`/`nodeLocation()`、自动 Kit CMake（`OHOS_ARCH` 等）、与工具链协作；**LLDB**：`devecoBundledSdkDefaultRoot()`、`hostLldbExecutable()`、`lldbServerExecutable()`/`staticLldbExecutable()`、`ohosLldbTripleForAbi()`（见 [DEBUG-TASKS.md](DEBUG-TASKS.md) 0.1） |
-| `harmonysettingswidget.*` | 「选项」中的 Harmony 设置页；**LLDB 诊断**（只读文本 + **Harmony settings** 折叠检查清单：`sdk/default`、Host LLDB、各架构 lldb-server、可选静态 lldb） |
+| `harmonyconfigurations.*` | 全局配置读写、SDK/DevEco 路径、`persistSettings()`、`javaLocation()`/`nodeLocation()`、自动 Kit CMake（`OHOS_ARCH` 等）、与工具链协作；**ohpm**：`effectiveOhpmRegistryUrl()` / `ohpmStrictSsl()`（**P1-09**，键见 `ohosconstants.h`）；**LLDB**：`devecoBundledSdkDefaultRoot()`、`hostLldbExecutable()`、`lldbServerExecutable()`/`staticLldbExecutable()`、`ohosLldbTripleForAbi()`（见 [DEBUG-TASKS.md](DEBUG-TASKS.md) 0.1） |
+| `harmonysettingswidget.*` | 「选项」中的 Harmony 设置页；**ohpm** registry 行 + strict SSL 复选框；**LLDB 诊断**（只读文本 + **Harmony settings** 折叠检查清单：`sdk/default`、Host LLDB、各架构 lldb-server、可选静态 lldb） |
 | `harmonysdkdownloader.*` | OpenHarmony SDK **组件索引** HTTP 拉取与 JSON 解析（对标 Android `sdkmanager --list` 的数据层） |
 | `harmonysdkmanagerdialog.*` | **SDK 包管理**对话框：刷新列表、多选下载、SHA-256 校验、日志（入口在设置页「Manage SDK Packages…」） |
 | `harmonyqttreleasesdownloader.*` | **Qt for OpenHarmony** 发布列表：内置 GitCode/GitHub raw 双源拉取 [QT-OH-BINARY-CATALOG.md](QT-OH-BINARY-CATALOG.md) 清单（v1）；`QT_OH_BINARY_CATALOG_URL` 可覆盖主源 |
@@ -48,6 +48,8 @@
 | `harmonydevice.*` | `IDevice` 实现；设备 Widget 类可定义于同文件内 |
 | `harmonydeviceinfo.*` | 设备信息数据结构 |
 | `harmonydevicemanager.*` | hdc 枚举、USB 监听触发刷新 |
+| `harmonyhdctargetsparser.*` | `hdc list targets` 单行解析与状态字符串映射（无 I/O）；设备管理器仅消费 `HdcListTargetsParseResult` |
+| `harmonyhdctargetsparser_test.*` | **WITH_TESTS**：QTest mock 行（制表符 / 多空格 / 中英文状态），不调用 hdc |
 
 ---
 

@@ -182,6 +182,16 @@ namespace Ohos::Internal {
         Utils::FilePath ohpmJsLocation();
         Utils::FilePath javaLocation();
 
+        /** Default registry passed to \c ohpm install \c --registry when user override is empty. */
+        QString defaultOhpmRegistryUrl();
+        /** User override (may be empty). */
+        QString ohpmRegistryUrl();
+        /** Non-empty trimmed user URL, else \c defaultOhpmRegistryUrl(). */
+        QString effectiveOhpmRegistryUrl();
+        void setOhpmRegistryUrl(const QString &url);
+        bool ohpmStrictSsl();
+        void setOhpmStrictSsl(bool on);
+
         /**
          * 根据任意候选 DevEco 根路径预览 \c sdk/default （不写入配置）。
          * 用于设置页在用户选择路径时显示 LLDB 诊断；与 \c devecoBundledSdkDefaultRoot() 逻辑一致。

@@ -2,6 +2,7 @@
 
 #include "harmonyconfigurations.h"
 #include "harmonydevice.h"
+#include "harmonyhdctargetsparser.h"
 #include "harmonylogcategories.h"
 #include "ohosconstants.h"
 #include <projectexplorer/devicesupport/devicemanager.h>
@@ -18,7 +19,20 @@ using namespace ProjectExplorer;
 namespace Ohos::Internal {
 static constexpr char ipRegexStr[] = "(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})";
 static const auto ipRegex = QRegularExpression(ipRegexStr + QStringLiteral(":(\\d{1,5})"));
-static constexpr char wifiDevicePort[] = "5555";
+
+static IDevice::DeviceState ideviceStateFromHdc(HdcTargetConnectionState s)
+{
+    switch (s) {
+    case HdcTargetConnectionState::ReadyToUse:
+        return IDevice::DeviceReadyToUse;
+    case HdcTargetConnectionState::ConnectedNotReady:
+        return IDevice::DeviceConnected;
+    case HdcTargetConnectionState::Disconnected:
+        break;
+    }
+    return IDevice::DeviceDisconnected;
+}
+
 HarmonyDeviceManager::HarmonyDeviceManager(QObject *parent)
     : QObject{parent}
 {}
@@ -33,52 +47,14 @@ static void handleErrLineOutput(const QString &error)
     qCDebug(harmonyDeviceLog) << "HDC device watcher error" << error;
 }
 
-static QStringList splitHdcTargetLine(const QString &line)
-{
-    QString s = line;
-    s.remove('\r');
-    s = s.trimmed();
-    if (s.isEmpty())
-        return {};
-    // 旧版 hdc 多为制表符；新版常见多空格对齐
-    if (s.contains(QLatin1Char('\t')))
-        return s.split(QLatin1Char('\t'), Qt::SkipEmptyParts);
-    static const QRegularExpression wsSplit(QStringLiteral("\\s+"));
-    return s.split(wsSplit, Qt::SkipEmptyParts);
-}
-
-static bool looksLikeHdcListHeader(const QStringList &parts)
-{
-    if (parts.isEmpty())
-        return true;
-    const QString a = parts.constFirst();
-    const QStringList headers{QStringLiteral("SN"),       QStringLiteral("Identifier"),
-                              QStringLiteral("DEVICE"),    QStringLiteral("Device"),
-                              QStringLiteral("DevSerial"), QStringLiteral("Serial")};
-    for (const QString &h : headers) {
-        if (a.compare(h, Qt::CaseInsensitive) == 0)
-            return true;
-    }
-    return false;
-}
-
 static void handleDevicesListChange(const QString &serialNumber)
 {
     DeviceManager *const devMgr = DeviceManager::instance();
-    const QStringList serialBits = splitHdcTargetLine(serialNumber);
-    // 仅需：序列号 / 连接类型 / 状态（旧代码误要求 ≥5 列，导致新版 hdc 输出全部被丢弃）
-    if (serialBits.size() < 3)
-        return;
-    if (looksLikeHdcListHeader(serialBits))
+    const HdcListTargetsParseResult parsed = parseHdcListTargetsLine(serialNumber);
+    if (parsed.kind != HdcListTargetsLineKind::DeviceDataRow)
         return;
 
-    QString dirtySerial = serialBits.constFirst();
-    if (dirtySerial == QLatin1String("[Empty]") || dirtySerial.isEmpty()) {
-        return;
-    }
-    if (serialBits.at(1) == QLatin1String("UART")) {
-        return;
-    }
+    const QString &dirtySerial = parsed.device.serial;
     QString displayName = HarmonyConfig::getDeviceName(dirtySerial);
     if (displayName.contains(QLatin1String("[Fail][E000004]"))) {
         qCWarning(harmonyDeviceLog) << "Failed to query device list, retrying in 1 second.";
@@ -90,15 +66,8 @@ static void handleDevicesListChange(const QString &serialNumber)
         if (displayName.isEmpty())
             displayName = dirtySerial;
     }
-    const QString stateStr = serialBits.at(2).trimmed();
-    IDevice::DeviceState state;
-    if (stateStr == QLatin1String("Connected") || stateStr == QStringLiteral("已连接"))
-        state = IDevice::DeviceReadyToUse;
-    else if (stateStr == QLatin1String("Offline") || stateStr == QStringLiteral("未连接")
-             || stateStr == QStringLiteral("断开"))
-        state = IDevice::DeviceConnected;
-    else
-        state = IDevice::DeviceDisconnected;
+    const IDevice::DeviceState state = ideviceStateFromHdc(
+        hdcListTargetsStateToConnectionState(parsed.device.stateRaw));
     qCDebug(harmonyDeviceLog) << "Detected device:" << displayName;
     const bool isEmulator = displayName.startsWith(QStringLiteral("emulator"), Qt::CaseInsensitive)
                             || dirtySerial.contains(QStringLiteral("emulator"), Qt::CaseInsensitive);

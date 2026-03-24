@@ -37,6 +37,10 @@
 #include "ohosconstants.h"
 #include "ohostr.h"
 
+#ifdef WITH_TESTS
+#  include "harmonyhdctargetsparser_test.h"
+#endif
+
 #include <QTranslator>
 
 namespace {
@@ -123,6 +127,10 @@ public:
                 Qt::SingleShotConnection);
         connect(ProjectManager::instance(), &ProjectManager::activeBuildConfigurationChanged,
             this, &OhosPlugin::addBuildHapStepForOhBuild);
+
+#ifdef WITH_TESTS
+        addTestCreator(createHarmonyHdcTargetsParserTest);
+#endif
     }
 
     void kitsRestored()

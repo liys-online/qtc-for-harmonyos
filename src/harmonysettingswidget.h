@@ -6,6 +6,8 @@ using namespace Utils;
 using namespace ProjectExplorer;
 class QListWidget;
 class QPushButton;
+class QLineEdit;
+class QCheckBox;
 namespace Ohos::Internal {
 class SummaryWidget;
 class HarmonySettingsWidget final : public Core::IOptionsPageWidget
@@ -101,6 +103,7 @@ private Q_SLOTS:
      */
     void onMakePathChanged();
     void onOhosSdkRootChanged();
+    void reloadOhpmControlsFromConfig();
 
     /**
      * @brief m_makePathChooser
@@ -113,6 +116,8 @@ private Q_SLOTS:
      */
     PathChooser *m_devecoStudioPathChooser = nullptr;
     PathChooser *m_ohosSdkRootChooser = nullptr;
+    QLineEdit *m_ohpmRegistryEdit = nullptr;
+    QCheckBox *m_ohpmStrictSslCheck = nullptr;
     /**
      * @brief m_makeDefaultSdkButton
      * 设置默认SDK按钮

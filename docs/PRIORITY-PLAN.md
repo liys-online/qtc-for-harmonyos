@@ -51,10 +51,10 @@
 | P1-03 | P1 | 错误 | Deploy/Run 对话框父窗口 | `Core::ICore::dialogParent()` | — | — | — | 已完成 |
 | P1-04 | P1 | 错误 | Deploy 自定义 HAP 按钮 early return | 每条 return 前有 Message/Task | — | `androiddeployqtstep.cpp` | — | 已完成 |
 | P1-05 | P1 | 设备 | `HarmonyDeviceWidget::updateDeviceFromUi` | 可编辑项写回 `IDevice`（若需要） | — | `androiddevice.cpp` | 若无可编辑字段可标为 N/A 已搁置 | 待开始 |
-| P1-06 | P1 | 设备 | `updateDeviceState` / Refresh | 调用 hdc 刷新单设备状态 | — | 同上 | hdc 无单设备 query 时需全量 list | 待开始 |
-| P1-07 | P1 | 设备 | 设备图标资源 | 独立 Harmony 图标，移除 Android 资源引用 | 资源文件 | `androiddevice` 工厂 | — | 待开始 |
-| P1-08 | P1 | 设备 | hdc 输出解析健壮性 | 版本化解析器 + 单测 mock | — | `adb` 解析思路 | hdc 文本格式变更 | 待开始 |
-| P1-09 | P1 | 构建 | ohpm registry / strict_ssl 可配置 | 设置项或 `QSettings`，默认保持现状 | — | sdkmanager 代理思路 | 企业内网源需文档 | 待开始 |
+| P1-06 | P1 | 设备 | `updateDeviceState` / Refresh | `harmonydevice.cpp`：Refresh → `HarmonyDeviceManager::queryDevice()`，与 USB 热插拔共用 `hdc list targets -v`；`harmonyDeviceLog` 记触发设备 id | — | 同上 | hdc 无单设备 query 时需全量 list | 已完成 |
+| P1-07 | P1 | 设备 | 设备图标资源 | 已移除 `:/android/images/androiddevice*.png`；现用 `:/projectexplorer/images/desktopdevice(.png|@2x.png)`（不依赖 Android 插件加载） | 资源文件 | `androiddevice` 工厂 | 独立 Harmony 品牌素材仍可后续替换 | 部分完成 |
+| P1-08 | P1 | 设备 | hdc 输出解析健壮性 | `harmonyhdctargetsparser.*`：`parseHdcListTargetsLine` / 状态映射；`harmonydevicemanager` 仅消费结构化结果；`WITH_TESTS` 下 `harmonyhdctargetsparser_test`（mock 行，无 hdc）；运行：`qtcreator -test Harmony` | — | `adb` 解析思路 | 新 hdc 格式：增 QTest 数据行 + 必要时在解析器内加分支 | 已完成 |
+| P1-09 | P1 | 构建 | ohpm registry / strict_ssl 可配置 | **Preferences → Harmony**：registry 行编辑 + strict SSL 复选框；`HarmonyConfig` 持久化；`HarmonyBuildHapStep::ohpmInstallTask` 使用 `effectiveOhpmRegistryUrl()`；非法 URL 构建前报错 | — | sdkmanager 代理思路 | 企业内网源见 [OPERATIONS.md](OPERATIONS.md) §2.2 | 已完成 |
 | P1-10 | P1 | 构建 | `deviceTypes` 等非硬编码 | 来 Kit/设置/模板 | — | — | — | 待开始 |
 | P1-11 | P1 | 常量 | `ohosconstants.h` 瘦身 | 未用 `Parameter` 迁出或删除 | — | `androidconstants.h` | 删除前确认无外部引用 | 待开始 |
 | P1-12 | P1 | ID | 配置 ID 前缀统一与迁移 | `Harmony.*` + `fromMap` 读旧键 | — | — | 用户旧工程需迁移说明 | 待开始 |
@@ -73,7 +73,7 @@
 | P2-10 | P2 | 语言服务 | ArkTS/ETS 对接 LSP（可选） | 外部 language server 配置页 | — | `javalanguageserver.cpp` | **可能无法实现**：无稳定开源 LSP 或授权限制 | 待开始 |
 | P2-11 | P2 | 向导 | 新建 Harmony + CMake 工程向导 | 模板与 ohpro 生成 | — | `manifestwizard.cpp` | — | 待开始 |
 | P2-12 | P2 | 模板 | `ohprojectecreator` 去个人路径、动态 API 表 | 资源与 `sdkVersionMap` | — | — | — | 待开始 |
-| P2-13 | P2 | 测试 | 单元测试骨架 + hdc 输出 mock | `WITH_TESTS` 注册 | — | `sdkmanageroutputparser_test.cpp` | CI 需固定工具版本 | 待开始 |
+| P2-13 | P2 | 测试 | 单元测试骨架 + hdc 输出 mock | 除 P1-08 外其它模块 `*_test`、CI 矩阵仍待 | P1-08 | `sdkmanageroutputparser_test.cpp` | CI 需固定工具版本 | 部分完成 |
 | P2-14 | P2 | 运行 | 应用日志流（hilog）到输出面板 | RunWorker 附加 reader | P0-01 | logcat 思路 | hdc 缓冲与性能 | 待开始 |
 | P3-01 | P3 | 研究 | `harmonydeployqt` 独立工具链 | 是否由 Qt 提供类似 androiddeployqt | Qt 商业/开源路线 | `androiddeployqt` | **可能无法实现**：无官方工具则长期仅用 hdc | 待开始 |
 | P3-02 | P3 | 研究 | 与 DevEco 深度集成 | 协议、自动化 API | — | — | **可能无法实现**：封闭 IDE、无公开 API | 待开始 |
@@ -116,6 +116,9 @@
 | 0.8 | 2026-03-20 | **P2-07 / DEBUG-TASKS 2.x**：`harmonyhdcforward.*`，`HARMONY-LLDB-DEBUG` fport 模板 |
 | 0.9 | 2026-03-20 | **P2-01 / DEBUG-TASKS 3.x MVP**：`harmonydebugsupport.*` + `HarmonyDevice` 调试端口；LLDB 由 Kit / `QTC_DEBUGGER_PATH` 配置（不修改 Creator 核心） |
 | 1.0 | 2026-03-20 | **范围**：零售机无 root → **不做 §7.1 + fport 与调试 RunWorker 自动串联**；P2-01/P2-07 与 DEBUG-TASKS、HARMONY-LLDB-DEBUG 已同步说明。 |
+| 1.1 | 2026-03-24 | **P1-06**：设备 Refresh 调用 `queryDevice()`；**P1-07**：工厂图标改 ProjectExplorer 通用设备图，去掉 Android 资源依赖（专属 Harmony 图标仍可选）。 |
+| 1.2 | 2026-03-24 | **P1-08**：`harmonyhdctargetsparser.*` + `harmonyhdctargetsparser_test`（`extend_qtc_plugin` / `addTestCreator`）；`harmonydevicemanager` 消费解析结果。 |
+| 1.3 | 2026-03-24 | **P1-09**：ohpm `--registry` / `--strict_ssl` 偏好设置 + `HarmonyConfig` 键；`OPERATIONS.md` §2.2 企业镜像说明。 |
 
 ---
 
@@ -137,3 +140,6 @@
 | **Native 调试文档（DEBUG-TASKS 0.3–0.4）** | [OPERATIONS.md](OPERATIONS.md) §2.4（`-g`/strip/debug HAP）§2.5（user/签名风险与降级） |
 | **hdc fport（P2-07 / DEBUG-TASKS 2）** | `harmonyhdcforward.*`；§7.1 模板见 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md)（**手工**，不与调试 RunWorker 自动串联） |
 | **Debugger MVP（P2-01 / DEBUG-TASKS 3）** | `harmonydebugsupport.*`（仅 Harmony 插件内；**不修改** Debugger 核心源码） |
+| **设备 Refresh + 图标（P1-06 / P1-07）** | `HarmonyDevice` 的 Refresh 动作 → `instance()->queryDevice()`；`HarmonyDeviceFactory::setCombinedIcon` 使用 ProjectExplorer `desktopdevice`（见 §3 P1-06/P1-07） |
+| **hdc list targets 解析（P1-08）** | `parseHdcListTargetsLine` / `hdcListTargetsStateToConnectionState` 独立于 `HarmonyDeviceManager`；`WITH_TESTS` 下 mock 行单测；验收：`qtcreator -test Harmony`（需整树 `-DWITH_TESTS=ON` 编过） |
+| **ohpm 源与 TLS（P1-09）** | 偏好设置 + `Harmony.OhpmRegistryUrl` / `Harmony.OhpmStrictSsl`；构建步骤 `ohpm install --registry` / `--strict_ssl` |

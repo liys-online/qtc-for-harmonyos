@@ -89,9 +89,9 @@
 
 | # | Android 能力 / 典型文件 | Harmony 对应 | 进度 | 备注 |
 |---|---------------------------|--------------|------|------|
-| 7.1 | `AndroidDevice` 完整属性与行为 | `HarmonyDevice` | 🔄 | Widget 更新、状态刷新等仍偏骨架 |
-| 7.2 | 设备工厂 + 图标 | `HarmonyDeviceFactory` | 🔄 | 仍可能使用 Android 图标资源 |
-| 7.3 | 物理设备枚举 | `HarmonyDeviceManager` + `hdc` | 🔄 | 解析依赖 hdc 输出格式 |
+| 7.1 | `AndroidDevice` 完整属性与行为 | `HarmonyDevice` | 🔄 | `HarmonyDeviceWidget::updateDeviceFromUi` 仍空（与 Android 一致）；**Refresh** 已调用 `HarmonyDeviceManager::queryDevice()`（`harmonydevice.cpp`） |
+| 7.2 | 设备工厂 + 图标 | `HarmonyDeviceFactory` | 🔄 | **已不引用** `:/android/…`；使用 `:/projectexplorer/images/desktopdevice*.png`。若需独立 Harmony 品牌图，可在本插件 `qrc` 增加资源后改路径 |
+| 7.3 | 物理设备枚举 | `HarmonyDeviceManager` + `hdc`；**行解析** `harmonyhdctargetsparser.*` | 🔄 | 枚举仍依赖 hdc；**列表行**已集中解析并带 mock 单测（P1-08），新格式在解析器 + QTest 数据行扩展 |
 | 7.4 | `adb track-devices` 式持续监听 | USB + 轮询 hdc | 🔄 | USB 与序列号映射较粗 |
 | 7.5 | AVD / 模拟器创建与启动 | — | ⬜ | 对标 `avdmanager` / `avdcreatordialog` |
 | 7.6 | 设备文件访问 / 端口转发 | `AndroidFileAccess` 等 | 🔄 | **`hdc fport`**：`harmonyhdcforward.*`（P2-07）；`hdc file` 仍待 |
@@ -103,7 +103,7 @@
 | # | Android 能力 / 典型文件 | Harmony 对应 | 进度 | 备注 |
 |---|---------------------------|--------------|------|------|
 | 8.1 | `AndroidPackageInstallationStep`（install 到 android-build） | ➖ / 部分由 CMake | ➖ | OHOS 侧工程结构不同 |
-| 8.2 | `AndroidBuildApkStep`（androiddeployqt + Gradle） | `HarmonyBuildHapStep`（hvigor/ohpm） | 🔄 | 签名 UI 大量注释；sync→ohpm→assemble；**已加固** Node 多路径、Java 自动、`DEVECO_SDK_HOME`/`JAVA_HOME`、`ohpro` 目录与 `PWD`/`INIT_CWD` |
+| 8.2 | `AndroidBuildApkStep`（androiddeployqt + Gradle） | `HarmonyBuildHapStep`（hvigor/ohpm） | 🔄 | 签名 UI 大量注释；sync→ohpm→assemble；**已加固** Node 多路径、Java 自动、`DEVECO_SDK_HOME`/`JAVA_HOME`、`ohpro` 目录与 `PWD`/`INIT_CWD`；**P1-09** ohpm `--registry` / `--strict_ssl` 来自偏好设置 |
 | 8.3 | Keystore / 签名向导 | — / DevEco 按钮 | 🔄 | 对标 `KeystoreCertificateDialog` 未完整 |
 | 8.4 | 构建输出解析（错误进 Issues） | `HarmonyHvigorOhpmOutputParser` + `HarmonyBuildHapStep::setupOutputFormatter` | ✅ | 配置类失败仍 `addOutput`+`BuildSystemTask`；hvigor/ohpm/ArkTS 常见行进 **Issues** 并可点击绝对路径源文件（相对路径依赖 `addSearchDir` + `FileInProjectFinder`） |
 | 8.5 | 日志分类 `QLoggingCategory` | `harmonyBuildHapLog` 等 | 🔄 | 已部分引入，未全文件统一 |
@@ -172,7 +172,7 @@
 | 14.1 | 统一 `QLoggingCategory` 替代调试向 `writeSilently` | ✅ | `harmonylogcategories.*`；Kit 同步走 `qCDebug`；**OHOS_ARCH** 纠正走 `writeFlashing`；usbmonitor 用 `qtc.harmony.device.usbmonitor` |
 | 14.2 | `ohosconstants.h` 巨型未用常量清理 | ⬜ | 可对 `Parameter` 等拆分或删除 |
 | 14.3 | ID 前缀统一（`Qt4ProjectManager.*` → `Harmony.*`） | ⬜ | 需迁移旧设置 |
-| 14.4 | 单元测试 | ⬜ | 对标 Android 若干 `*_test.cpp` |
+| 14.4 | 单元测试 | 🔄 | **P1-08**：`harmonyhdctargetsparser_test`（`WITH_TESTS` + `-test Harmony`）；对标 Android 全量 `*_test.cpp` 仍差 |
 
 ---
 

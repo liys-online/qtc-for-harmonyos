@@ -53,6 +53,8 @@
 | 2026-03-20 | 新增 [DEBUG-TASKS.md](DEBUG-TASKS.md)（P2-01 / P2-07 分阶段任务清单） |
 | 2026-03-20 | [OPERATIONS.md](OPERATIONS.md) 增 §2.4–2.5（Native 调试构建约定、user/签名风险）；[DEBUG-TASKS.md](DEBUG-TASKS.md) 阶段 0.3–0.4 完成 |
 | 2026-03-20 | **P2-07**：`harmonyhdcforward.*`（`hdc fport` 封装）；[HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md) §7.1 模板；[DEBUG-TASKS.md](DEBUG-TASKS.md) 阶段 2 完成 |
+| 2026-03-24 | **P1-08**：`harmonyhdctargetsparser.*` + `harmonyhdctargetsparser_test`；[PRIORITY-PLAN.md](PRIORITY-PLAN.md) §6 修订 1.2、[MODULES.md](MODULES.md) §4、[COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md) 7.3 / 14.4 |
+| 2026-03-24 | **P1-09**：ohpm registry / strict SSL（`HarmonyConfig` + 设置页 + `HarmonyBuildHapStep`）；[OPERATIONS.md](OPERATIONS.md) §2.2；[PRIORITY-PLAN.md](PRIORITY-PLAN.md) 修订 1.3 |
 
 ---
 

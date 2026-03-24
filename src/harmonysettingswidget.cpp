@@ -16,7 +16,10 @@
 #include "harmonyconfigurations.h"
 #include "harmonysdkmanagerdialog.h"
 #include "harmonyqttsdkmanagerdialog.h"
+#include <QCheckBox>
+#include <QLineEdit>
 #include <QMessageBox>
+#include <QSignalBlocker>
 #include <QVBoxLayout>
 #include <QTimer>
 #include <QPushButton>
@@ -175,6 +178,17 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         Tr::tr("Root directory for SDK Manager: archives download to .temp/ here, and unpack to "
                "<API version>/ subfolders (same layout idea as the Android SDK location)."));
 
+    m_ohpmRegistryEdit = new QLineEdit;
+    m_ohpmRegistryEdit->setPlaceholderText(HarmonyConfig::defaultOhpmRegistryUrl());
+    m_ohpmRegistryEdit->setToolTip(
+        Tr::tr("Passed to ohpm as --registry. Leave empty to use the default (%1).")
+            .arg(HarmonyConfig::defaultOhpmRegistryUrl()));
+    m_ohpmStrictSslCheck = new QCheckBox(
+        Tr::tr("Verify TLS certificates when ohpm downloads packages (--strict_ssl)"));
+    m_ohpmStrictSslCheck->setToolTip(
+        Tr::tr("Turn off only if your registry uses HTTPS with a private CA (prefer installing the "
+               "CA system-wide)."));
+
     auto downloadSdkToolButton = new QToolButton;
     downloadSdkToolButton->setIcon(downloadIcon);
     downloadSdkToolButton->setToolTip(Tr::tr("Open OpenHarmony SDK download URL in the system's browser."));
@@ -269,6 +283,14 @@ HarmonySettingsWidget::HarmonySettingsWidget()
                 m_ohosSdkRootChooser,
                 st,
                 br,
+                Tr::tr("ohpm registry URL:"),
+                m_ohpmRegistryEdit,
+                st,
+                br,
+                st,
+                m_ohpmStrictSslCheck,
+                st,
+                br,
                 Column { Tr::tr("OpenHarmony SDK list:"), st },
                 m_sdkListWidget,
                 Column {
@@ -306,6 +328,12 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         this, &HarmonySettingsWidget::onDevecoStudioPathChanged);
     connect(m_ohosSdkRootChooser, &PathChooser::rawPathChanged,
             this, &HarmonySettingsWidget::onOhosSdkRootChanged);
+    connect(m_ohpmRegistryEdit, &QLineEdit::editingFinished, this, [this] {
+        HarmonyConfig::setOhpmRegistryUrl(m_ohpmRegistryEdit->text());
+    });
+    connect(m_ohpmStrictSslCheck, &QCheckBox::toggled, this, [](bool on) {
+        HarmonyConfig::setOhpmStrictSsl(on);
+    });
     connect(m_sdkListWidget, &QListWidget::currentTextChanged,
             this, [this, removeSDKButton](const QString &sdk) {
                 setAllOk();
@@ -361,10 +389,12 @@ HarmonySettingsWidget::HarmonySettingsWidget()
 
     connect(HarmonyConfigurations::instance(), &HarmonyConfigurations::updated, this, [this] {
         reloadQmakeListFromConfig();
+        reloadOhpmControlsFromConfig();
         updateSdkList();
         updateLldbDiagnostics();
     }, Qt::QueuedConnection);
 
+    reloadOhpmControlsFromConfig();
     updateLldbDiagnostics();
 }
 
@@ -630,6 +660,16 @@ void HarmonySettingsWidget::onMakePathChanged()
     HarmonyConfig::setMakeLocation(makePath);
 }
 
+void HarmonySettingsWidget::reloadOhpmControlsFromConfig()
+{
+    if (!m_ohpmRegistryEdit || !m_ohpmStrictSslCheck)
+        return;
+    const QSignalBlocker b1(m_ohpmRegistryEdit);
+    const QSignalBlocker b2(m_ohpmStrictSslCheck);
+    m_ohpmRegistryEdit->setText(HarmonyConfig::ohpmRegistryUrl());
+    m_ohpmStrictSslCheck->setChecked(HarmonyConfig::ohpmStrictSsl());
+}
+
 void HarmonySettingsWidget::onOhosSdkRootChanged()
 {
     const FilePath p = m_ohosSdkRootChooser->filePath().cleanPath();
@@ -678,6 +718,7 @@ void HarmonySettingsWidget::validateSdk()
     {
         checkSdkItem(sdk);
     }
+    reloadOhpmControlsFromConfig();
     updateLldbDiagnostics();
 }
 

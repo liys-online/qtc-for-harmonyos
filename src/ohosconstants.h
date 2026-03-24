@@ -31,6 +31,10 @@ const char SDKLocationsKey[] = "Harmony.SDKLocations";
 const char DefaultSDKLocationKey[] = "Harmony.DefaultSDKLocation";
 /** Root for SDK Manager: downloads in .temp/, extracts to <api_version>/ (same idea as Android SDK location). */
 const char OhosSdkRootKey[] = "Harmony.OhosSdkRoot";
+/** Empty in settings → use \c defaultOhpmRegistryUrl() for \c ohpm install --registry. */
+const char OhpmRegistryUrlKey[] = "Harmony.OhpmRegistryUrl";
+/** Persisted; default true when key absent (matches previous hardcoded behavior). */
+const char OhpmStrictSslKey[] = "Harmony.OhpmStrictSsl";
 /** Default catalog: GitCode raw \c qt-oh-binary-catalog.v1.json (primary source). */
 const char QtOhBinaryCatalogDefaultGitcodeUrl[] =
     "https://raw.gitcode.com/Li-Yaosong/qtc-for-harmonyos/raw/main/docs/qt-oh-binary-catalog.v1.json";
