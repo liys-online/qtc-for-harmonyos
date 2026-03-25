@@ -5,7 +5,6 @@
 # - 其它：SDK / Tools 根目录
 # - 未指定时：按 Qt 安装树 .../Tools/QtCreator 推断（与 Maintenance Tool 布局一致）
 
-set(HARMONY_QTCREATOR_TOOLS_DIR_VERSION "19.0.0")
 set(_HARMONY_QTC_FROM_CACHE FALSE)
 if(DEFINED QtCreator)
   set(_HARMONY_QTC_FROM_CACHE TRUE)
@@ -25,7 +24,7 @@ else()
   if(APPLE)
     set(QtCreator "${GRANDPARENT_DIR}/Qt Creator.app/Contents/Resources")
   else()
-    set(QtCreator "${GRANDPARENT_DIR}/Tools/QtCreator ${HARMONY_QTCREATOR_TOOLS_DIR_VERSION}")
+    set(QtCreator "${GRANDPARENT_DIR}/Tools/QtCreator")
   endif()
   set(QtCreatorConfig "${QtCreator}/lib/cmake/QtCreator/QtCreatorConfig.cmake")
 endif()
@@ -37,8 +36,6 @@ if(EXISTS "${QtCreatorConfig}")
 else()
   message(WARNING "File ${QtCreatorConfig} does not exist.")
 endif()
-
-project(Harmony)
 
 # Qt Creator 版本框架：最低 19+，可扩展 20+（见 ../VERSIONING.md）
 include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/QtCreatorVersion.cmake")
