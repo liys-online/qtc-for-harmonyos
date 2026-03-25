@@ -651,7 +651,7 @@ QString getProductModel(const QString &device)
 QString getDeviceName(const QString &device)
 {
     const QString tmp = getDeviceProperty(device, Product::name);
-    if (tmp.contains("[Fail][E001005]") || tmp.contains("[Fail]Device not founded or connected")) {
+    if (tmp.contains("[Fail]") || tmp.contains("[Fail]Device not founded or connected")) {
         return QString();
     }
     return tmp.isEmpty() ? QString() : tmp.trimmed();

@@ -53,71 +53,64 @@ static void handleDevicesListChange(const QString &serialNumber)
     const HdcListTargetsParseResult parsed = parseHdcListTargetsLine(serialNumber);
     if (parsed.kind != HdcListTargetsLineKind::DeviceDataRow)
         return;
-
-    const QString &dirtySerial = parsed.device.serial;
-    QString displayName = HarmonyConfig::getDeviceName(dirtySerial);
-    if (displayName.contains(QLatin1String("[Fail][E000004]"))) {
-        qCWarning(harmonyDeviceLog) << "Failed to query device list, retrying in 1 second.";
-        QTimer::singleShot(1000, instance(), &HarmonyDeviceManager::queryDevice);
-        return;
-    }
-    if (displayName.isEmpty()) {
-        displayName = HarmonyConfig::getProductModel(dirtySerial);
-        if (displayName.isEmpty())
-            displayName = dirtySerial;
-    }
-    const IDevice::DeviceState state = ideviceStateFromHdc(
+    IDevice::DeviceState state = ideviceStateFromHdc(
         hdcListTargetsStateToConnectionState(parsed.device.stateRaw));
-    qCDebug(harmonyDeviceLog) << "Detected device:" << displayName;
-    const bool isEmulator = displayName.startsWith(QStringLiteral("emulator"), Qt::CaseInsensitive)
-                            || dirtySerial.contains(QStringLiteral("emulator"), Qt::CaseInsensitive);
-    if (isEmulator) {
-        // TODO: Implement emulator support
-        qCDebug(harmonyDeviceLog) << QString("The simulator is not yet supported \"%1\".")
-                                         .arg(dirtySerial);
-    }
-    else{
-        const Id id = Id(Constants::HARMONY_DEVICE_ID).withSuffix(":").withSuffix(dirtySerial);
+    const QString &dirtySerial = parsed.device.serial;
 
-        if (IDevice::ConstPtr dev = devMgr->find(id)) {
-            if (displayName.isEmpty())
-            {
-                displayName = dev->displayName();
-            }
-            else
-            {
-                if (ipRegex.match(dirtySerial).hasMatch())
-                {
-                    displayName += QLatin1String(" (WiFi)");
-                }
-            }
-            // DeviceManager doens't seem to have a way to directly update the name, if the name
-            // of the device has changed, remove it and register it again with the new name.
-            if (dev->displayName() == displayName)
-                devMgr->setDeviceState(id, state);
-            else
-                devMgr->removeDevice(id);
+    const Id id = Id(Constants::HARMONY_DEVICE_ID).withSuffix(":").withSuffix(dirtySerial);
+    if (IDevice::ConstPtr dev = devMgr->find(id)) {
+        devMgr->setDeviceState(id, state);
+    }
+
+
+    auto registerDevice = [devMgr, id, dirtySerial]() {
+        QString deviceName = HarmonyConfig::getDeviceName(dirtySerial);
+        IDevice::DeviceState state;
+        if (!deviceName.isEmpty()) {
+            state = IDevice::DeviceReadyToUse;
         } else {
-            HarmonyDevice *newDev = new HarmonyDevice();
-            newDev->setupId(IDevice::AutoDetected, id);
-            newDev->setDisplayName(displayName);
-            newDev->setMachineType(IDevice::Hardware);
-            newDev->setDeviceState(state);
-
-            newDev->setExtraData(Constants::HarmonySerialNumber, dirtySerial);
-            {
-                const QString abiRaw = HarmonyConfig::getAbis(dirtySerial);
-                QStringList abis = abiRaw.split(QRegularExpression(QStringLiteral("[,\\s]+")),
-                                                Qt::SkipEmptyParts);
-                for (QString &a : abis)
-                    a = a.trimmed();
-                newDev->setExtraData(Constants::HarmonyCpuAbi, abis);
-            }
-            newDev->setExtraData(Constants::HarmonySdk, HarmonyConfig::getSDKVersion(dirtySerial));
-            qCDebug(harmonyDeviceLog, "Registering new Harmony device id \"%s\".", newDev->id().name().data());
-            devMgr->addDevice(IDevice::Ptr(newDev));
+            state = IDevice::DeviceDisconnected;
         }
-    }
+
+        if (ipRegex.match(dirtySerial).hasMatch()) {
+            deviceName += QLatin1String(" (WiFi)");
+        }
+
+        qCDebug(harmonyDeviceLog) << "Detected device:" << deviceName;
+        const bool isEmulator = deviceName.startsWith(QStringLiteral("emulator"), Qt::CaseInsensitive)
+                                || dirtySerial.contains(QStringLiteral("emulator"), Qt::CaseInsensitive);
+        QString displayName = QString("%1[%2]").arg(deviceName, dirtySerial);
+        if (isEmulator) {
+            // TODO: Implement emulator support
+            qCWarning(harmonyDeviceLog) << QString("The simulator is not yet supported \"%1\".")
+                                             .arg(dirtySerial);
+        }
+        else{
+            if (IDevice::ConstPtr dev = devMgr->find(id)) {
+                devMgr->setDeviceState(id, state);
+            } else {
+                HarmonyDevice *newDev = new HarmonyDevice();
+                newDev->setupId(IDevice::AutoDetected, id);
+                newDev->setDisplayName(displayName);
+                newDev->setMachineType(IDevice::Hardware);
+                newDev->setDeviceState(state);
+
+                newDev->setExtraData(Constants::HarmonySerialNumber, dirtySerial);
+                {
+                    const QString abiRaw = HarmonyConfig::getAbis(dirtySerial);
+                    QStringList abis = abiRaw.split(QRegularExpression(QStringLiteral("[,\\s]+")),
+                                                    Qt::SkipEmptyParts);
+                    for (QString &a : abis)
+                        a = a.trimmed();
+                    newDev->setExtraData(Constants::HarmonyCpuAbi, abis);
+                }
+                newDev->setExtraData(Constants::HarmonySdk, HarmonyConfig::getSDKVersion(dirtySerial));
+                qCDebug(harmonyDeviceLog, "Registering new Harmony device id \"%s\".", newDev->id().name().data());
+                devMgr->addDevice(IDevice::Ptr(newDev));
+            }
+        }
+    };
+    QTimer::singleShot(5000, registerDevice);
 }
 void HarmonyDeviceManager::queryDevice()
 {
@@ -139,8 +132,11 @@ void HarmonyDeviceManager::queryDevice()
 
     for (const QString &errLine : process.stdErrLines())
         handleErrLineOutput(errLine);
-    for (const QString &outLine : process.stdOutLines())
-        handleDevicesListChange(outLine);
+    for (const QString &outLine : process.stdOutLines()) {
+        if(!outLine.isEmpty()) {
+            handleDevicesListChange(outLine);
+        }
+    }
 }
 
 void HarmonyDeviceManager::setupDevicesWatcher()
