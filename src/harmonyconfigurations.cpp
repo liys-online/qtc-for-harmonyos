@@ -14,10 +14,6 @@
 #include <cmakeprojectmanager/cmakekitaspect.h>
 #include <projectexplorer/abi.h>
 
-#include <debugger/debuggeritem.h>
-#include <debugger/debuggeritemmanager.h>
-#include <debugger/debuggerkitaspect.h>
-
 #include <qtsupport/qtversionfactory.h>
 #include <qtsupport/qtversionmanager.h>
 #include <qtsupport/qtkitaspect.h>
@@ -80,53 +76,6 @@ static bool harmonySdkListContainsNormalized(const QStringList &list, const File
     return false;
 }
 
-static FilePath standardLldbDapPath()
-{
-    const FilePath sdkDefault = HarmonyConfig::devecoBundledSdkDefaultRoot();
-    if (!sdkDefault.isReadableDir())
-        return {};
-
-    const FilePath llvmBin = sdkDefault / "openharmony" / "native" / "llvm" / "bin";
-    if (!llvmBin.isReadableDir())
-        return {};
-
-    const FilePath candidates[] = {
-        (llvmBin / "lldb-dap").withExecutableSuffix(),
-        (llvmBin / "lldb-vscode").withExecutableSuffix(),
-    };
-    for (const FilePath &fp : candidates) {
-        if (fp.isExecutableFile())
-            return fp;
-    }
-    return {};
-}
-
-static QVariant preferredHarmonyDebuggerId()
-{
-    // 1) Prefer standard LLDB DAP adapter (Qt Creator can launch it directly).
-    const FilePath lldbDap = standardLldbDapPath();
-    if (lldbDap.isExecutableFile()) {
-        if (const Debugger::DebuggerItem *existing = Debugger::DebuggerItemManager::findByCommand(lldbDap))
-            return existing->id();
-
-        Debugger::DebuggerItem item;
-        item.setCommand(lldbDap);
-        item.setEngineType(Debugger::LldbDapEngineType);
-        item.setUnexpandedDisplayName(QObject::tr("Harmony LLDB DAP"));
-        item.setDetectionSource({ProjectExplorer::DetectionSource::FromSystem,
-                                 QStringLiteral("HarmonyConfiguration")});
-        item.createId();
-        return Debugger::DebuggerItemManager::registerDebugger(item);
-    }
-
-    // 2) Fallback to any existing LLDB DAP debugger item.
-    if (const Debugger::DebuggerItem *lldbDap
-        = Debugger::DebuggerItemManager::findByEngineType(Debugger::LldbDapEngineType)) {
-        return lldbDap->id();
-    }
-
-    return {};
-}
 const Key changeTimeStamp("ChangeTimeStamp");
 const QLatin1String ArmToolsDisplayName("armeabi-v7a");
 const QLatin1String X86ToolsDisplayName("i686");
@@ -993,126 +942,6 @@ FilePath javaLocation()
     return {};
 }
 
-FilePath previewDevecoBundledSdkDefaultRoot(const FilePath &devecoStudioPathCandidate)
-{
-    if (devecoStudioPathCandidate.isEmpty())
-        return {};
-    const FilePath sdkDefault = devecoMacBundleContentsOrSame(devecoStudioPathCandidate.cleanPath()) / "sdk"
-                                / "default";
-    if (!sdkDefault.isReadableDir())
-        return {};
-    return sdkDefault;
-}
-
-FilePath devecoBundledSdkDefaultRoot()
-{
-    return previewDevecoBundledSdkDefaultRoot(devecoStudioLocation());
-}
-
-namespace {
-FilePath hostLldbExecutableForSdkDefault(const FilePath &sdkDefault)
-{
-    if (sdkDefault.isEmpty())
-        return {};
-    const FilePath lldb = (sdkDefault / "openharmony/native/llvm/bin/lldb").withExecutableSuffix();
-    return lldb.isExecutableFile() ? lldb : FilePath{};
-}
-
-FilePath lldbServerExecutableForSdkDefault(const FilePath &sdkDefault, const QString &ohosTriple)
-{
-    if (sdkDefault.isEmpty() || ohosTriple.isEmpty())
-        return {};
-    const FilePath server
-        = (sdkDefault / "hms/native/lldb" / ohosTriple / "lldb-server");
-    return server.isExecutableFile() ? server : FilePath{};
-}
-
-FilePath staticLldbUnderClangDir(const FilePath &clangVerDir, const QString &ohosTriple)
-{
-    const FilePath lldb = (clangVerDir / "bin" / ohosTriple / "lldb");
-    return lldb.isExecutableFile() ? lldb : FilePath{};
-}
-
-FilePath staticLldbExecutableForSdkDefault(const FilePath &sdkDefault, const QString &ohosTriple)
-{
-    if (sdkDefault.isEmpty() || ohosTriple.isEmpty())
-        return {};
-    const FilePath clangRoot = sdkDefault / "openharmony/native/llvm/lib/clang";
-    if (!clangRoot.isReadableDir())
-        return {};
-
-    // 文档路径：.../lib/clang/current/bin/<triple>/lldb
-    if (FilePath found = staticLldbUnderClangDir(clangRoot / "current", ohosTriple); !found.isEmpty())
-        return found;
-
-    // 部分 macOS / 新版 SDK 仅有版本号目录（如 15.0.4），无 current 或 current 未带静态 lldb
-    const QDir clangDir(clangRoot.toUserOutput());
-    QStringList names = clangDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-    std::sort(names.begin(), names.end(), [](const QString &a, const QString &b) {
-        const QVersionNumber va = QVersionNumber::fromString(a);
-        const QVersionNumber vb = QVersionNumber::fromString(b);
-        if (!va.isNull() || !vb.isNull())
-            return va > vb;
-        return a > b;
-    });
-    for (const QString &name : std::as_const(names)) {
-        if (name == QLatin1String("current"))
-            continue;
-        if (FilePath found = staticLldbUnderClangDir(clangRoot.pathAppended(name), ohosTriple);
-            !found.isEmpty())
-            return found;
-    }
-    return {};
-}
-} // namespace
-
-FilePath hostLldbExecutable()
-{
-    return hostLldbExecutableForSdkDefault(devecoBundledSdkDefaultRoot());
-}
-
-FilePath lldbServerExecutable(const QString &ohosTriple)
-{
-    return lldbServerExecutableForSdkDefault(devecoBundledSdkDefaultRoot(), ohosTriple);
-}
-
-FilePath staticLldbExecutable(const QString &ohosTriple)
-{
-    return staticLldbExecutableForSdkDefault(devecoBundledSdkDefaultRoot(), ohosTriple);
-}
-
-FilePath hostLldbExecutableForSdkDefaultRoot(const FilePath &sdkDefaultRoot)
-{
-    return hostLldbExecutableForSdkDefault(sdkDefaultRoot);
-}
-
-FilePath lldbServerExecutableForSdkDefaultRoot(const FilePath &sdkDefaultRoot, const QString &ohosTriple)
-{
-    return lldbServerExecutableForSdkDefault(sdkDefaultRoot, ohosTriple);
-}
-
-FilePath staticLldbExecutableForSdkDefaultRoot(const FilePath &sdkDefaultRoot, const QString &ohosTriple)
-{
-    return staticLldbExecutableForSdkDefault(sdkDefaultRoot, ohosTriple);
-}
-
-QString ohosLldbTripleForAbi(const QString &abiName)
-{
-    const QString a = abiName.trimmed().toLower();
-    if (a.isEmpty())
-        return {};
-    if (a == QString::fromLatin1(Constants::HARMONY_ABI_ARM64_V8A) || a == QLatin1String("arm64")
-        || a == QLatin1String("aarch64"))
-        return QString::fromLatin1(Constants::OHOS_LLDB_TRIPLE_AARCH64);
-    if (a == QString::fromLatin1(Constants::HARMONY_ABI_ARMEABI_V7A) || a == QLatin1String("armeabi")
-        || a == QLatin1String("armv7") || a == QLatin1String("armv7-a"))
-        return QString::fromLatin1(Constants::OHOS_LLDB_TRIPLE_ARM);
-    if (a == QString::fromLatin1(Constants::HARMONY_ABI_X86_64) || a == QLatin1String("x86-64"))
-        return QString::fromLatin1(Constants::OHOS_LLDB_TRIPLE_X86_64);
-    // x86 在 OH 文档中 lldb-server 常为 x86_64；不单独映射 i686
-    return {};
-}
-
 QPair<int, QVersionNumber> devecoStudioVersion()
 {
     const FilePath stored = devecoStudioLocation();
@@ -1443,8 +1272,6 @@ void HarmonyConfigurations::updateAutomaticKitList()
                 RunDeviceTypeKitAspect::setDeviceTypeId(k, Constants::HARMONY_DEVICE_TYPE);
                 ToolchainKitAspect::setBundle(k, bundle);
                 QtKitAspect::setQtVersion(k, ohQt);
-                if (const QVariant debuggerId = preferredHarmonyDebuggerId(); debuggerId.isValid())
-                    Debugger::DebuggerKitAspect::setDebugger(k, debuggerId);
 
                 // 设置构建设备为默认桌面设备
                 BuildDeviceKitAspect::setDeviceId(k, DeviceManager::defaultDesktopDevice()->id());

@@ -19,11 +19,6 @@ const char HARMONY_ABI_ARM64_V8A[] = "arm64-v8a";
 const char HARMONY_ABI_X86[] = "x86";
 const char HARMONY_ABI_X86_64[] = "x86_64";
 
-/** 华为 LLDB 指南：\c sdk/default/hms/native/lldb/<triple>/lldb-server */
-const char OHOS_LLDB_TRIPLE_AARCH64[] = "aarch64-linux-ohos";
-const char OHOS_LLDB_TRIPLE_ARM[] = "arm-linux-ohos";
-const char OHOS_LLDB_TRIPLE_X86_64[] = "x86_64-linux-ohos";
-
 const char MakeLocationKey[] = "Harmony.MakeLocation";
 const char DevecoStudioLocationKey[] = "Harmony.DevecoStudioPath";
 const char QmakeLocationKey[] = "Harmony.QmakeLocations";

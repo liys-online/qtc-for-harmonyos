@@ -207,7 +207,7 @@ bool HarmonyDeployQtStep::init()
         && !selectedAbis.contains(info.cpuAbi.first())) {
         TaskHub::addTask(DeploymentTask(Task::Warning,
                                         Tr::tr("HarmonyOS: The main ABI of the deployment device (%1) is not selected. The app "
-                                               "execution or debugging might not work properly. Add it from Projects > Build > "
+                                               "might not run correctly. Add it from Projects > Build > "
                                                "Build Steps > qmake > ABIs.")
                                             .arg(info.cpuAbi.first())));
     }

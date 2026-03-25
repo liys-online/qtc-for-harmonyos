@@ -135,11 +135,6 @@ QList<int> harmonyRowsForAllEssentials()
         OhosSdkManagerRootRow,
         SdkPathExistsAndWritableRow,
         SdkToolsInstalledRow,
-        LldbBundledSdkDefaultRow,
-        LldbHostExecutableRow,
-        LldbServerAarch64Row,
-        LldbServerArmRow,
-        LldbServerX86_64Row,
     };
 }
 } // namespace
@@ -219,8 +214,7 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     downloadSdkToolButton->setToolTip(Tr::tr("Open OpenHarmony SDK download URL in the system's browser."));
 
     auto addSDKButton = new QPushButton(Tr::tr("Add..."));
-    addSDKButton->setToolTip(Tr::tr("Add the selected SDK. The toolchains "
-                                          "and debuggers will be created automatically."));
+    addSDKButton->setToolTip(Tr::tr("Add the selected SDK. Toolchains will be created automatically."));
     auto removeSDKButton = new QPushButton(Tr::tr("Remove"));
     removeSDKButton->setEnabled(false);
     removeSDKButton->setToolTip(Tr::tr("Remove the selected SDK if it has been added manually."));
@@ -251,8 +245,7 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     m_qmakeListWidget->setSortingEnabled(false);
 
     auto addQmakeButton = new QPushButton(Tr::tr("Add..."));
-    addQmakeButton->setToolTip(Tr::tr("Add the selected qmake. The toolchains "
-                                          "and debuggers will be created automatically."));
+    addQmakeButton->setToolTip(Tr::tr("Add the selected qmake. Toolchains will be created automatically."));
     auto removeQmakeButton = new QPushButton(Tr::tr("Remove"));
     removeQmakeButton->setEnabled(false);
 
@@ -270,14 +263,6 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         {OhosSdkManagerRootRow, Tr::tr("HarmonyOS SDK location exists and is writable")},
         {SdkPathExistsAndWritableRow, Tr::tr("SDK path exists and is writable")},
         {SdkToolsInstalledRow, Tr::tr("SDK tools installed")},
-        {LldbBundledSdkDefaultRow, Tr::tr("DevEco sdk/default (for LLDB) exists")},
-        {LldbHostExecutableRow, Tr::tr("Host LLDB (openharmony/native/llvm/bin)")},
-        {LldbServerAarch64Row,
-         Tr::tr("lldb-server (aarch64-linux-ohos, device)")},
-        {LldbServerArmRow, Tr::tr("lldb-server (arm-linux-ohos)")},
-        {LldbServerX86_64Row, Tr::tr("lldb-server (x86_64-linux-ohos, emulator)")},
-        {LldbStaticAarch64Row,
-         Tr::tr("Static lldb (aarch64, optional — device-local debug only)")},
         {AllEssentialsInstalledRow, Tr::tr("All essentials installed")},
     };
     m_harmonySummary = new SummaryWidget(harmonyValidationPoints, Tr::tr("Harmony settings are OK."),
@@ -421,12 +406,12 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         reloadOhpmControlsFromConfig();
         reloadOhModuleDeviceTypesFromConfig();
         updateSdkList();
-        updateLldbDiagnostics();
+        setAllOk();
     }, Qt::QueuedConnection);
 
     reloadOhpmControlsFromConfig();
     reloadOhModuleDeviceTypesFromConfig();
-    updateLldbDiagnostics();
+    setAllOk();
 }
 
 void HarmonySettingsWidget::showEvent(QShowEvent *event)
@@ -447,75 +432,6 @@ void HarmonySettingsWidget::updateSdkList()
     for (const QString &sdk : sdkList) {
         m_sdkListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), sdk));
     }
-}
-
-void HarmonySettingsWidget::updateLldbValidationSummary()
-{
-    if (!m_harmonySummary)
-        return;
-
-    const auto setLldbRowsNeedDeveco = [this](const QString &message) {
-        m_harmonySummary->setPointValid(LldbBundledSdkDefaultRow, false, message);
-        m_harmonySummary->setPointValid(LldbHostExecutableRow, false, message);
-        m_harmonySummary->setPointValid(LldbServerAarch64Row, false, message);
-        m_harmonySummary->setPointValid(LldbServerArmRow, false, message);
-        m_harmonySummary->setPointValid(LldbServerX86_64Row, false, message);
-        m_harmonySummary->setPointValid(LldbStaticAarch64Row, false, message);
-    };
-
-    const FilePath deveco = m_devecoStudioPathChooser->filePath().cleanPath();
-    if (!HarmonyConfig::isValidDevecoStudioRoot(deveco)) {
-        setLldbRowsNeedDeveco(Tr::tr("Set a valid DevEco Studio path first."));
-        return;
-    }
-
-    const FilePath sdk = HarmonyConfig::previewDevecoBundledSdkDefaultRoot(deveco);
-    const QString needSdk = Tr::tr("sdk/default not found (install OpenHarmony SDK via DevEco).");
-    m_harmonySummary->setPointValid(LldbBundledSdkDefaultRow, !sdk.isEmpty(),
-                                      sdk.isEmpty() ? needSdk : QString());
-    if (sdk.isEmpty()) {
-        setLldbRowsNeedDeveco(needSdk);
-        return;
-    }
-
-    const FilePath host = HarmonyConfig::hostLldbExecutableForSdkDefaultRoot(sdk);
-    m_harmonySummary->setPointValid(
-        LldbHostExecutableRow,
-        !host.isEmpty(),
-        host.isEmpty()
-            ? Tr::tr("Missing: sdk/default/openharmony/native/llvm/bin/lldb")
-            : QString());
-
-    const auto checkServer = [this, &sdk](HarmonyValidation row, const char *triple) {
-        const FilePath exe = HarmonyConfig::lldbServerExecutableForSdkDefaultRoot(
-            sdk, QString::fromLatin1(triple));
-        m_harmonySummary->setPointValid(
-            row,
-            !exe.isEmpty(),
-            exe.isEmpty()
-                ? Tr::tr("Missing lldb-server under hms/native/lldb/%1")
-                      .arg(QString::fromLatin1(triple))
-                : QString());
-    };
-    checkServer(LldbServerAarch64Row, Constants::OHOS_LLDB_TRIPLE_AARCH64);
-    checkServer(LldbServerArmRow, Constants::OHOS_LLDB_TRIPLE_ARM);
-    checkServer(LldbServerX86_64Row, Constants::OHOS_LLDB_TRIPLE_X86_64);
-
-    const FilePath st = HarmonyConfig::staticLldbExecutableForSdkDefaultRoot(
-        sdk, QString::fromLatin1(Constants::OHOS_LLDB_TRIPLE_AARCH64));
-    m_harmonySummary->setPointValid(
-        LldbStaticAarch64Row,
-        !st.isEmpty(),
-        st.isEmpty()
-            ? Tr::tr("Optional: static lldb under llvm/lib/clang/…/bin/aarch64-linux-ohos (remote debug "
-                     "does not require it)")
-            : QString());
-}
-
-void HarmonySettingsWidget::updateLldbDiagnostics()
-{
-    updateLldbValidationSummary();
-    setAllOk();
 }
 
 void HarmonySettingsWidget::reloadQmakeListFromConfig()
@@ -680,7 +596,7 @@ void HarmonySettingsWidget::onDevecoStudioPathChanged()
                    "MacOS/).%1")
                 .arg(hint));
     }
-    updateLldbDiagnostics();
+    setAllOk();
 }
 
 void HarmonySettingsWidget::onMakePathChanged()
@@ -775,7 +691,7 @@ void HarmonySettingsWidget::validateSdk()
     }
     reloadOhpmControlsFromConfig();
     reloadOhModuleDeviceTypesFromConfig();
-    updateLldbDiagnostics();
+    setAllOk();
 }
 
 Toolchain *HarmonySettingsWidget::findGccToolChain() const

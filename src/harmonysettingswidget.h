@@ -35,8 +35,6 @@ private:
      * 从 HarmonyConfig 重新填充 Qt for Harmony qmake 列表（供外部 applyConfig 后刷新 UI）
      */
     void reloadQmakeListFromConfig();
-    /** 根据当前 DevEco 路径刷新 Harmony 摘要中的 LLDB 校验项 */
-    void updateLldbDiagnostics();
     /**
      * @brief openDownloadUrl
      * 打开Harmony Sdk下载链接
@@ -91,9 +89,6 @@ private:
      * @return
      */
     Toolchain *findGccToolChain() const;
-
-private:
-    void updateLldbValidationSummary();
 
 private Q_SLOTS:
     /**
@@ -163,13 +158,6 @@ enum HarmonyValidation {
     OhosSdkManagerRootRow,
     SdkPathExistsAndWritableRow,
     SdkToolsInstalledRow,
-    LldbBundledSdkDefaultRow,
-    LldbHostExecutableRow,
-    LldbServerAarch64Row,
-    LldbServerArmRow,
-    LldbServerX86_64Row,
-    /** 设备本地调试用静态 lldb；未安装时不阻塞 \c AllEssentialsInstalledRow */
-    LldbStaticAarch64Row,
     QMakeToolsInstalledRow,
     AllEssentialsInstalledRow,
 };

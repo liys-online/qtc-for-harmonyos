@@ -48,8 +48,6 @@ HarmonyDevice::HarmonyDevice()
     setMachineType(IDevice::Hardware);
     setOsType(OsType::OsTypeOtherUnix);
     setDeviceState(DeviceDisconnected);
-    // Local TCP ports for RunControl debug/QML channel allocation. Default Harmony C++ debug uses §7.2
-    // (abstract socket), not fport; ports remain for legacy env / other workers or future use.
     setFreePorts(PortList::fromString(QStringLiteral("45450-45550")));
     addDeviceAction(DeviceAction(
         Tr::tr("Refresh"),
