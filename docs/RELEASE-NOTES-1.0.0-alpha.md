@@ -63,11 +63,11 @@ SHA256  Harmony<...>.dll:
 
 ## 标签建议
 
-与 `Harmony.json` 中 **Version** 对齐，例如：
+**Git Tag / Release 名称**可使用预发布语义，例如 `v1.0.0-alpha` 或 `v1.0.0-alpha.1`。
+
+**注意**：Qt Creator 要求插件 **`Harmony.json` 的 `Version` / `CompatVersion`** 仅为数字段（如 **`1.0.0`**），**不能**写成 `1.0.0-alpha`，否则加载报错。预发布信息放在 **Release 正文**、**Description** 或 Tag 名即可。
 
 ```bash
-git tag -a v1.0.0-alpha -m "Harmony plugin 1.0.0-alpha"
+git tag -a v1.0.0-alpha -m "Harmony plugin 1.0.0-alpha (JSON Version 1.0.0)"
 git push origin v1.0.0-alpha
 ```
-
-若采用可排序预发布号，可使用 `v1.0.0-alpha.1` 并同步修改 `Harmony.json.in` 内 **Version / CompatVersion**。

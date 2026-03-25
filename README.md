@@ -1,6 +1,6 @@
 # Qt Creator — Harmony / OpenHarmony 插件
 
-> **当前发布线：1.0.0-alpha（预览）** — 主路径（配置 → 构建 HAP → 部署 → 运行）已打通，行为与 API 仍可能调整；详见 [docs/README.md](docs/README.md)、[docs/OPERATIONS.md](docs/OPERATIONS.md) 与 [docs/PRIORITY-PLAN.md](docs/PRIORITY-PLAN.md)。插件元数据版本见 `src/Harmony.json.in`（构建后写入 `Harmony.json`）。
+> **当前发布线：1.0.0-alpha（预览）** — 主路径（配置 → 构建 HAP → 部署 → 运行）已打通，行为与 API 仍可能调整；详见 [docs/README.md](docs/README.md)、[docs/OPERATIONS.md](docs/OPERATIONS.md) 与 [docs/PRIORITY-PLAN.md](docs/PRIORITY-PLAN.md)。**关于对话框中的版本号**来自 `Harmony.json`（由 `Harmony.json.in` 生成）：须为 **纯数字** `x.y.z`（Qt Creator 限制）；**alpha** 体现在 Tag / Release 与英文 Description。
 
 在 **Qt Creator** 中集成 **Qt for HarmonyOS / OpenHarmony** 开发能力：SDK 与工具链配置、CMake 工程、HAP 构建（hvigor / ohpm）、设备发现与 **hdc** 部署。能力划分对标 Qt Creator 内置 **Android** 插件，便于统一产品预期。
 

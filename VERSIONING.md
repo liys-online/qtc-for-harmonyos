@@ -42,6 +42,17 @@ cmake -DCMAKE_PREFIX_PATH=/path/to/QtCreator -DIDE_VERSION=20.0.0 ...
 
 ---
 
+## `Harmony.json` 的 `Version` / `CompatVersion`
+
+Qt Creator 内核校验插件版本字符串，**仅允许**形如 `主[.次[.补丁[_第四段数字]]]` 的纯数字段（源码见 `src/libs/extensionsystem/pluginspec.cpp` 中 `PluginSpec::isValidVersion`）。
+
+- **合法**：`1`、`1.2`、`1.0.0`、`4.5_2`  
+- **不合法**：`1.0.0-alpha`、`1.0.0-beta.1`（含字母或 `-` 预发布后缀会 **无法加载**）
+
+预发布（alpha/beta）请用 **Git Tag / Release 名称** 与 **Description** 文案区分；JSON 内仍写 **`1.0.0`** 等合规版本号。
+
+---
+
 ## 相关文档
 
 - 插件说明与文档索引：[docs/README.md](docs/README.md)

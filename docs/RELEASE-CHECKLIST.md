@@ -30,8 +30,8 @@
 
 | # | 检查项 | 说明 / 参考 |
 |---|--------|-------------|
-| 3.1 | `Harmony.json.in` 中 **Version** 与对外标签一致 | 与 Git Tag、Release 标题对齐；预发布建议 `1.0.0-alpha.N` 等可排序形式 |
-| 3.2 | **CompatVersion** 策略明确 | 与 Qt Creator 插件兼容性约定一致；**首版预发布**可与 **Version** 同为 `1.0.0-alpha`；正式版后若需兼容旧 `.user` 插件设置，再评估 **CompatVersion** 是否低于 **Version** |
+| 3.1 | `Harmony.json.in` 中 **Version** / **CompatVersion** | **仅允许纯数字段**：`主版本[.次[.补丁[_第四段]]]`（例：`1.0.0`、`4.5_2`）。**不得**使用 `1.0.0-alpha` 等 SemVer 预发布后缀 — Qt Creator `PluginSpec::isValidVersion` 会拒绝加载。**对外**仍可用 Git Tag `v1.0.0-alpha`、Release 标题区分预发布 |
+| 3.2 | **CompatVersion** 策略明确 | 通常与 **Version** 相同；正式版后若需兼容旧设置再单独评估是否降低 **CompatVersion** |
 | 3.3 | **Description / License / Copyright / Vendor** 无占位符 | 与仓库 **LICENSE**、[AUTHORS.md](AUTHORS.md) 一致 |
 | 3.4 | **Url / DocumentationUrl** 可访问 | 指向正确**分支或 tag**；文档入口建议链至本目录 [README.md](README.md) |
 | 3.5 | 构建后生成的 **Harmony.json** 已复核 | 确认 CMake 替换 `${IDE_PLUGIN_DEPENDENCIES}` 等后内容正确 |
@@ -111,7 +111,7 @@
 - [x] **4.1–4.3** 记录模板与命令已落库 → [BUILD-REPRODUCIBILITY.md](BUILD-REPRODUCIBILITY.md)（**发版时填写 §5**）  
 - [ ] **5.1–5.2** 主路径烟测 → 按 [QA-MANUAL-SMOKE.md](QA-MANUAL-SMOKE.md) 执行并签字  
 - [x] **5.4 + 8.2** Release Notes 草稿 → [RELEASE-NOTES-1.0.0-alpha.md](RELEASE-NOTES-1.0.0-alpha.md)（粘贴前补全构建矩阵）  
-- [ ] **8.1** 创建并推送 **Git Tag**（与 `Harmony.json` **Version** 一致，见 Release Notes 末段命令）  
+- [ ] **8.1** 创建并推送 **Git Tag**（可与 `Harmony.json` **Version** 不同：Tag 可用 `v1.0.0-alpha`，JSON 内须为 **`1.0.0`** 等合法格式）  
 - [ ] **8.3**（可选）附件 **SHA256**  
 
 ---
