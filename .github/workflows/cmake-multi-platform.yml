@@ -99,7 +99,7 @@ jobs:
         with:
           name: qtc4harmony-QtCreator-19.0.0-macos
           path: |
-            build/*/libHarmony.dylib
+            build/**/libHarmony.dylib
 
   build-linux:
     runs-on: ubuntu-24.04
@@ -167,7 +167,7 @@ jobs:
         with:
           name: qtc4harmony-QtCreator-19.0.0-linux
           path: |
-            build/*/libHarmony.so
+            build/**/libHarmony.so
 
   build-windows:
     runs-on: windows-latest
@@ -244,6 +244,6 @@ jobs:
         with:
           name: qtc4harmony-QtCreator-19.0.0-windows
           path: |
-            build/*/Harmony.dll
-            build/*/Harmony.lib
-            build/*/Harmony.pdb
+            build/**/Harmony.dll
+            build/**/Harmony.lib
+            build/**/Harmony.pdb
