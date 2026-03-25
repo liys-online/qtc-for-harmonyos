@@ -1023,13 +1023,13 @@ FilePath lldbServerExecutableForSdkDefault(const FilePath &sdkDefault, const QSt
     if (sdkDefault.isEmpty() || ohosTriple.isEmpty())
         return {};
     const FilePath server
-        = (sdkDefault / "hms/native/lldb" / ohosTriple / "lldb-server").withExecutableSuffix();
+        = (sdkDefault / "hms/native/lldb" / ohosTriple / "lldb-server");
     return server.isExecutableFile() ? server : FilePath{};
 }
 
 FilePath staticLldbUnderClangDir(const FilePath &clangVerDir, const QString &ohosTriple)
 {
-    const FilePath lldb = (clangVerDir / "bin" / ohosTriple / "lldb").withExecutableSuffix();
+    const FilePath lldb = (clangVerDir / "bin" / ohosTriple / "lldb");
     return lldb.isExecutableFile() ? lldb : FilePath{};
 }
 
