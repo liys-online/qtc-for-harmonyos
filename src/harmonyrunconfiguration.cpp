@@ -117,17 +117,18 @@ public:
         hilogEnabled.setId(Constants::HARMONY_HILOG_ENABLED);
         hilogEnabled.setSettingsKey(Constants::HARMONY_HILOG_ENABLED);
         hilogEnabled.setLabelText(Tr::tr("Stream hilog to output panel:"));
-        hilogEnabled.setToolTip(Tr::tr("Attaches an hdc hilog reader that streams on-device log output to the "
-                                       "Application Output panel while the application is running."));
+        hilogEnabled.setToolTip(Tr::tr("Attaches an hdc hilog reader filtered by the application PID that "
+                                       "streams on-device log output to the Application Output panel "
+                                       "while the application is running."));
         hilogEnabled.setDefaultValue(true);
 
         hilogFilter.setId(Constants::HARMONY_HILOG_FILTER);
         hilogFilter.setSettingsKey(Constants::HARMONY_HILOG_FILTER);
         hilogFilter.setLabelText(Tr::tr("hilog filter:"));
-        hilogFilter.setToolTip(Tr::tr("Optional filter passed to hilog on the device. "
-                                      "Leave empty to stream all logs. "
-                                      "Accepts the same filter expressions as the hilog command-line tool."));
-        hilogFilter.setPlaceHolderText(Tr::tr("Empty = all logs; e.g. \"MyTag\" or \"D/HttpClient\""));
+        hilogFilter.setToolTip(Tr::tr("Extra arguments appended to the hilog command. "
+                                      "The application PID filter (-P) is added automatically. "
+                                      "Leave empty to stream all of the application's logs."));
+        hilogFilter.setPlaceHolderText(Tr::tr("Auto-filtered by PID; e.g. \"-T MyTag\" or \"-e pattern\""));
         hilogFilter.setDisplayStyle(StringAspect::LineEditDisplay);
         hilogFilter.setHistoryCompleter("Harmony.Run.HilogFilter.History");
 

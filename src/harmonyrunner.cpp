@@ -22,6 +22,7 @@
 #include <utils/store.h>
 
 #include <QtTaskTree/QTaskTree>
+#include <QtTaskTree/qbarriertask.h>
 
 using namespace ProjectExplorer;
 using namespace Utils;
@@ -34,6 +35,12 @@ namespace Ohos::Internal {
 //   "MM-DD HH:MM:SS.mmm  <pid>  <tid> <Level> <domain>/<Tag>: <message>"
 // where <Level> is one of D I W E F.
 // We scan positions 4-6 of the whitespace-split parts.
+//
+// Colour mapping (Application Output pane):
+//   D  → StdOutFormat       (normal foreground – unobtrusive)
+//   I  → StdOutFormat       (normal foreground – most readable)
+//   W  → LogMessageFormat   (amber / yellow in most themes)
+//   E/F→ ErrorMessageFormat  (red)
 // ---------------------------------------------------------------------------
 static OutputFormat hilogLineFormat(const QString &line)
 {
@@ -49,12 +56,12 @@ static OutputFormat hilogLineFormat(const QString &line)
             continue;
         switch (sc.toLatin1()) {
         case 'E': case 'F': return ErrorMessageFormat;
-        case 'W':           return StdErrFormat;
-        case 'D': case 'I': return LogMessageFormat;
+        case 'W':           return LogMessageFormat;
+        case 'D': case 'I': return StdOutFormat;
         default:            break;
         }
     }
-    return LogMessageFormat;
+    return StdOutFormat;
 }
 
 namespace {
@@ -196,6 +203,49 @@ void stopHarmonyApplicationOnDevice(RunControl *runControl)
     }
 }
 
+// ---------------------------------------------------------------------------
+// P2-14: helper – read a bool/string aspect value from RunControl settings.
+// ---------------------------------------------------------------------------
+static bool readBoolSetting(RunControl *rc, Id key, bool defaultVal)
+{
+    const Store sd = rc->settingsData(key);
+    for (auto it = sd.constBegin(); it != sd.constEnd(); ++it) {
+        if (it.value().isValid())
+            return it.value().toBool();
+    }
+    return defaultVal;
+}
+
+static QString readStringSetting(RunControl *rc, Id key)
+{
+    const Store sd = rc->settingsData(key);
+    for (auto it = sd.constBegin(); it != sd.constEnd(); ++it) {
+        if (it.value().canConvert<QString>())
+            return it.value().toString().trimmed();
+    }
+    return {};
+}
+
+// ---------------------------------------------------------------------------
+// P2-14: resolve device serial for hilog (same two-step logic as the main runner).
+// If serial is empty we omit "-t" and let hdc choose the default device,
+// matching the main runner which also runs without "-t".
+// ---------------------------------------------------------------------------
+static QString resolveSerial(RunControl *rc)
+{
+    const BuildConfiguration *bc = rc->buildConfiguration();
+    if (!bc)
+        return {};
+    QString serial = deviceSerialNumber(bc);
+    if (serial.isEmpty()) {
+        if (Kit *kit = bc->kit()) {
+            if (const IDevice::ConstPtr dev = RunDeviceKitAspect::device(kit))
+                serial = HarmonyDevice::harmonyDeviceInfoFromDevice(dev).serialNumber;
+        }
+    }
+    return serial;
+}
+
 class HarmonyProcessRunnerFactory final : public RunWorkerFactory
 {
 public:
@@ -203,22 +253,136 @@ public:
     {
         setId("Harmony.ProcessRunner");
         setRecipeProducer([](RunControl *runControl) {
-            return runControl->processRecipe(runControl->processTask(
+            using namespace QtTaskTree;
+
+            // ---- Main process task ----
+            // Mirrors the original single-factory recipe: cancel → aa force-stop,
+            // done → post-quit shell commands.
+            auto mainTask = runControl->processTask(
                 [runControl](Process &process) {
-                    // New lambda each run: UniqueConnection would not dedupe; clear our receiver first.
+                    // Clear any stale handler from a previous run before reconnecting.
                     QObject::disconnect(runControl, &RunControl::canceled, runControl, nullptr);
                     QObject::connect(runControl,
                                      &RunControl::canceled,
                                      runControl,
                                      [runControl] { stopHarmonyApplicationOnDevice(runControl); });
-                    // After the hdc session ends (Stop or error), run post-quit device commands like Android.
                     QObject::connect(&process,
                                      &Process::done,
                                      runControl,
                                      [runControl] { runPostQuitShellCommandsOnDevice(runControl); },
                                      Qt::SingleShotConnection);
-                    return QtTaskTree::SetupResult::Continue;
-                }));
+                    return SetupResult::Continue;
+                });
+
+            // ---- Hilog sidecar task (P2-14) ----
+            const bool hilogEnabled =
+                readBoolSetting(runControl, Id(Constants::HARMONY_HILOG_ENABLED), true);
+            const QString hilogFilter =
+                readStringSetting(runControl, Id(Constants::HARMONY_HILOG_FILTER));
+            const QString serial  = resolveSerial(runControl);
+            const FilePath hdc    = HarmonyConfig::hdcToolPath();
+            const bool canStream  = hilogEnabled && hdc.isExecutableFile();
+
+            // Resolve bundle name for PID-based filtering.
+            // Without PID filtering, hilog dumps the entire device log (thousands
+            // of lines/sec) and overwhelms the UI event loop, freezing Qt Creator.
+            QString bundleName;
+            {
+                QString ov = readStringSetting(
+                    runControl, Id(Constants::HARMONY_RUN_BUNDLE_OVERRIDE));
+                if (!ov.isEmpty()) {
+                    bundleName = ov;
+                } else if (const BuildConfiguration *bc = runControl->buildConfiguration()) {
+                    bundleName = packageName(bc);
+                }
+            }
+
+            auto hilogTask = runControl->processTask(
+                [runControl, canStream, hdc, serial, hilogFilter, bundleName](Process &process) {
+                    if (!canStream) {
+                        if (!hdc.isExecutableFile())
+                            qCDebug(harmonyRunLog)
+                                << "hilog reader skipped: hdc not found at" << hdc;
+                        return SetupResult::StopWithSuccess;
+                    }
+
+                    if (bundleName.isEmpty()) {
+                        runControl->postMessage(
+                            Tr::tr("Harmony: hilog skipped – bundle name unknown "
+                                   "(cannot filter by PID)."),
+                            ErrorMessageFormat);
+                        return SetupResult::StopWithSuccess;
+                    }
+
+                    // Build a POSIX shell script that:
+                    //   1. Polls pidof <bundle> up to 15 s, waiting for the app to start.
+                    //   2. Runs  hilog -P <PID> [user_filter]  once the PID is known.
+                    // The script deliberately avoids double-quote characters so that
+                    // Windows → QProcess → hdc.exe argument quoting stays reliable.
+                    QString script;
+                    script += QStringLiteral(
+                        "PID=; i=0; "
+                        "while [ $i -lt 15 ]; do "
+                          "PID=$(pidof ");
+                    script += bundleName;
+                    script += QStringLiteral(
+                        "); PID=${PID%% *}; "
+                          "test x$PID != x && break; "
+                          "PID=; i=$((i+1)); sleep 1; "
+                        "done; "
+                        "test x$PID != x && exec hilog -P $PID");
+                    if (!hilogFilter.isEmpty()) {
+                        script += u' ';
+                        script += hilogFilter;
+                    }
+                    script += QStringLiteral(
+                        " || echo 'hilog: PID not found for ");
+                    script += bundleName;
+                    script += QStringLiteral(" after 15 attempts'");
+
+                    CommandLine cmd{hdc};
+                    if (!serial.isEmpty())
+                        cmd.addArgs(hdcSelector(serial));
+                    cmd.addArg("shell");
+                    cmd.addArg(script);
+                    process.setCommand(cmd);
+
+                    // Per-line callback with severity-based colouring.
+                    // PID filtering reduces volume to app-only logs (typically
+                    // 1-50 lines/s), safe for per-line postMessage calls.
+                    process.setStdOutLineCallback([runControl](const QString &line) {
+                        runControl->postMessage(line, hilogLineFormat(line));
+                    });
+
+                    process.setStdErrLineCallback([runControl](const QString &line) {
+                        runControl->postMessage(line, ErrorMessageFormat);
+                    });
+
+                    runControl->postMessage(
+                        Tr::tr("Harmony: streaming hilog for %1 (waiting for PID…)")
+                            .arg(bundleName),
+                        NormalMessageFormat);
+                    return SetupResult::Continue;
+                });
+
+            // Run main and hilog concurrently.
+            // Qt Creator's createMainRecipe() uses exactly ONE factory per run-mode/config
+            // combination, so there can only be one RunWorkerFactory here. Both processes
+            // are therefore embedded in the same recipe Group.
+            //
+            // FinishAllAndSuccess:
+            //   • Hilog exits early (disabled / hdc missing) → main keeps running.
+            //   • Main exits (user Stop → both hdc processes killed via setupCanceler) →
+            //     hilog also exits → group finishes.
+            //   • Device disconnects → both hdc processes fail → group finishes.
+            return Group{
+                parallel,
+                workflowPolicy(WorkflowPolicy::FinishAllAndSuccess),
+                When(mainTask, &Process::started) >> Do {
+                    QSyncTask([runControl] { runControl->reportStarted(); })
+                },
+                hilogTask
+            };
         });
         addSupportedRunMode(ProjectExplorer::Constants::NORMAL_RUN_MODE);
         setSupportedRunConfigs({Ohos::Constants::HARMONY_RUNCONFIG_ID});
@@ -232,112 +396,6 @@ void setupHarmonyRunWorker()
 {
     qCDebug(harmonyRunLog) << "Registering Harmony process run worker factory.";
     static HarmonyProcessRunnerFactory theHarmonyRunWorkerFactory;
-}
-
-// ---------------------------------------------------------------------------
-// P2-14: hilog streaming RunWorker
-// Attaches an auxiliary `hdc shell hilog [filter]` process to the run control
-// and forwards each output line to the Application Output panel.
-// This factory does NOT set setExecutionType(), so Qt Creator treats it as a
-// supplementary worker whose exit does not stop the primary run control.
-// ---------------------------------------------------------------------------
-
-namespace {
-
-class HarmonyHilogRunWorkerFactory final : public RunWorkerFactory
-{
-public:
-    HarmonyHilogRunWorkerFactory()
-    {
-        setId("Harmony.HilogReader");
-        setRecipeProducer([](RunControl *runControl) {
-            using namespace QtTaskTree;
-
-            // --- read hilogEnabled ---
-            bool enabled = true;
-            {
-                const Store sd = runControl->settingsData(Id(Constants::HARMONY_HILOG_ENABLED));
-                for (auto it = sd.constBegin(); it != sd.constEnd(); ++it) {
-                    if (it.value().isValid()) { enabled = it.value().toBool(); break; }
-                }
-            }
-
-            // --- read optional filter string ---
-            QString filter;
-            {
-                const Store sd = runControl->settingsData(Id(Constants::HARMONY_HILOG_FILTER));
-                for (auto it = sd.constBegin(); it != sd.constEnd(); ++it) {
-                    if (it.value().canConvert<QString>()) {
-                        filter = it.value().toString().trimmed();
-                        break;
-                    }
-                }
-            }
-
-            // --- resolve device serial ---
-            const BuildConfiguration *bc = runControl->buildConfiguration();
-            QString serial;
-            if (bc) {
-                serial = deviceSerialNumber(bc);
-                if (serial.isEmpty()) {
-                    if (Kit *kit = bc->kit()) {
-                        if (const IDevice::ConstPtr dev = RunDeviceKitAspect::device(kit))
-                            serial = HarmonyDevice::harmonyDeviceInfoFromDevice(dev).serialNumber;
-                    }
-                }
-            }
-            const FilePath hdc = HarmonyConfig::hdcToolPath();
-
-            // All condition checks are deferred into the processTask setup so that the outer
-            // lambda has a single return path (required for compiler return-type deduction).
-            // Note: serial may be empty here if no deploy was done in the current session.
-            // In that case we omit "-t <serial>" and let hdc target the default device,
-            // matching the same behaviour as the main HarmonyProcessRunnerFactory.
-            const bool canStream = enabled && hdc.isExecutableFile();
-
-            return runControl->processRecipe(runControl->processTask(
-                [runControl, canStream, hdc, serial, filter](Process &process) {
-                    if (!canStream) {
-                        if (!hdc.isExecutableFile())
-                            qCDebug(harmonyRunLog) << "hilog reader skipped: hdc not found at" << hdc;
-                        return SetupResult::StopWithSuccess;
-                    }
-
-                    // Build: hdc [-t <serial>] shell hilog [filter]
-                    QStringList args;
-                    if (!serial.isEmpty())
-                        args = hdcSelector(serial);
-                    args << QStringLiteral("shell") << QStringLiteral("hilog");
-                    if (!filter.isEmpty())
-                        args << filter;
-                    process.setCommand(CommandLine{hdc, args});
-
-                    // Stream stdout lines with severity-aware colouring.
-                    process.setStdOutCallback([runControl](const QString &line) {
-                        runControl->postMessage(line, hilogLineFormat(line));
-                    });
-
-                    // hilog writes everything to stdout; forward stderr as errors just in case.
-                    process.setStdErrCallback([runControl](const QString &line) {
-                        runControl->postMessage(line, ErrorMessageFormat);
-                    });
-
-                    runControl->postMessage(Tr::tr("Harmony: hilog streaming started."),
-                                            NormalMessageFormat);
-                    return SetupResult::Continue;
-                }));
-        });
-        addSupportedRunMode(ProjectExplorer::Constants::NORMAL_RUN_MODE);
-        setSupportedRunConfigs({Ohos::Constants::HARMONY_RUNCONFIG_ID});
-    }
-};
-
-} // namespace
-
-void setupHarmonyHilogWorker()
-{
-    qCDebug(harmonyRunLog) << "Registering Harmony hilog reader worker factory.";
-    static HarmonyHilogRunWorkerFactory theHarmonyHilogRunWorkerFactory;
 }
 
 } // namespace Ohos::Internal

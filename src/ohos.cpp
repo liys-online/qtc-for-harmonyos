@@ -121,7 +121,6 @@ public:
 
         setupHarmonyRunConfiguration();
         setupHarmonyRunWorker();
-        setupHarmonyHilogWorker();
         connect(KitManager::instance(), &KitManager::kitsLoaded, this, &OhosPlugin::kitsRestored,
                 Qt::SingleShotConnection);
         connect(ProjectManager::instance(), &ProjectManager::activeBuildConfigurationChanged,
