@@ -4,6 +4,7 @@
 namespace Ohos::Internal {
 
 void setupHarmonyRunWorker();
+void setupHarmonyHilogWorker();
 
 } // namespace Ohos::Internal
 

@@ -72,6 +72,10 @@ const char HARMONY_DEFAULT_RUN_BUILD_KEY[] = "Harmony.DefaultRunTarget";
 const char HARMONY_RUN_BUNDLE_OVERRIDE[] = "Harmony.Run.BundleNameOverride";
 /** Run configuration: optional override for `aa start -a` (empty → module.json5 heuristics). */
 const char HARMONY_RUN_ABILITY_OVERRIDE[] = "Harmony.Run.AbilityNameOverride";
+/** Run configuration: whether to attach a hilog streaming reader (default true). */
+const char HARMONY_HILOG_ENABLED[] = "Harmony.Run.HilogEnabled";
+/** Run configuration: optional hilog filter tag/pattern (empty → stream all logs). */
+const char HARMONY_HILOG_FILTER[] = "Harmony.Run.HilogFilter";
 const char HARMONY_BUILD_DIRECTORY[] = "ohpro";
 const char HarmonyApplicationArgs[] = "HarmonyApplicationArgs"; // QString
 

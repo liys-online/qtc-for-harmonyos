@@ -114,6 +114,27 @@ public:
         abilityNameOverride.setDisplayStyle(StringAspect::LineEditDisplay);
         abilityNameOverride.setHistoryCompleter("Harmony.Run.AbilityName.History");
 
+        hilogEnabled.setId(Constants::HARMONY_HILOG_ENABLED);
+        hilogEnabled.setSettingsKey(Constants::HARMONY_HILOG_ENABLED);
+        hilogEnabled.setLabelText(Tr::tr("Stream hilog to output panel:"));
+        hilogEnabled.setToolTip(Tr::tr("Attaches an hdc hilog reader that streams on-device log output to the "
+                                       "Application Output panel while the application is running."));
+        hilogEnabled.setDefaultValue(true);
+
+        hilogFilter.setId(Constants::HARMONY_HILOG_FILTER);
+        hilogFilter.setSettingsKey(Constants::HARMONY_HILOG_FILTER);
+        hilogFilter.setLabelText(Tr::tr("hilog filter:"));
+        hilogFilter.setToolTip(Tr::tr("Optional filter passed to hilog on the device. "
+                                      "Leave empty to stream all logs. "
+                                      "Accepts the same filter expressions as the hilog command-line tool."));
+        hilogFilter.setPlaceHolderText(Tr::tr("Empty = all logs; e.g. \"MyTag\" or \"D/HttpClient\""));
+        hilogFilter.setDisplayStyle(StringAspect::LineEditDisplay);
+        hilogFilter.setHistoryCompleter("Harmony.Run.HilogFilter.History");
+
+        hilogEnabled.addOnChanged(this, [this] {
+            hilogFilter.setEnabled(hilogEnabled());
+        });
+
         setUpdater([this] {
             const ProjectExplorer::BuildTargetInfo bti = buildTargetInfo();
             // Qt for OH / HAP 工程在 CMake 侧常为 MODULE_LIBRARY 等，不会进入 applicationTargets；
@@ -182,6 +203,8 @@ public:
     BaseStringListAspect postStartShellCmd{this, Key("Harmony.PostStartShellCmdListKey")};
     HarmonyMigratingStringAspect bundleNameOverride{this, Key("Harmony.Run.BundleNameOverrideKey")};
     HarmonyMigratingStringAspect abilityNameOverride{this, Key("Harmony.Run.AbilityNameOverrideKey")};
+    BoolAspect hilogEnabled{this};
+    HarmonyMigratingStringAspect hilogFilter{this, {}};
 };
 namespace {
 

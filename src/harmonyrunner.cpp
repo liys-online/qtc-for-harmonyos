@@ -28,6 +28,35 @@ using namespace Utils;
 
 namespace Ohos::Internal {
 
+// ---------------------------------------------------------------------------
+// hilog severity → output format
+// Typical hilog line (OpenHarmony):
+//   "MM-DD HH:MM:SS.mmm  <pid>  <tid> <Level> <domain>/<Tag>: <message>"
+// where <Level> is one of D I W E F.
+// We scan positions 4-6 of the whitespace-split parts.
+// ---------------------------------------------------------------------------
+static OutputFormat hilogLineFormat(const QString &line)
+{
+    const QStringList parts = line.split(u' ', Qt::SkipEmptyParts);
+    for (int i = 3; i < qMin(int(parts.size()), 8); ++i) {
+        const QString &p = parts.at(i);
+        QChar sc;
+        if (p.size() == 1)
+            sc = p.at(0);
+        else if (p.size() >= 2 && p.at(1) == u'/')
+            sc = p.at(0);
+        else
+            continue;
+        switch (sc.toLatin1()) {
+        case 'E': case 'F': return ErrorMessageFormat;
+        case 'W':           return StdErrFormat;
+        case 'D': case 'I': return LogMessageFormat;
+        default:            break;
+        }
+    }
+    return LogMessageFormat;
+}
+
 namespace {
 
 QStringList postQuitShellCommandsFromRunControl(const RunControl *runControl)
@@ -203,6 +232,112 @@ void setupHarmonyRunWorker()
 {
     qCDebug(harmonyRunLog) << "Registering Harmony process run worker factory.";
     static HarmonyProcessRunnerFactory theHarmonyRunWorkerFactory;
+}
+
+// ---------------------------------------------------------------------------
+// P2-14: hilog streaming RunWorker
+// Attaches an auxiliary `hdc shell hilog [filter]` process to the run control
+// and forwards each output line to the Application Output panel.
+// This factory does NOT set setExecutionType(), so Qt Creator treats it as a
+// supplementary worker whose exit does not stop the primary run control.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+class HarmonyHilogRunWorkerFactory final : public RunWorkerFactory
+{
+public:
+    HarmonyHilogRunWorkerFactory()
+    {
+        setId("Harmony.HilogReader");
+        setRecipeProducer([](RunControl *runControl) {
+            using namespace QtTaskTree;
+
+            // --- read hilogEnabled ---
+            bool enabled = true;
+            {
+                const Store sd = runControl->settingsData(Id(Constants::HARMONY_HILOG_ENABLED));
+                for (auto it = sd.constBegin(); it != sd.constEnd(); ++it) {
+                    if (it.value().isValid()) { enabled = it.value().toBool(); break; }
+                }
+            }
+
+            // --- read optional filter string ---
+            QString filter;
+            {
+                const Store sd = runControl->settingsData(Id(Constants::HARMONY_HILOG_FILTER));
+                for (auto it = sd.constBegin(); it != sd.constEnd(); ++it) {
+                    if (it.value().canConvert<QString>()) {
+                        filter = it.value().toString().trimmed();
+                        break;
+                    }
+                }
+            }
+
+            // --- resolve device serial ---
+            const BuildConfiguration *bc = runControl->buildConfiguration();
+            QString serial;
+            if (bc) {
+                serial = deviceSerialNumber(bc);
+                if (serial.isEmpty()) {
+                    if (Kit *kit = bc->kit()) {
+                        if (const IDevice::ConstPtr dev = RunDeviceKitAspect::device(kit))
+                            serial = HarmonyDevice::harmonyDeviceInfoFromDevice(dev).serialNumber;
+                    }
+                }
+            }
+            const FilePath hdc = HarmonyConfig::hdcToolPath();
+
+            // All condition checks are deferred into the processTask setup so that the outer
+            // lambda has a single return path (required for compiler return-type deduction).
+            // Note: serial may be empty here if no deploy was done in the current session.
+            // In that case we omit "-t <serial>" and let hdc target the default device,
+            // matching the same behaviour as the main HarmonyProcessRunnerFactory.
+            const bool canStream = enabled && hdc.isExecutableFile();
+
+            return runControl->processRecipe(runControl->processTask(
+                [runControl, canStream, hdc, serial, filter](Process &process) {
+                    if (!canStream) {
+                        if (!hdc.isExecutableFile())
+                            qCDebug(harmonyRunLog) << "hilog reader skipped: hdc not found at" << hdc;
+                        return SetupResult::StopWithSuccess;
+                    }
+
+                    // Build: hdc [-t <serial>] shell hilog [filter]
+                    QStringList args;
+                    if (!serial.isEmpty())
+                        args = hdcSelector(serial);
+                    args << QStringLiteral("shell") << QStringLiteral("hilog");
+                    if (!filter.isEmpty())
+                        args << filter;
+                    process.setCommand(CommandLine{hdc, args});
+
+                    // Stream stdout lines with severity-aware colouring.
+                    process.setStdOutCallback([runControl](const QString &line) {
+                        runControl->postMessage(line, hilogLineFormat(line));
+                    });
+
+                    // hilog writes everything to stdout; forward stderr as errors just in case.
+                    process.setStdErrCallback([runControl](const QString &line) {
+                        runControl->postMessage(line, ErrorMessageFormat);
+                    });
+
+                    runControl->postMessage(Tr::tr("Harmony: hilog streaming started."),
+                                            NormalMessageFormat);
+                    return SetupResult::Continue;
+                }));
+        });
+        addSupportedRunMode(ProjectExplorer::Constants::NORMAL_RUN_MODE);
+        setSupportedRunConfigs({Ohos::Constants::HARMONY_RUNCONFIG_ID});
+    }
+};
+
+} // namespace
+
+void setupHarmonyHilogWorker()
+{
+    qCDebug(harmonyRunLog) << "Registering Harmony hilog reader worker factory.";
+    static HarmonyHilogRunWorkerFactory theHarmonyHilogRunWorkerFactory;
 }
 
 } // namespace Ohos::Internal
