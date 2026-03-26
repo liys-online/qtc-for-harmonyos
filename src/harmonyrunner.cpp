@@ -347,6 +347,9 @@ public:
                     cmd.addArg(script);
                     process.setCommand(cmd);
 
+                    // Device-side hilog output is always UTF-8.
+                    process.setUtf8Codec();
+
                     // Per-line callback with severity-based colouring.
                     // PID filtering reduces volume to app-only logs (typically
                     // 1-50 lines/s), safe for per-line postMessage calls.
