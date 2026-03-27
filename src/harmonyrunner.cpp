@@ -4,6 +4,7 @@
 #include "harmonydevice.h"
 #include "harmonylogcategories.h"
 #include "harmonyutils.h"
+#include "hdcsocketclient.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
 
@@ -297,13 +298,22 @@ public:
                 }
             }
 
-            auto hilogTask = runControl->processTask(
-                [runControl, canStream, hdc, serial, hilogFilter, bundleName](Process &process) {
+            // ---- Hilog via direct hdc-daemon socket (P2-14) ----
+            // Instead of spawning "hdc.exe shell hilog" as a subprocess (which
+            // suffers from host-side pipe buffering), we open a TCP socket to the
+            // hdc daemon (port 8710) and use the same binary protocol that DevEco
+            // Studio uses.  TCP_NODELAY eliminates Nagle delay, giving us real-time
+            // log delivery identical to DevEco.
+            //
+            // The QSyncTask completes immediately; the socket runs asynchronously
+            // via Qt's event loop, parented to RunControl for lifetime management.
+            auto hilogTask = QSyncTask(
+                [runControl, canStream, hdc, serial, hilogFilter, bundleName] {
                     if (!canStream) {
                         if (!hdc.isExecutableFile())
                             qCDebug(harmonyRunLog)
                                 << "hilog reader skipped: hdc not found at" << hdc;
-                        return SetupResult::StopWithSuccess;
+                        return;
                     }
 
                     if (bundleName.isEmpty()) {
@@ -311,73 +321,65 @@ public:
                             Tr::tr("Harmony: hilog skipped – bundle name unknown "
                                    "(cannot filter by PID)."),
                             ErrorMessageFormat);
-                        return SetupResult::StopWithSuccess;
+                        return;
                     }
 
-                    // Build a POSIX shell script that:
-                    //   1. Polls pidof <bundle> up to 15 s, waiting for the app to start.
-                    //   2. Runs  hilog -P <PID> [user_filter]  once the PID is known.
-                    // The script deliberately avoids double-quote characters so that
-                    // Windows → QProcess → hdc.exe argument quoting stays reliable.
+                    // POSIX shell script that polls pidof every 0.5 s (up to ~15 s)
+                    // then exec's hilog -P <PID> for app-only output.
                     QString script;
                     script += QStringLiteral(
                         "PID=; i=0; "
-                        "while [ $i -lt 15 ]; do "
+                        "while [ $i -lt 30 ]; do "
                           "PID=$(pidof ");
                     script += bundleName;
                     script += QStringLiteral(
                         "); PID=${PID%% *}; "
                           "test x$PID != x && break; "
-                          "PID=; i=$((i+1)); sleep 1; "
+                          "PID=; i=$((i+1)); sleep 0.5; "
                         "done; "
-                        "test x$PID != x && exec hilog -P $PID");
+                        "test x$PID != x || { echo 'hilog: PID not found for ");
+                    script += bundleName;
+                    script += QStringLiteral(
+                        " after 15 s'; exit 1; }; "
+                        "exec hilog -P $PID");
                     if (!hilogFilter.isEmpty()) {
                         script += u' ';
                         script += hilogFilter;
                     }
-                    script += QStringLiteral(
-                        " || echo 'hilog: PID not found for ");
-                    script += bundleName;
-                    script += QStringLiteral(" after 15 attempts'");
 
-                    CommandLine cmd{hdc};
-                    if (!serial.isEmpty())
-                        cmd.addArgs(hdcSelector(serial));
-                    cmd.addArg("shell");
-                    cmd.addArg(script);
-                    process.setCommand(cmd);
+                    auto *client = new HdcSocketClient(runControl);
+                    QObject::connect(client, &HdcSocketClient::lineReceived, runControl,
+                        [runControl](const QString &line) {
+                            runControl->postMessage(line, hilogLineFormat(line));
+                        });
+                    QObject::connect(client, &HdcSocketClient::errorOccurred, runControl,
+                        [runControl](const QString &msg) {
+                            runControl->postMessage(
+                                Tr::tr("Harmony hilog socket: %1").arg(msg),
+                                ErrorMessageFormat);
+                        });
+                    QObject::connect(runControl, &RunControl::stopped,
+                                     client, &HdcSocketClient::stop);
+                    QObject::connect(client, &HdcSocketClient::finished,
+                                     client, &QObject::deleteLater);
 
-                    // Device-side hilog output is always UTF-8.
-                    process.setUtf8Codec();
-
-                    // Per-line callback with severity-based colouring.
-                    // PID filtering reduces volume to app-only logs (typically
-                    // 1-50 lines/s), safe for per-line postMessage calls.
-                    process.setStdOutLineCallback([runControl](const QString &line) {
-                        runControl->postMessage(line, hilogLineFormat(line));
-                    });
-
-                    process.setStdErrLineCallback([runControl](const QString &line) {
-                        runControl->postMessage(line, ErrorMessageFormat);
-                    });
+                    client->start(serial, QStringLiteral("shell ") + script);
 
                     runControl->postMessage(
-                        Tr::tr("Harmony: streaming hilog for %1 (waiting for PID…)")
+                        Tr::tr("Harmony: streaming hilog for %1 via hdc socket "
+                               "(waiting for PID\u2026)")
                             .arg(bundleName),
                         NormalMessageFormat);
-                    return SetupResult::Continue;
                 });
 
-            // Run main and hilog concurrently.
-            // Qt Creator's createMainRecipe() uses exactly ONE factory per run-mode/config
-            // combination, so there can only be one RunWorkerFactory here. Both processes
-            // are therefore embedded in the same recipe Group.
+            // Run main process and hilog socket concurrently.
+            // hilogTask (QSyncTask) completes immediately after creating the
+            // HdcSocketClient; the socket streams asynchronously until RunControl
+            // emits stopped(), at which point HdcSocketClient::stop() closes it.
             //
-            // FinishAllAndSuccess:
-            //   • Hilog exits early (disabled / hdc missing) → main keeps running.
-            //   • Main exits (user Stop → both hdc processes killed via setupCanceler) →
-            //     hilog also exits → group finishes.
-            //   • Device disconnects → both hdc processes fail → group finishes.
+            // FinishAllAndSuccess: group finishes when mainTask finishes.
+            // hilogTask already completed (StopWithSuccess) so only mainTask
+            // keeps the group alive.
             return Group{
                 parallel,
                 workflowPolicy(WorkflowPolicy::FinishAllAndSuccess),

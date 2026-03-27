@@ -131,7 +131,8 @@
 | 1.6 | 2026-03-24 | **P1-12**：`.user` / 工程内 **Harmony 构建·部署·运行** 配置 Store 键统一为 `Harmony.`* 规范名；`fromMap` 兼容旧键，**保存后**写入新键（见 [OPERATIONS.md](OPERATIONS.md)）。                           |
 | 1.7 | 2026-03-24 | **P1-13**：`HarmonyCMakeBuildConfiguration::createSubConfigWidgets` 增加 **Harmony CMake summary** 子页（`harmonybuildconfiguration.cpp` 内 `HarmonyCMakeSummaryWidget`）。 |
 | 1.8 | 2026-03-24 | **P1-15**：`HarmonyQtVersion::supportsMultipleQtAbis` 改为 `qtAbis().size() > 1`，去掉对 `5.15.12` 的硬编码。                                                                  |
-|     | 1.9        | 2026-03-26                                                                                                                                                         |
+| 1.9 | 2026-03-26 | **P2-14**：hilog sidecar 改为自动 PID 过滤（`pidof <bundle>` → `hilog -P $PID`），解决全量日志淹没 UI 导致 Qt Creator 卡死问题；`setStdOutLineCallback` + `hilogLineFormat` 逐行上色。 |
+| 2.0 | 2026-03-26 | **P2-14（socket）**：仿照 DevEco Studio，将 hilog 传输从 `hdc.exe` 子进程改为 **直接 TCP Socket 连接 hdc daemon**（端口 8710）。新增 `hdcsocketclient.{h,cpp}` 实现 hdc 二进制协议（48 字节握手 + 帧解析），`TCP_NODELAY` 消除宿主机侧 Nagle/管道缓冲，实现实时日志流。 |
 
 
 ---
