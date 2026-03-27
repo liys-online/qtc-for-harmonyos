@@ -25,6 +25,8 @@
 #include <QtTaskTree/QTaskTree>
 #include <QtTaskTree/qbarriertask.h>
 
+#include <chrono>
+
 using namespace ProjectExplorer;
 using namespace Utils;
 
@@ -103,6 +105,58 @@ QString deviceSerialForRun(RunControl *runControl, const BuildConfiguration *bc)
     return serial;
 }
 
+struct HdcShellOutcome {
+    bool ok = false;
+    QString errorDetail;
+};
+
+// P2-15 phase 2: prefer hdc daemon socket; optional CLI via QTC_HARMONY_HDC_USE_CLI or fallback.
+static HdcShellOutcome runHdcShellSocketThenCli(RunControl *runControl,
+                                                const QString &serial,
+                                                const QString &shellLine,
+                                                std::chrono::seconds timeout)
+{
+    HdcShellOutcome out;
+    const QString wireCmd = QStringLiteral("shell ") + shellLine;
+
+    if (!harmonyHdcShellPreferCli()) {
+        const HdcShellSyncResult sock = HdcSocketClient::runShellSync(
+            serial, wireCmd, int(timeout.count() * 1000));
+        if (sock.isOk()) {
+            out.ok = true;
+            return out;
+        }
+        qCWarning(harmonyRunLog) << "runHdcShellSocketThenCli socket failed" << int(sock.code)
+                                 << sock.errorMessage;
+        if (runControl) {
+            runControl->postMessage(
+                Tr::tr("Harmony: hdc daemon socket failed, falling back to hdc.exe (%1).")
+                    .arg(sock.errorMessage),
+                NormalMessageFormat);
+        }
+    }
+
+    const FilePath hdc = HarmonyConfig::hdcToolPath();
+    if (!hdc.isExecutableFile()) {
+        out.errorDetail = Tr::tr("hdc executable not found.");
+        return out;
+    }
+
+    Process process;
+    QStringList args = hdcSelector(serial);
+    args << QStringLiteral("shell") << shellLine;
+    process.setCommand(CommandLine{hdc, args});
+    process.setWorkingDirectory(hdc.parentDir());
+    process.setUtf8Codec();
+    process.runBlocking(timeout);
+    if (process.result() == ProcessResult::FinishedWithSuccess) {
+        out.ok = true;
+        return out;
+    }
+    out.errorDetail = process.exitMessage();
+    return out;
+}
+
 void runPostQuitShellCommandsOnDevice(RunControl *runControl)
 {
     QTC_ASSERT(runControl, return);
@@ -123,32 +177,27 @@ void runPostQuitShellCommandsOnDevice(RunControl *runControl)
         return;
     }
 
-    const FilePath hdc = HarmonyConfig::hdcToolPath();
-    if (!hdc.isExecutableFile()) {
-        runControl->postMessage(
-            Tr::tr("Skipping post-quit on-device shell commands: hdc executable not found."),
-            ErrorMessageFormat);
-        return;
+    if (harmonyHdcShellPreferCli()) {
+        const FilePath hdc = HarmonyConfig::hdcToolPath();
+        if (!hdc.isExecutableFile()) {
+            runControl->postMessage(
+                Tr::tr("Skipping post-quit on-device shell commands: hdc executable not found."),
+                ErrorMessageFormat);
+            return;
+        }
     }
 
     runControl->postMessage(Tr::tr("Running post-quit on-device shell commands…"), NormalMessageFormat);
 
     for (const QString &oneCmd : cmds) {
-        QStringList args = hdcSelector(serial);
-        args << QStringLiteral("shell") << oneCmd;
-
-        Process process;
-        process.setCommand(CommandLine{hdc, args});
-        process.setWorkingDirectory(hdc.parentDir());
-        process.runBlocking(std::chrono::seconds(60));
-
-        if (process.result() == ProcessResult::FinishedWithSuccess) {
+        const HdcShellOutcome r = runHdcShellSocketThenCli(runControl, serial, oneCmd,
+                                                           std::chrono::seconds(60));
+        if (r.ok) {
             runControl->postMessage(
                 Tr::tr("Post-quit command finished: %1").arg(oneCmd), NormalMessageFormat);
         } else {
             runControl->postMessage(
-                Tr::tr("Post-quit command failed: %1 — %2")
-                    .arg(oneCmd, process.exitMessage()),
+                Tr::tr("Post-quit command failed: %1 — %2").arg(oneCmd, r.errorDetail),
                 ErrorMessageFormat);
         }
     }
@@ -178,28 +227,25 @@ void stopHarmonyApplicationOnDevice(RunControl *runControl)
         return;
     }
 
-    const FilePath hdc = HarmonyConfig::hdcToolPath();
-    if (!hdc.isExecutableFile()) {
-        runControl->postMessage(Tr::tr("Cannot stop application on device: hdc executable not found."),
-                                ErrorMessageFormat);
-        return;
+    if (harmonyHdcShellPreferCli()) {
+        const FilePath hdc = HarmonyConfig::hdcToolPath();
+        if (!hdc.isExecutableFile()) {
+            runControl->postMessage(Tr::tr("Cannot stop application on device: hdc executable not found."),
+                                    ErrorMessageFormat);
+            return;
+        }
     }
 
-    QStringList args = hdcSelector(serial);
-    args << QStringLiteral("shell") << QStringLiteral("aa") << QStringLiteral("force-stop") << pkg;
-
-    Process process;
-    process.setCommand(CommandLine{hdc, args});
-    process.setWorkingDirectory(hdc.parentDir());
-    process.runBlocking(std::chrono::seconds(15));
-
-    if (process.result() == ProcessResult::FinishedWithSuccess) {
+    const QString shellLine = QStringLiteral("aa force-stop ") + pkg;
+    const HdcShellOutcome r = runHdcShellSocketThenCli(runControl, serial, shellLine,
+                                                     std::chrono::seconds(15));
+    if (r.ok) {
         runControl->postMessage(
             Tr::tr("Requested force-stop on device for \"%1\".").arg(pkg),
             NormalMessageFormat);
     } else {
         runControl->postMessage(
-            Tr::tr("force-stop failed for \"%1\": %2").arg(pkg, process.exitMessage()),
+            Tr::tr("force-stop failed for \"%1\": %2").arg(pkg, r.errorDetail),
             ErrorMessageFormat);
     }
 }

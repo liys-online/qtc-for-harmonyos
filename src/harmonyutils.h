@@ -69,6 +69,14 @@ QStringList applicationAbis(const ProjectExplorer::Kit *k);
 QStringList hdcSelector(const QString &serialNumber);
 
 /**
+ * When true, operations equivalent to @c hdc shell … use the @c hdc.exe subprocess instead of the
+ * local hdc daemon TCP socket (@c HdcSocketClient::runShellSync). Set environment variable
+ * @c QTC_HARMONY_HDC_USE_CLI to @c 1, @c true, or @c yes (case-insensitive) to force CLI mode
+ * (troubleshooting or incompatible daemon versions).
+ */
+bool harmonyHdcShellPreferCli();
+
+/**
  * 设备序列号：构建配置里缓存的部署目标优先，否则当前 Kit 所选运行设备。
  */
 QString harmonyEffectiveDeviceSerial(const ProjectExplorer::BuildConfiguration *bc);

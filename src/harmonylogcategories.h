@@ -13,6 +13,7 @@
 // qtc.harmony.build — Build HAP / hvigor
 // qtc.harmony.deploy — 部署与 HAP 解析
 // qtc.harmony.run — 运行控制（预留，供后续 qCDebug）
+// qtc.harmony.hdcsocket — lib/hdcsocketclient（HdcSocketClient / hdc daemon TCP）
 // qtc.harmony.plugin — 插件加载与工程钩子
 // qtc.harmony.toolchain — Clang 工具链与代码模型
 //

@@ -22,6 +22,8 @@
 #include "harmonyqtversion.h"
 #include "harmonydevice.h"
 #include "harmonylogcategories.h"
+#include "harmonyutils.h"
+#include "hdcsocketclient.h"
 #include "ohostr.h"
 #include <QDir>
 #include <QJsonDocument>
@@ -142,13 +144,29 @@ static FilePath sdkSettingsFileName()
  */
 static QString getDeviceProperty(const QString &device, const QString &property)
 {
+    const QString wireCmd = QStringLiteral("shell param get ") + property;
+
+    if (!harmonyHdcShellPreferCli()) {
+        const HdcShellSyncResult sock = HdcSocketClient::runShellSync(device, wireCmd, 20000);
+        if (sock.isOk()) {
+            qCWarning(harmonyConfigLog) << "getDeviceProperty (socket) ok for" << property;
+            return sock.standardOutput.trimmed();
+        }
+        qCWarning(harmonyConfigLog) << "getDeviceProperty socket failed" << int(sock.code)
+                                << sock.errorMessage << "— trying hdc.exe";
+    }
+
+    const FilePath hdcPath = HarmonyConfig::hdcToolPath();
+    if (!hdcPath.isExecutableFile())
+        return {};
     Process hdcParam;
-    const CommandLine command{HarmonyConfig::hdcToolPath(), {"-t", device, "shell", "param", "get", property}};
-    qCDebug(harmonyConfigLog) << "getDeviceProperty" << command.toUserOutput();
+    const CommandLine command{hdcPath, {"-t", device, "shell", "param", "get", property}};
+    qCDebug(harmonyConfigLog) << "getDeviceProperty (cli)" << command.toUserOutput();
     hdcParam.setCommand(command);
+    hdcParam.setUtf8Codec();
     hdcParam.runBlocking();
     if (hdcParam.result() == ProcessResult::FinishedWithSuccess)
-        return hdcParam.allOutput();
+        return hdcParam.allOutput().trimmed();
     return {};
 }
 

@@ -61,6 +61,17 @@ QStringList hdcSelector(const QString &serialNumber)
     return {"-t", serialNumber};
 }
 
+bool harmonyHdcShellPreferCli()
+{
+    const QByteArray v = qgetenv("QTC_HARMONY_HDC_USE_CLI");
+    if (v.isEmpty())
+        return false;
+    const QString s = QString::fromLatin1(v).trimmed();
+    return s.compare(u"1", Qt::CaseInsensitive) == 0
+        || s.compare(u"true", Qt::CaseInsensitive) == 0
+        || s.compare(u"yes", Qt::CaseInsensitive) == 0;
+}
+
 QString harmonyEffectiveDeviceSerial(const BuildConfiguration *bc)
 {
     if (!bc)
