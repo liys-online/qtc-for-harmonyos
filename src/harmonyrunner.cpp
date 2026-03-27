@@ -3,6 +3,7 @@
 #include "harmonyconfigurations.h"
 #include "harmonydevice.h"
 #include "harmonylogcategories.h"
+#include "harmonymainrunsockettask.h"
 #include "harmonyutils.h"
 #include "hdcsocketclient.h"
 #include "ohosconstants.h"
@@ -24,6 +25,7 @@
 
 #include <QtTaskTree/QTaskTree>
 #include <QtTaskTree/qbarriertask.h>
+#include <QtTaskTree/qtasktree.h>
 
 #include <chrono>
 
@@ -293,6 +295,22 @@ static QString resolveSerial(RunControl *rc)
     return serial;
 }
 
+// P2-15 phase 3: device script passed as hdc argv after "shell" (see HarmonyRunConfiguration).
+static QString extractHarmonyDeviceShellScript(const RunControl *rc)
+{
+    if (!rc)
+        return {};
+    const CommandLine cmd = rc->commandLine();
+    const QString exeName = cmd.executable().fileName();
+    if (!exeName.contains(QLatin1String("hdc"), Qt::CaseInsensitive))
+        return {};
+    const QStringList args = cmd.splitArguments();
+    const int shellIdx = args.indexOf(QStringLiteral("shell"));
+    if (shellIdx < 0 || shellIdx + 1 >= args.size())
+        return {};
+    return QStringList(args.mid(shellIdx + 1)).join(u' ');
+}
+
 class HarmonyProcessRunnerFactory final : public RunWorkerFactory
 {
 public:
@@ -302,31 +320,15 @@ public:
         setRecipeProducer([](RunControl *runControl) {
             using namespace QtTaskTree;
 
-            // ---- Main process task ----
-            // Mirrors the original single-factory recipe: cancel → aa force-stop,
-            // done → post-quit shell commands.
-            auto mainTask = runControl->processTask(
-                [runControl](Process &process) {
-                    // Clear any stale handler from a previous run before reconnecting.
-                    QObject::disconnect(runControl, &RunControl::canceled, runControl, nullptr);
-                    QObject::connect(runControl,
-                                     &RunControl::canceled,
-                                     runControl,
-                                     [runControl] { stopHarmonyApplicationOnDevice(runControl); });
-                    QObject::connect(&process,
-                                     &Process::done,
-                                     runControl,
-                                     [runControl] { runPostQuitShellCommandsOnDevice(runControl); },
-                                     Qt::SingleShotConnection);
-                    return SetupResult::Continue;
-                });
+            const QString deviceSerial = resolveSerial(runControl);
+            const QString deviceScript = extractHarmonyDeviceShellScript(runControl);
+            const bool useMainSocket = !harmonyHdcShellPreferCli() && !deviceScript.isEmpty();
 
             // ---- Hilog sidecar task (P2-14) ----
             const bool hilogEnabled =
                 readBoolSetting(runControl, Id(Constants::HARMONY_HILOG_ENABLED), true);
             const QString hilogFilter =
                 readStringSetting(runControl, Id(Constants::HARMONY_HILOG_FILTER));
-            const QString serial  = resolveSerial(runControl);
             const FilePath hdc    = HarmonyConfig::hdcToolPath();
             const bool canStream  = hilogEnabled && hdc.isExecutableFile();
 
@@ -354,7 +356,7 @@ public:
             // The QSyncTask completes immediately; the socket runs asynchronously
             // via Qt's event loop, parented to RunControl for lifetime management.
             auto hilogTask = QSyncTask(
-                [runControl, canStream, hdc, serial, hilogFilter, bundleName] {
+                [runControl, canStream, hdc, deviceSerial, hilogFilter, bundleName] {
                     if (!canStream) {
                         if (!hdc.isExecutableFile())
                             qCDebug(harmonyRunLog)
@@ -409,7 +411,7 @@ public:
                     QObject::connect(client, &HdcSocketClient::finished,
                                      client, &QObject::deleteLater);
 
-                    client->start(serial, QStringLiteral("shell ") + script);
+                    client->start(deviceSerial, QStringLiteral("shell ") + script);
 
                     runControl->postMessage(
                         Tr::tr("Harmony: streaming hilog for %1 via hdc socket "
@@ -418,22 +420,72 @@ public:
                         NormalMessageFormat);
                 });
 
-            // Run main process and hilog socket concurrently.
+            // Run main session and hilog socket concurrently.
             // hilogTask (QSyncTask) completes immediately after creating the
             // HdcSocketClient; the socket streams asynchronously until RunControl
             // emits stopped(), at which point HdcSocketClient::stop() closes it.
             //
-            // FinishAllAndSuccess: group finishes when mainTask finishes.
-            // hilogTask already completed (StopWithSuccess) so only mainTask
+            // FinishAllAndSuccess: group finishes when the main task finishes.
+            // hilogTask already completed (StopWithSuccess) so only the main task
             // keeps the group alive.
-            return Group{
-                parallel,
-                workflowPolicy(WorkflowPolicy::FinishAllAndSuccess),
-                When(mainTask, &Process::started) >> Do {
-                    QSyncTask([runControl] { runControl->reportStarted(); })
-                },
-                hilogTask
+            //
+            // P2-15 phase 3: default main session = hdc daemon TCP (same wire as hilog);
+            // QTC_HARMONY_HDC_USE_CLI / harmonyHdcShellPreferCli() or missing script → hdc.exe QProcess.
+            const auto startedBarrier = [&](auto mainTask, auto startedSignal) {
+                return Group{
+                    parallel,
+                    workflowPolicy(WorkflowPolicy::FinishAllAndSuccess),
+                    When(mainTask, startedSignal) >> Do {
+                        QSyncTask([runControl] { runControl->reportStarted(); })
+                    },
+                    hilogTask
+                };
             };
+
+            if (useMainSocket) {
+                const auto mainSocketTask = QCustomTask<HarmonyMainRunSocketTask>(
+                    [runControl, deviceSerial, deviceScript](HarmonyMainRunSocketTask &t) {
+                        QObject::disconnect(runControl, &RunControl::canceled, runControl, nullptr);
+                        QObject::connect(runControl,
+                                         &RunControl::canceled,
+                                         runControl,
+                                         [runControl] { stopHarmonyApplicationOnDevice(runControl); });
+                        QObject::connect(runControl, &RunControl::canceled, &t,
+                                         [&t] { t.stopShell(); });
+                        QObject::connect(runControl, &RunControl::stopped, &t,
+                                         [&t] { t.stopShell(); });
+                        QObject::connect(&t,
+                                         &HarmonyMainRunSocketTask::done,
+                                         runControl,
+                                         [runControl](QtTaskTree::DoneResult) {
+                                             runPostQuitShellCommandsOnDevice(runControl);
+                                         },
+                                         Qt::SingleShotConnection);
+                        t.setContext(runControl, deviceSerial, deviceScript);
+                        runControl->postMessage(
+                            Tr::tr("Starting Harmony application via hdc daemon socket\u2026"),
+                            NormalMessageFormat);
+                        return SetupResult::Continue;
+                    });
+                return startedBarrier(mainSocketTask,
+                                      &HarmonyMainRunSocketTask::sessionStarted);
+            }
+
+            const auto mainTask = runControl->processTask(
+                [runControl](Process &process) {
+                    QObject::disconnect(runControl, &RunControl::canceled, runControl, nullptr);
+                    QObject::connect(runControl,
+                                     &RunControl::canceled,
+                                     runControl,
+                                     [runControl] { stopHarmonyApplicationOnDevice(runControl); });
+                    QObject::connect(&process,
+                                     &Process::done,
+                                     runControl,
+                                     [runControl] { runPostQuitShellCommandsOnDevice(runControl); },
+                                     Qt::SingleShotConnection);
+                    return SetupResult::Continue;
+                });
+            return startedBarrier(mainTask, &Process::started);
         });
         addSupportedRunMode(ProjectExplorer::Constants::NORMAL_RUN_MODE);
         setSupportedRunConfigs({Ohos::Constants::HARMONY_RUNCONFIG_ID});

@@ -111,6 +111,7 @@ add_qtc_plugin(Harmony
     harmonydeviceinfo.h harmonydeviceinfo.cpp
     harmonydeployqtstep.h harmonydeployqtstep.cpp
     harmonyrunconfiguration.h harmonyrunconfiguration.cpp
+    harmonymainrunsockettask.h harmonymainrunsockettask.cpp
     harmonyrunner.h harmonyrunner.cpp
     ohosconstants.h
     ohostr.h
