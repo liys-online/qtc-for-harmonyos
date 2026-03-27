@@ -4,6 +4,8 @@
 #include "harmonydevice.h"
 #include "harmonyhdctargetsparser.h"
 #include "harmonylogcategories.h"
+#include "harmonyutils.h"
+#include "hdcsocketclient.h"
 #include "ohosconstants.h"
 #include <projectexplorer/devicesupport/devicemanager.h>
 #include <utils/qtcprocess.h>
@@ -115,34 +117,62 @@ static void handleDevicesListChange(const QString &serialNumber)
 void HarmonyDeviceManager::queryDevice()
 {
     qCDebug(harmonyDeviceLog) << "Querying HarmonyOS devices...";
-    const FilePath hdc = HarmonyConfig::hdcToolPath();
-    if (!hdc.isExecutableFile())
-        return;
 
-    Process process;
-    const CommandLine command{hdc, {QStringLiteral("list"), QStringLiteral("targets"),
-                                    QStringLiteral("-v")}};
-    process.setCommand(command);
-    process.setWorkingDirectory(command.executable().parentDir());
-    process.runBlocking();
+    QStringList outLines;
 
-    if (process.result() != ProcessResult::FinishedWithSuccess) {
-        qCWarning(harmonyDeviceLog) << "hdc list targets failed:" << process.exitMessage();
+    if (!harmonyHdcShellPreferCli()) {
+        const HdcShellSyncResult sock = HdcSocketClient::runShellSync(
+            QString(),
+            QStringLiteral("list targets -v"),
+            20000);
+        if (sock.isOk()) {
+            const QString blob = sock.standardOutput;
+            for (QString line : blob.split(QRegularExpression(QStringLiteral("[\r\n]")),
+                                          Qt::SkipEmptyParts)) {
+                line = line.trimmed();
+                if (!line.isEmpty())
+                    outLines.append(line);
+            }
+        } else {
+            qCDebug(harmonyDeviceLog) << "hdc list targets (socket) failed:" << int(sock.code)
+                                      << sock.errorMessage;
+        }
     }
 
-    for (const QString &errLine : process.stdErrLines())
-        handleErrLineOutput(errLine);
-    for (const QString &outLine : process.stdOutLines()) {
-        if(!outLine.isEmpty()) {
-            handleDevicesListChange(outLine);
+    if (outLines.isEmpty()) {
+        const FilePath hdc = HarmonyConfig::hdcToolPath();
+        if (!hdc.isExecutableFile())
+            return;
+
+        Process process;
+        const CommandLine command{hdc, {QStringLiteral("list"), QStringLiteral("targets"),
+                                        QStringLiteral("-v")}};
+        process.setCommand(command);
+        process.setWorkingDirectory(command.executable().parentDir());
+        process.runBlocking();
+
+        if (process.result() != ProcessResult::FinishedWithSuccess) {
+            qCWarning(harmonyDeviceLog) << "hdc list targets failed:" << process.exitMessage();
         }
+
+        for (const QString &errLine : process.stdErrLines())
+            handleErrLineOutput(errLine);
+        for (const QString &outLine : process.stdOutLines()) {
+            if (!outLine.isEmpty())
+                outLines.append(outLine);
+        }
+    }
+
+    for (const QString &outLine : outLines) {
+        if (!outLine.isEmpty())
+            handleDevicesListChange(outLine);
     }
 }
 
 void HarmonyDeviceManager::setupDevicesWatcher()
 {
     qCDebug(harmonyDeviceLog) << "Setting up HDC device watcher.";
-    if (!HarmonyConfig::hdcToolPath().isExecutableFile()) {
+    if (!HarmonyConfig::hdcToolPath().isExecutableFile() && harmonyHdcShellPreferCli()) {
         qCDebug(harmonyDeviceLog)
             << QStringLiteral(
                    "HDC device watcher not started: no hdc executable found. "

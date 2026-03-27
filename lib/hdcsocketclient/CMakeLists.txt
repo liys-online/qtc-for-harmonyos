@@ -12,6 +12,8 @@ find_package(Qt6 REQUIRED COMPONENTS Core Network)
 add_library(hdcsocketclient STATIC
   hdcsocketclient.cpp
   hdcsocketclient.h
+  hdcsocketprotocol.cpp
+  hdcsocketprotocol.h
 )
 
 target_include_directories(hdcsocketclient PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

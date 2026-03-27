@@ -84,13 +84,6 @@ private:
     void emitLines(const QByteArray &payload);
 
     static int serverPort();
-    static QByteArray buildHeadPacket(const QString &serial);
-    static QByteArray buildCommandPacket(const QString &command);
-    static bool verifyHandshakeResponse(const QByteArray &response);
-
-    static constexpr int kHandshakeSize = 48;
-    static constexpr int kFrameHeaderSize = 4;
-    static constexpr int kMaxFramePayload = 524288; // 512 KB
 
     QTcpSocket *m_socket = nullptr;
     Phase m_phase = Phase::Idle;

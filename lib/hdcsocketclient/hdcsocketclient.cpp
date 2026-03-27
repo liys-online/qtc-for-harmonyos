@@ -2,14 +2,13 @@
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only WITH Qt-GPL-exception-1.0
 
 #include "hdcsocketclient.h"
+#include "hdcsocketprotocol.h"
 
 #include <QEventLoop>
 #include <QLoggingCategory>
 #include <QTcpSocket>
 #include <QTimer>
 #include <QtEndian>
-
-#include <cstring>
 
 Q_LOGGING_CATEGORY(hdcSocketLog, "qtc.harmony.hdcsocket", QtWarningMsg)
 
@@ -34,44 +33,6 @@ int HdcSocketClient::serverPort()
     bool ok = false;
     const int port = qEnvironmentVariableIntValue("OHOS_HDC_SERVER_PORT", &ok);
     return (ok && port > 0 && port <= 65535) ? port : kDefaultPort;
-}
-
-// ---------------------------------------------------------------------------
-// Packet builders  (match ChannelHandShakeHelp from DevEco hdclib)
-// ---------------------------------------------------------------------------
-
-// 48-byte head: [0-3] length byte at [3], [4-11] "OHOS HDC", [16+] serial
-QByteArray HdcSocketClient::buildHeadPacket(const QString &serial)
-{
-    QByteArray pkt(kHandshakeSize, '\0');
-    pkt[3] = char(kHandshakeSize - 4);
-    std::memcpy(pkt.data() + 4, "OHOS HDC", 8);
-    const QByteArray s = serial.toUtf8();
-    const int n = qMin<int>(s.size(), kHandshakeSize - 16);
-    if (n > 0)
-        std::memcpy(pkt.data() + 16, s.constData(), n);
-    return pkt;
-}
-
-// [4-byte BE size = len+1] [command UTF-8] [0x00]
-QByteArray HdcSocketClient::buildCommandPacket(const QString &command)
-{
-    const QByteArray cmd = command.toUtf8();
-    const quint32 payload = quint32(cmd.size() + 1);
-    QByteArray pkt(int(kFrameHeaderSize + payload), '\0');
-    const quint32 be = qToBigEndian(payload);
-    std::memcpy(pkt.data(), &be, kFrameHeaderSize);
-    std::memcpy(pkt.data() + kFrameHeaderSize, cmd.constData(), cmd.size());
-    return pkt;
-}
-
-// "OHOS" at [4..7], "HDC" at [9..11]
-bool HdcSocketClient::verifyHandshakeResponse(const QByteArray &r)
-{
-    if (r.size() < kHandshakeSize)
-        return false;
-    return r[4] == 'O' && r[5] == 'H' && r[6] == 'O' && r[7] == 'S'
-        && r[9] == 'H' && r[10] == 'D' && r[11] == 'C';
 }
 
 // ---------------------------------------------------------------------------
@@ -169,13 +130,13 @@ void HdcSocketClient::onSocketError(QAbstractSocket::SocketError error)
 // ---------------------------------------------------------------------------
 bool HdcSocketClient::processHandshake()
 {
-    if (m_readBuf.size() < kHandshakeSize)
+    if (m_readBuf.size() < HdcSocketProtocol::handshakeSize)
         return false;
 
-    const QByteArray hs = m_readBuf.left(kHandshakeSize);
-    m_readBuf.remove(0, kHandshakeSize);
+    const QByteArray hs = m_readBuf.left(HdcSocketProtocol::handshakeSize);
+    m_readBuf.remove(0, HdcSocketProtocol::handshakeSize);
 
-    if (!verifyHandshakeResponse(hs)) {
+    if (!HdcSocketProtocol::verifyHandshakeResponse(hs)) {
         const QString msg = tr("hdc daemon handshake verification failed (expected OHOS HDC).");
         qCWarning(hdcSocketLog) << msg;
         emit errorOccurred(msg);
@@ -192,8 +153,8 @@ bool HdcSocketClient::processHandshake()
 void HdcSocketClient::sendHeadAndCommand()
 {
     Q_ASSERT(m_socket);
-    m_socket->write(buildHeadPacket(m_serial));
-    m_socket->write(buildCommandPacket(m_command));
+    m_socket->write(HdcSocketProtocol::buildHeadPacket(m_serial));
+    m_socket->write(HdcSocketProtocol::buildCommandPacket(m_command));
     m_socket->flush();
 }
 
@@ -201,18 +162,18 @@ void HdcSocketClient::processStreamFrames()
 {
     for (;;) {
         if (m_pendingPayload < 0) {
-            if (m_readBuf.size() < kFrameHeaderSize)
+            if (m_readBuf.size() < HdcSocketProtocol::frameHeaderSize)
                 break;
             quint32 raw;
-            std::memcpy(&raw, m_readBuf.constData(), kFrameHeaderSize);
+            std::memcpy(&raw, m_readBuf.constData(), HdcSocketProtocol::frameHeaderSize);
             m_pendingPayload = qint32(qFromBigEndian(raw));
-            m_readBuf.remove(0, kFrameHeaderSize);
+            m_readBuf.remove(0, HdcSocketProtocol::frameHeaderSize);
 
             if (m_pendingPayload == 0) {
                 m_pendingPayload = -1;
                 continue;
             }
-            if (m_pendingPayload < 0 || m_pendingPayload > kMaxFramePayload) {
+            if (m_pendingPayload < 0 || m_pendingPayload > HdcSocketProtocol::maxFramePayload) {
                 qCWarning(hdcSocketLog) << "HdcSocketClient: bad frame size" << m_pendingPayload;
                 m_pendingPayload = -1;
                 stop();
@@ -299,11 +260,11 @@ HdcShellSyncResult HdcSocketClient::runShellSync(const QString &serial,
         readBuf.append(socket.readAll());
 
         if (!commandSent) {
-            if (readBuf.size() < kHandshakeSize)
+            if (readBuf.size() < HdcSocketProtocol::handshakeSize)
                 return;
-            const QByteArray hs = readBuf.left(kHandshakeSize);
-            readBuf.remove(0, kHandshakeSize);
-            if (!verifyHandshakeResponse(hs)) {
+            const QByteArray hs = readBuf.left(HdcSocketProtocol::handshakeSize);
+            readBuf.remove(0, HdcSocketProtocol::handshakeSize);
+            if (!HdcSocketProtocol::verifyHandshakeResponse(hs)) {
                 result.code = HdcShellSyncResult::Code::HandshakeFailed;
                 result.errorMessage =
                     tr("hdc daemon handshake verification failed (expected OHOS HDC).");
@@ -312,25 +273,25 @@ HdcShellSyncResult HdcSocketClient::runShellSync(const QString &serial,
                 quitOnce();
                 return;
             }
-            socket.write(buildHeadPacket(serial));
-            socket.write(buildCommandPacket(command));
+            socket.write(HdcSocketProtocol::buildHeadPacket(serial));
+            socket.write(HdcSocketProtocol::buildCommandPacket(command));
             socket.flush();
             commandSent = true;
         }
 
         for (;;) {
             if (pendingPayload < 0) {
-                if (readBuf.size() < kFrameHeaderSize)
+                if (readBuf.size() < HdcSocketProtocol::frameHeaderSize)
                     return;
                 quint32 raw = 0;
-                std::memcpy(&raw, readBuf.constData(), kFrameHeaderSize);
+                std::memcpy(&raw, readBuf.constData(), HdcSocketProtocol::frameHeaderSize);
                 pendingPayload = qint32(qFromBigEndian(raw));
-                readBuf.remove(0, kFrameHeaderSize);
+                readBuf.remove(0, HdcSocketProtocol::frameHeaderSize);
                 if (pendingPayload == 0) {
                     pendingPayload = -1;
                     continue;
                 }
-                if (pendingPayload < 0 || pendingPayload > kMaxFramePayload) {
+                if (pendingPayload < 0 || pendingPayload > HdcSocketProtocol::maxFramePayload) {
                     result.code = HdcShellSyncResult::Code::BadFrame;
                     result.errorMessage = tr("hdc shell sync: invalid frame size (%1).").arg(pendingPayload);
                     result.standardOutput = QString::fromUtf8(outputUtf8);
