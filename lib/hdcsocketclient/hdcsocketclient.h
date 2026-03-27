@@ -15,6 +15,24 @@ QT_END_NAMESPACE
 
 namespace Ohos::Internal {
 
+// Result of a blocking one-shot shell over the hdc daemon (P2-15 phase 1).
+struct HdcShellSyncResult {
+    enum class Code {
+        Ok,
+        Timeout,
+        ConnectionFailed,
+        HandshakeFailed,
+        BadFrame,
+        SocketError
+    };
+    Code code = Code::SocketError;
+    QString errorMessage;
+    /// Decoded UTF-8 payload from all received frames (may be partial if Timeout).
+    QString standardOutput;
+
+    bool isOk() const { return code == Code::Ok; }
+};
+
 // Connects directly to the local hdc daemon via TCP (default port 8710)
 // and streams command output using the hdc binary protocol.
 //
@@ -36,6 +54,14 @@ public:
     void start(const QString &serial, const QString &command);
     void stop();
     bool isRunning() const;
+
+    // Blocking request/response over a fresh TCP connection. Runs a local QEventLoop until
+    // the daemon closes the socket (normal end of shell), timeout, or an error.
+    // @p daemonCommand is the full hdc wire command, same as @c start(), e.g. @c "shell param get …".
+    // Do not use for long-running streams (e.g. hilog); use @c start() instead.
+    static HdcShellSyncResult runShellSync(const QString &deviceSerial,
+                                           const QString &daemonCommand,
+                                           int timeoutMs = 30000);
 
 signals:
     void lineReceived(const QString &line);

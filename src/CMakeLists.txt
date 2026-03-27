@@ -112,7 +112,6 @@ add_qtc_plugin(Harmony
     harmonydeployqtstep.h harmonydeployqtstep.cpp
     harmonyrunconfiguration.h harmonyrunconfiguration.cpp
     harmonyrunner.h harmonyrunner.cpp
-    hdcsocketclient.h hdcsocketclient.cpp
     ohosconstants.h
     ohostr.h
     harmonyqtcdefs.h
@@ -122,7 +121,7 @@ add_qtc_plugin(Harmony
 get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
 target_include_directories(Harmony PRIVATE ${PARENT_DIR}/lib)
 
-target_link_libraries(Harmony PRIVATE usbmonitor ohprojectecreator)
+target_link_libraries(Harmony PRIVATE usbmonitor hdcsocketclient ohprojectecreator)
 
 target_compile_definitions(Harmony PRIVATE
   QTC_IDE_VERSION_MAJOR=${HARMONY_IDE_VERSION_MAJOR}
