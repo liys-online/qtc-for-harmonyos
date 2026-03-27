@@ -35,6 +35,8 @@
 #include <utils/qtcassert.h>
 #include <utils/qtcprocess.h>
 #include <QMessageBox>
+#include <QMetaObject>
+#include <QPointer>
 #include <QPushButton>
 using namespace ProjectExplorer;
 using namespace Utils;
@@ -318,31 +320,27 @@ Group HarmonyDeployQtStep::deployRecipe()
         qCDebug(harmonyDeployLog) << msg;
         emit addOutput(msg, OutputFormat::NormalMessage);
 
-        if (!harmonyHdcShellPreferCli()) {
-            const HdcShellSyncResult r = HdcSocketClient::runShellSync(
-                m_serialNumber,
-                QStringLiteral("uninstall ") + packageName,
-                120000);
-            if (r.isOk()) {
-                const QString t = r.standardOutput.trimmed();
-                if (!t.isEmpty()) {
-                    for (QString ln : t.split('\n')) {
-                        ln = ln.trimmed();
-                        if (!ln.isEmpty())
-                            emit addOutput(ln, OutputFormat::Stdout, DontAppendNewline);
-                    }
+        QStringList uargs = hdcSelector(m_serialNumber);
+        uargs << QStringLiteral("uninstall") << packageName;
+        const HdcShellSyncResult r = HdcSocketClient::runSyncWithCliFallback(
+            m_serialNumber,
+            QStringLiteral("uninstall ") + packageName,
+            m_hdcPath.toUserOutput(),
+            uargs,
+            120000);
+        if (r.isOk()) {
+            const QString t = r.standardOutput.trimmed();
+            if (!t.isEmpty()) {
+                for (QString ln : t.split('\n')) {
+                    ln = ln.trimmed();
+                    if (!ln.isEmpty())
+                        emit addOutput(ln, OutputFormat::Stdout, DontAppendNewline);
                 }
-                return SetupResult::StopWithSuccess;
             }
-            qCDebug(harmonyDeployLog) << "uninstall via hdc socket failed, falling back to hdc.exe"
-                                      << int(r.code) << r.errorMessage;
+            return SetupResult::StopWithSuccess;
         }
-
-        const CommandLine cmd{m_hdcPath, {hdcSelector(m_serialNumber), "uninstall", packageName}};
-        emit addOutput(Tr::tr("Package deploy: Running command \"%1\".").arg(cmd.toUserOutput()),
-                       OutputFormat::NormalMessage);
-        process.setCommand(cmd);
-        return SetupResult::Continue;
+        reportWarningOrError(r.errorMessage, Task::Warning);
+        return SetupResult::StopWithSuccess;
     };
     const auto onUninstallDone = [this](const Process &process) {
         if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0)
@@ -362,35 +360,40 @@ Group HarmonyDeployQtStep::deployRecipe()
                 cmd.addArgs({"--device", m_serialNumber});
         } else {
             QTC_ASSERT(buildConfiguration()->activeRunConfiguration(), return SetupResult::StopWithError);
-            if (!harmonyHdcShellPreferCli()) {
-                const HdcShellSyncResult r = HdcSocketClient::runShellSync(
-                    m_serialNumber,
-                    QStringLiteral("install ") + m_hapPath.nativePath(),
-                    600000);
-                if (r.isOk()) {
-                    DeployErrorFlags socketFlags = NoError;
-                    for (QString ln : r.standardOutput.split('\n')) {
-                        ln = ln.trimmed();
-                        if (!ln.isEmpty())
-                            socketFlags |= parseDeployErrors(ln);
-                    }
-                    if (socketFlags == NoError) {
-                        for (QString ln : r.standardOutput.split('\n')) {
-                            ln = ln.trimmed();
-                            if (!ln.isEmpty())
-                                emit addOutput(ln, OutputFormat::Stdout, DontAppendNewline);
-                        }
-                        return SetupResult::StopWithSuccess;
-                    }
-                    qCDebug(harmonyDeployLog)
-                        << "install via hdc socket reported deploy errors, falling back to hdc.exe";
-                } else {
-                    qCDebug(harmonyDeployLog) << "install via hdc socket failed, falling back to hdc.exe"
-                                              << int(r.code) << r.errorMessage;
+            QStringList iargs = hdcSelector(m_serialNumber);
+            iargs << QStringLiteral("install") << m_hapPath.nativePath();
+            const auto rejectSock = [](const HdcShellSyncResult &sock) -> bool {
+                if (!sock.isOk())
+                    return false;
+                DeployErrorFlags f = NoError;
+                for (QString ln : sock.standardOutput.split('\n')) {
+                    ln = ln.trimmed();
+                    if (!ln.isEmpty())
+                        f |= parseDeployErrors(ln);
                 }
+                return f != NoError;
+            };
+            const HdcShellSyncResult r = HdcSocketClient::runSyncWithCliFallback(
+                m_serialNumber,
+                QStringLiteral("install ") + m_hapPath.nativePath(),
+                m_hdcPath.toUserOutput(),
+                iargs,
+                600000,
+                {},
+                rejectSock);
+            if (r.isOk()) {
+                DeployErrorFlags *flagsPtr = storage.activeStorage();
+                for (QString ln : r.standardOutput.split('\n')) {
+                    ln = ln.trimmed();
+                    if (!ln.isEmpty()) {
+                        *flagsPtr |= parseDeployErrors(ln);
+                        emit addOutput(ln, OutputFormat::Stdout, DontAppendNewline);
+                    }
+                }
+                return SetupResult::StopWithSuccess;
             }
-            cmd.addArgs(hdcSelector(m_serialNumber));
-            cmd.addArgs({"install", m_hapPath.nativePath()});
+            reportWarningOrError(r.errorMessage, Task::Error);
+            return SetupResult::StopWithError;
         }
 
         process.setCommand(cmd);
@@ -582,36 +585,54 @@ QWidget *HarmonyDeployQtStep::createConfigWidget()
             return;
         }
 
-        const auto onHdcSetup = [serialNumber, packagePath, hdcPath](Process &process) -> SetupResult {
-            if (!harmonyHdcShellPreferCli()) {
-                const HdcShellSyncResult r = HdcSocketClient::runShellSync(
-                    serialNumber,
-                    QStringLiteral("install ") + packagePath.nativePath(),
-                    600000);
-                if (r.isOk()) {
-                    DeployErrorFlags flags = NoError;
-                    for (QString ln : r.standardOutput.split('\n')) {
-                        ln = ln.trimmed();
-                        if (!ln.isEmpty())
-                            flags |= parseDeployErrors(ln);
-                    }
-                    if (flags == NoError) {
-                        Core::MessageManager::writeFlashing(
-                            Tr::tr("HarmonyOS package was installed successfully."));
-                        qCDebug(harmonyDeployLog).noquote()
-                            << "Manual HAP install via hdc socket OK:" << packagePath.toUserOutput();
-                        return SetupResult::StopWithSuccess;
-                    }
-                }
-                qCDebug(harmonyDeployLog) << "Manual HAP socket install failed or reported errors, using hdc.exe"
-                                          << packagePath.toUserOutput();
-            }
+        const QPointer<QWidget> dlgParentPtr(dlgParent);
+        const auto onHdcSetup = [serialNumber, packagePath, hdcPath, dlgParentPtr](Process &process) -> SetupResult {
             QStringList args = hdcSelector(serialNumber);
             args << QLatin1String("install") << packagePath.toUserOutput();
-            const CommandLine cmd(hdcPath, args);
-            process.setCommand(cmd);
-            qCDebug(harmonyDeployLog).noquote() << "Manual HAP install:" << cmd.toUserOutput();
-            return SetupResult::Continue;
+            const auto rejectSock = [](const HdcShellSyncResult &sock) -> bool {
+                if (!sock.isOk())
+                    return false;
+                DeployErrorFlags f = NoError;
+                for (QString ln : sock.standardOutput.split('\n')) {
+                    ln = ln.trimmed();
+                    if (!ln.isEmpty())
+                        f |= parseDeployErrors(ln);
+                }
+                return f != NoError;
+            };
+            const HdcShellSyncResult r = HdcSocketClient::runSyncWithCliFallback(
+                serialNumber,
+                QStringLiteral("install ") + packagePath.nativePath(),
+                hdcPath.toUserOutput(),
+                args,
+                600000,
+                {},
+                rejectSock);
+            if (r.isOk()) {
+                Core::MessageManager::writeFlashing(
+                    Tr::tr("HarmonyOS package was installed successfully."));
+                qCDebug(harmonyDeployLog).noquote()
+                    << "Manual HAP install OK:" << packagePath.toUserOutput();
+                return SetupResult::StopWithSuccess;
+            }
+            const QString err = r.errorMessage;
+            QMetaObject::invokeMethod(
+                qApp,
+                [dlgParentPtr, err]() {
+                    QWidget *p = dlgParentPtr.data();
+                    if (p) {
+                        QMessageBox::warning(
+                            p,
+                            Tr::tr("Install HAP"),
+                            Tr::tr("Installation failed.\n\n%1").arg(err));
+                    }
+                    TaskHub::addTask(DeploymentTask(
+                        Task::Error,
+                        Tr::tr("HAP installation failed: %1").arg(err)));
+                },
+                Qt::QueuedConnection);
+            Q_UNUSED(process)
+            return SetupResult::StopWithError;
         };
         const auto onHdcDone = [dlgParent](const Process &process, DoneWith result) {
             if (result == DoneWith::Success) {

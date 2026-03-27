@@ -28,6 +28,7 @@
 #include <QtTaskTree/qtasktree.h>
 
 #include <chrono>
+#include <functional>
 
 using namespace ProjectExplorer;
 using namespace Utils;
@@ -112,7 +113,7 @@ struct HdcShellOutcome {
     QString errorDetail;
 };
 
-// P2-15 phase 2: prefer hdc daemon socket; optional CLI via QTC_HARMONY_HDC_USE_CLI or fallback.
+// P2-15 phase 2: socket first + hdc.exe fallback is implemented in HdcSocketClient::runSyncWithCliFallback.
 static HdcShellOutcome runHdcShellSocketThenCli(RunControl *runControl,
                                                 const QString &serial,
                                                 const QString &shellLine,
@@ -120,42 +121,25 @@ static HdcShellOutcome runHdcShellSocketThenCli(RunControl *runControl,
 {
     HdcShellOutcome out;
     const QString wireCmd = QStringLiteral("shell ") + shellLine;
-
-    if (!harmonyHdcShellPreferCli()) {
-        const HdcShellSyncResult sock = HdcSocketClient::runShellSync(
-            serial, wireCmd, int(timeout.count() * 1000));
-        if (sock.isOk()) {
-            out.ok = true;
-            return out;
-        }
-        qCWarning(harmonyRunLog) << "runHdcShellSocketThenCli socket failed" << int(sock.code)
-                                 << sock.errorMessage;
-        if (runControl) {
-            runControl->postMessage(
-                Tr::tr("Harmony: hdc daemon socket failed, falling back to hdc.exe (%1).")
-                    .arg(sock.errorMessage),
-                NormalMessageFormat);
-        }
-    }
-
     const FilePath hdc = HarmonyConfig::hdcToolPath();
-    if (!hdc.isExecutableFile()) {
-        out.errorDetail = Tr::tr("hdc executable not found.");
-        return out;
-    }
-
-    Process process;
     QStringList args = hdcSelector(serial);
     args << QStringLiteral("shell") << shellLine;
-    process.setCommand(CommandLine{hdc, args});
-    process.setWorkingDirectory(hdc.parentDir());
-    process.setUtf8Codec();
-    process.runBlocking(timeout);
-    if (process.result() == ProcessResult::FinishedWithSuccess) {
-        out.ok = true;
-        return out;
+    std::function<void(const QString &)> notifier;
+    if (runControl) {
+        notifier = [runControl](const QString &m) {
+            runControl->postMessage(m, NormalMessageFormat);
+        };
     }
-    out.errorDetail = process.exitMessage();
+    const HdcShellSyncResult r = HdcSocketClient::runSyncWithCliFallback(
+        serial,
+        wireCmd,
+        hdc.toUserOutput(),
+        args,
+        int(timeout.count() * 1000),
+        notifier,
+        {});
+    out.ok = r.isOk();
+    out.errorDetail = r.isOk() ? QString() : r.errorMessage;
     return out;
 }
 

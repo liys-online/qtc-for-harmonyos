@@ -5,7 +5,9 @@
 #include "hdcsocketprotocol.h"
 
 #include <QEventLoop>
+#include <QFileInfo>
 #include <QLoggingCategory>
+#include <QProcess>
 #include <QTcpSocket>
 #include <QTimer>
 #include <QtEndian>
@@ -366,6 +368,109 @@ HdcShellSyncResult HdcSocketClient::runShellSync(const QString &serial,
     }
 
     return result;
+}
+
+bool HdcSocketClient::preferCliFromEnvironment()
+{
+    const QByteArray v = qgetenv("QTC_HARMONY_HDC_USE_CLI");
+    if (v.isEmpty())
+        return false;
+    const QString s = QString::fromLatin1(v).trimmed();
+    return s.compare(u"1", Qt::CaseInsensitive) == 0
+        || s.compare(u"true", Qt::CaseInsensitive) == 0
+        || s.compare(u"yes", Qt::CaseInsensitive) == 0;
+}
+
+HdcShellSyncResult HdcSocketClient::runSyncWithCliFallback(
+    const QString &deviceSerial,
+    const QString &daemonCommand,
+    const QString &hdcProgram,
+    const QStringList &cliArgs,
+    int timeoutMs,
+    const std::function<void(const QString &message)> &socketFallbackNotifier,
+    const std::function<bool(const HdcShellSyncResult &socketResult)> &rejectSocketOk)
+{
+    HdcShellSyncResult out;
+    if (timeoutMs <= 0) {
+        out.code = HdcShellSyncResult::Code::CliFailed;
+        out.errorMessage = tr("hdc sync: invalid timeout");
+        return out;
+    }
+
+    const bool cliOnly = preferCliFromEnvironment();
+    HdcShellSyncResult sock;
+    bool socketRejected = false;
+
+    if (!cliOnly) {
+        sock = runShellSync(deviceSerial, daemonCommand, timeoutMs);
+        if (sock.isOk()) {
+            socketRejected = bool(rejectSocketOk) && rejectSocketOk(sock);
+            if (!socketRejected)
+                return sock;
+            if (socketFallbackNotifier) {
+                socketFallbackNotifier(
+                    tr("Harmony: rejecting hdc socket output, falling back to hdc.exe."));
+            }
+            qCDebug(hdcSocketLog) << "runSyncWithCliFallback: socket result rejected, using hdc.exe";
+        } else {
+            if (socketFallbackNotifier) {
+                socketFallbackNotifier(
+                    tr("Harmony: hdc daemon socket failed, falling back to hdc.exe (%1).")
+                        .arg(sock.errorMessage));
+            }
+            qCWarning(hdcSocketLog) << "runSyncWithCliFallback socket failed" << int(sock.code)
+                                    << sock.errorMessage;
+        }
+    } else {
+        qCDebug(hdcSocketLog) << "runSyncWithCliFallback: QTC_HARMONY_HDC_USE_CLI — hdc.exe only";
+    }
+
+    if (hdcProgram.isEmpty()) {
+        out.code = HdcShellSyncResult::Code::CliFailed;
+        out.errorMessage = tr("hdc executable not found.");
+        return out;
+    }
+    const QFileInfo fi(hdcProgram);
+    if (!fi.exists() || !fi.isFile()) {
+        out.code = HdcShellSyncResult::Code::CliFailed;
+        out.errorMessage = tr("hdc executable not found.");
+        return out;
+    }
+
+    QProcess proc;
+    proc.setProgram(hdcProgram);
+    proc.setArguments(cliArgs);
+    proc.setWorkingDirectory(fi.absolutePath());
+    proc.setProcessChannelMode(QProcess::MergedChannels);
+    proc.start();
+    if (!proc.waitForStarted(30000)) {
+        out.code = HdcShellSyncResult::Code::CliFailed;
+        out.errorMessage = proc.errorString().isEmpty() ? tr("hdc.exe failed to start.") : proc.errorString();
+        return out;
+    }
+    if (!proc.waitForFinished(timeoutMs)) {
+        proc.kill();
+        proc.waitForFinished(3000);
+        out.code = HdcShellSyncResult::Code::Timeout;
+        out.errorMessage = tr("hdc.exe timeout after %1 ms.").arg(timeoutMs);
+        return out;
+    }
+    out.standardOutput = QString::fromUtf8(proc.readAllStandardOutput());
+    if (proc.exitStatus() == QProcess::CrashExit) {
+        out.code = HdcShellSyncResult::Code::CliFailed;
+        out.errorMessage = tr("hdc.exe crashed.");
+        return out;
+    }
+    if (proc.exitCode() != 0) {
+        out.code = HdcShellSyncResult::Code::CliFailed;
+        const QString detail = out.standardOutput.trimmed();
+        out.errorMessage = tr("hdc.exe exited with code %1%2")
+                               .arg(proc.exitCode())
+                               .arg(detail.isEmpty() ? QString() : QStringLiteral(": ") + detail);
+        return out;
+    }
+    out.code = HdcShellSyncResult::Code::Ok;
+    return out;
 }
 
 } // namespace Ohos::Internal

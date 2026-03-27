@@ -69,10 +69,8 @@ QStringList applicationAbis(const ProjectExplorer::Kit *k);
 QStringList hdcSelector(const QString &serialNumber);
 
 /**
- * When true, operations equivalent to @c hdc shell … use the @c hdc.exe subprocess instead of the
- * local hdc daemon TCP socket (@c HdcSocketClient::runShellSync). Set environment variable
- * @c QTC_HARMONY_HDC_USE_CLI to @c 1, @c true, or @c yes (case-insensitive) to force CLI mode
- * (troubleshooting or incompatible daemon versions).
+ * Delegates to @c HdcSocketClient::preferCliFromEnvironment() (@c QTC_HARMONY_HDC_USE_CLI).
+ * When @c true, @c HdcSocketClient::runSyncWithCliFallback skips the daemon and runs @c hdc.exe only.
  */
 bool harmonyHdcShellPreferCli();
 

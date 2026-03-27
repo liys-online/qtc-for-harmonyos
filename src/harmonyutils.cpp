@@ -8,6 +8,7 @@
 #include <cmakeprojectmanager/cmakeprojectconstants.h>
 #include <coreplugin/icontext.h>
 #include "harmonydevice.h"
+#include "hdcsocketclient.h"
 
 #include <projectexplorer/buildconfiguration.h>
 #include <projectexplorer/buildsystem.h>
@@ -63,13 +64,7 @@ QStringList hdcSelector(const QString &serialNumber)
 
 bool harmonyHdcShellPreferCli()
 {
-    const QByteArray v = qgetenv("QTC_HARMONY_HDC_USE_CLI");
-    if (v.isEmpty())
-        return false;
-    const QString s = QString::fromLatin1(v).trimmed();
-    return s.compare(u"1", Qt::CaseInsensitive) == 0
-        || s.compare(u"true", Qt::CaseInsensitive) == 0
-        || s.compare(u"yes", Qt::CaseInsensitive) == 0;
+    return HdcSocketClient::preferCliFromEnvironment();
 }
 
 QString harmonyEffectiveDeviceSerial(const BuildConfiguration *bc)

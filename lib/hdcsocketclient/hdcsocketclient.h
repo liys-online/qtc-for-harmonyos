@@ -8,6 +8,9 @@
 #include <QObject>
 #include <QString>
 #include <QStringDecoder>
+#include <QStringList>
+
+#include <functional>
 
 QT_BEGIN_NAMESPACE
 class QTcpSocket;
@@ -23,7 +26,9 @@ struct HdcShellSyncResult {
         ConnectionFailed,
         HandshakeFailed,
         BadFrame,
-        SocketError
+        SocketError,
+        /// @c hdc.exe was run after socket was skipped/failed/rejected, and exited non-zero or I/O error.
+        CliFailed
     };
     Code code = Code::SocketError;
     QString errorMessage;
@@ -62,6 +67,25 @@ public:
     static HdcShellSyncResult runShellSync(const QString &deviceSerial,
                                            const QString &daemonCommand,
                                            int timeoutMs = 30000);
+
+    /// @c QTC_HARMONY_HDC_USE_CLI — same semantics as @c harmonyHdcShellPreferCli() in the plugin.
+    static bool preferCliFromEnvironment();
+
+    /**
+     * Unless preferCliFromEnvironment(): run TCP @c runShellSync; if that fails, or @p rejectSocketOk
+     * returns @c true for an otherwise OK socket result, fall back to @c hdcProgram with @p cliArgs.
+     * If preferCliFromEnvironment(): run @c hdc.exe only.
+     * @p socketFallbackNotifier is invoked (e.g. UI log) when falling back after socket failure or
+     * rejection; not called when CLI-only mode.
+     */
+    static HdcShellSyncResult runSyncWithCliFallback(
+        const QString &deviceSerial,
+        const QString &daemonCommand,
+        const QString &hdcProgram,
+        const QStringList &cliArgs,
+        int timeoutMs,
+        const std::function<void(const QString &message)> &socketFallbackNotifier = {},
+        const std::function<bool(const HdcShellSyncResult &socketResult)> &rejectSocketOk = {});
 
 signals:
     void lineReceived(const QString &line);
