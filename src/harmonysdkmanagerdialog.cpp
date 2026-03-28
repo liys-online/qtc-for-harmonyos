@@ -109,7 +109,6 @@ private:
 
     QComboBox *m_mirrorCombo = nullptr;
     QLabel *m_pathsHintLabel = nullptr;
-    QPushButton *m_openHarmonyPrefsButton = nullptr;
     QTreeWidget *m_tree = nullptr;
     QPlainTextEdit *m_log = nullptr;
     QProgressBar *m_progress = nullptr;
@@ -146,11 +145,6 @@ HarmonySdkManagerDialog::HarmonySdkManagerDialog(QWidget *parent)
     m_pathsHintLabel->setWordWrap(true);
     m_pathsHintLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
-    m_openHarmonyPrefsButton = new QPushButton(Tr::tr("Open Harmony Settings…"));
-    connect(m_openHarmonyPrefsButton, &QPushButton::clicked, this, [] {
-        Core::ICore::showSettings(Id(Constants::HARMONY_SETTINGS_ID));
-    });
-
     m_autoExtractCheck = new QCheckBox(
         Tr::tr("After each download, extract with the system \"tar\" into "
                "<HarmonyOS SDK location>/<API version>/ (macOS, Linux, Windows 10+)."));
@@ -160,13 +154,12 @@ HarmonySdkManagerDialog::HarmonySdkManagerDialog(QWidget *parent)
                "so components merge into one SDK tree per API level."));
 
     m_tree = new QTreeWidget;
-    m_tree->setColumnCount(5);
+    m_tree->setColumnCount(4);
     m_tree->setHeaderLabels({
         Tr::tr("Get"),
         Tr::tr("API"),
         Tr::tr("Component"),
         Tr::tr("Size"),
-        Tr::tr("URL"),
     });
     m_tree->header()->setStretchLastSection(true);
     m_tree->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -203,10 +196,8 @@ HarmonySdkManagerDialog::HarmonySdkManagerDialog(QWidget *parent)
     using namespace Layouting;
 
     Column {
-        Tr::tr("Fetch component index from HarmonyOS / mirror (same protocol as Qt for OHOS build scripts)."),
         Row { Tr::tr("Backup mirror:"), m_mirrorCombo, st, m_refreshBtn },
         m_pathsHintLabel,
-        Row { m_openHarmonyPrefsButton, st },
         m_autoExtractCheck,
         m_tree,
         m_progress,
@@ -252,8 +243,6 @@ void HarmonySdkManagerDialog::setBusy(bool busy)
     m_refreshBtn->setEnabled(!busy);
     m_downloadBtn->setEnabled(!busy);
     m_mirrorCombo->setEnabled(!busy);
-    if (m_openHarmonyPrefsButton)
-        m_openHarmonyPrefsButton->setEnabled(!busy);
     if (m_autoExtractCheck)
         m_autoExtractCheck->setEnabled(!busy);
     if (m_tree)
@@ -312,7 +301,6 @@ void HarmonySdkManagerDialog::fillTree(const QVector<HarmonySdkPackageEntry> &en
             child->setText(1, e.apiVersion);
             child->setText(2, e.componentPath);
             child->setText(3, formatSizeBytes(e.archive.size));
-            child->setText(4, e.archive.url.toDisplayString());
         }
     }
 
