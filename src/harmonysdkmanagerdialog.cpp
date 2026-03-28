@@ -107,7 +107,6 @@ private:
     void finishDownloadBatch();
     void refreshPathsHint();
 
-    QComboBox *m_mirrorCombo = nullptr;
     QLabel *m_pathsHintLabel = nullptr;
     QTreeWidget *m_tree = nullptr;
     QPlainTextEdit *m_log = nullptr;
@@ -136,10 +135,6 @@ HarmonySdkManagerDialog::HarmonySdkManagerDialog(QWidget *parent)
 {
     setWindowTitle(Tr::tr("OpenHarmony SDK Manager"));
     resize(900, 600);
-
-    m_mirrorCombo = new QComboBox;
-    m_mirrorCombo->addItem(Tr::tr("Primary server + GitCode backup mirror"));
-    m_mirrorCombo->addItem(Tr::tr("Primary server + GitHub backup mirror"));
 
     m_pathsHintLabel = new QLabel;
     m_pathsHintLabel->setWordWrap(true);
@@ -196,7 +191,7 @@ HarmonySdkManagerDialog::HarmonySdkManagerDialog(QWidget *parent)
     using namespace Layouting;
 
     Column {
-        Row { Tr::tr("Backup mirror:"), m_mirrorCombo, st, m_refreshBtn },
+        Row { st, m_refreshBtn },
         m_pathsHintLabel,
         m_autoExtractCheck,
         m_tree,
@@ -242,7 +237,6 @@ void HarmonySdkManagerDialog::setBusy(bool busy)
 {
     m_refreshBtn->setEnabled(!busy);
     m_downloadBtn->setEnabled(!busy);
-    m_mirrorCombo->setEnabled(!busy);
     if (m_autoExtractCheck)
         m_autoExtractCheck->setEnabled(!busy);
     if (m_tree)
@@ -253,11 +247,8 @@ void HarmonySdkManagerDialog::setBusy(bool busy)
 
 void HarmonySdkManagerDialog::onRefreshList()
 {
-    const auto mirror = m_mirrorCombo->currentIndex() == 1 ? HarmonySdkBackupMirror::GitHub
-                                                             : HarmonySdkBackupMirror::GitCode;
-    const HarmonySdkDownloader::ListRequest req = HarmonySdkDownloader::defaultListRequest(mirror);
+    const HarmonySdkDownloader::ListRequest req = HarmonySdkDownloader::defaultListRequest(HarmonySdkBackupMirror::GitCode);
     appendLog(Tr::tr("Requesting package list (POST %1)…").arg(req.primaryListPostUrl.toDisplayString()));
-    appendLog(Tr::tr("Backup GET %1").arg(req.backupListGetUrl.toDisplayString()));
     setBusy(true);
     m_tree->clear();
     m_entries.clear();
