@@ -4,7 +4,7 @@
 <context>
     <name>Ohos::Internal::HarmonyConfigurations</name>
     <message>
-        <location filename="harmonyconfigurations.cpp" line="+1243"/>
+        <location filename="harmonyconfigurations.cpp" line="+1247"/>
         <source>Found %1 Harmony toolchain bundles</source>
         <translation>找到 %1 个鸿蒙工具链包</translation>
     </message>
@@ -35,7 +35,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+106"/>
+        <location line="+108"/>
         <source>Harmony Kit: Could not detect OHOS_ARCH from Qt or toolchain; defaulting CMake variable to %1. If configure still fails, add OHOS_ARCH in Kit CMake configuration or fix Qt mkspecs qdevice.pri.</source>
         <translation>Harmony 套件：无法从 Qt 或工具链检测到 OHOS_ARCH，已将 CMake 变量默认设为 %1。若配置仍失败，请在套件的 CMake 配置中添加 OHOS_ARCH，或修复 Qt mkspecs 中的 qdevice.pri。</translation>
     </message>
@@ -166,7 +166,7 @@
         <translation>不可用（请配置 CMake 或选择应用程序目标）</translation>
     </message>
     <message>
-        <location filename="harmonydevice.cpp" line="+79"/>
+        <location filename="harmonydevice.cpp" line="+81"/>
         <source>HarmonyOS Device</source>
         <translation>HarmonyOS设备</translation>
     </message>
@@ -375,7 +375,7 @@
         <translation type="vanished">可选：llvm/lib/clang/…/bin/aarch64-linux-ohos 下的静态 lldb（远程调试不需要）</translation>
     </message>
     <message>
-        <location line="+150"/>
+        <location line="+152"/>
         <source>Select an NDK</source>
         <translation>选择 NDK</translation>
     </message>
@@ -429,7 +429,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation>HarmonyOS SDK 目录不可写</translation>
     </message>
     <message>
-        <location line="-524"/>
+        <location line="-526"/>
         <source>All changes on this page take effect immediately.</source>
         <translation>本页面上的所有更改均立即生效。</translation>
     </message>
@@ -513,7 +513,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation type="obsolete">Qt for Harmony qmake路径：</translation>
     </message>
     <message>
-        <location line="+179"/>
+        <location line="+181"/>
         <source>SDK path does not exist or is not writable</source>
         <translation>SDK 路径不存在或不可写</translation>
     </message>
@@ -544,7 +544,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation>Qt for Harmony 的 qmake 不存在</translation>
     </message>
     <message>
-        <location filename="harmonyqtversion.cpp" line="+53"/>
+        <location filename="harmonyqtversion.cpp" line="+55"/>
         <location filename="harmonysettingswidget.cpp" line="+167"/>
         <source>HarmonyOS</source>
         <translation>HarmonyOS</translation>
@@ -655,12 +655,12 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
     </message>
     <message>
         <location line="-73"/>
-        <location line="+278"/>
+        <location line="+280"/>
         <source>Could not find hvigorw.js file, please check your HarmonyOS SDK configuration.</source>
         <translation>未找到 hvigorw.js，请检查 HarmonyOS SDK 配置。</translation>
     </message>
     <message>
-        <location line="-248"/>
+        <location line="-250"/>
         <source>Invalid ohpm registry URL in Harmony preferences: &quot;%1&quot;</source>
         <translation>鸿蒙首选项中的 ohpm 注册表 URL 无效：“%1”</translation>
     </message>
@@ -680,7 +680,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation>程序“%1”不存在或不可执行。</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+38"/>
         <source>Starting: &quot;%1&quot; %2</source>
         <translation>正在启动：“%1” %2</translation>
     </message>
@@ -700,7 +700,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation>构建 Harmony HAP</translation>
     </message>
     <message>
-        <location filename="harmonydebugsupport.cpp" line="+265"/>
+        <location filename="harmonydebugsupport.cpp" line="+275"/>
         <source>Harmony DAP debug: no build configuration.</source>
         <translation>Harmony DAP 调试：无构建配置。</translation>
     </message>
@@ -749,7 +749,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+21"/>
         <source>Harmony DAP debug: unknown ABI &apos;%1&apos;, defaulting to aarch64-linux-ohos.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -759,7 +759,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+39"/>
         <source>Harmony DAP debug: stale lldb-server cleanup output: %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -796,7 +796,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+10"/>
         <source>Harmony DAP debug: launching app with &apos;aa start&apos;.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -816,7 +816,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+17"/>
         <source>Harmony DAP debug: injecting lldb-server: %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1097,7 +1097,7 @@ Ensure AppScope/app.json5 exists and contains app.bundleName.</source>
         <translation>即使已卸载旧包，应用安装仍失败。</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+10"/>
         <source>Installing the app failed with an unknown error.</source>
         <translation>应用安装失败，原因未知。</translation>
     </message>
@@ -1590,13 +1590,13 @@ If needed, add the kit’s &lt;b&gt;qmake&lt;/b&gt; under &lt;i&gt;Qt for Harmon
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+13"/>
-        <location line="+109"/>
+        <location line="+15"/>
+        <location line="+113"/>
         <source>Harmony Application</source>
         <translation>Harmony 应用</translation>
     </message>
     <message>
-        <location filename="harmonyrunner.cpp" line="+161"/>
+        <location filename="harmonyrunner.cpp" line="+163"/>
         <source>Skipping post-quit on-device shell commands: no device serial.</source>
         <translation>跳过退出后设备命令：无设备序列号。</translation>
     </message>
@@ -1646,7 +1646,7 @@ If needed, add the kit’s &lt;b&gt;qmake&lt;/b&gt; under &lt;i&gt;Qt for Harmon
         <translation>“%1”强制停止失败：%2</translation>
     </message>
     <message>
-        <location line="+119"/>
+        <location line="+117"/>
         <source>Harmony: hilog skipped – bundle name unknown (cannot filter by PID).</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1661,7 +1661,7 @@ If needed, add the kit’s &lt;b&gt;qmake&lt;/b&gt; under &lt;i&gt;Qt for Harmon
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+45"/>
         <source>Starting Harmony application via hdc daemon socket…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1705,7 +1705,7 @@ Extract manually, then add the SDK root in Harmony settings.</source>
         <translation>无法创建文件夹：%1</translation>
     </message>
     <message>
-        <location filename="harmonysdkdownloader.cpp" line="+138"/>
+        <location filename="harmonysdkdownloader.cpp" line="+140"/>
         <source>Invalid JSON: %1</source>
         <translation>无效 JSON：%1</translation>
     </message>
