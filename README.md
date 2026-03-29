@@ -1,7 +1,14 @@
 # Qt Creator — Harmony / OpenHarmony 插件
 
-[![QTC For HarmonyOS CI](https://github.com/liys-online/qtc-for-harmonyos/actions/workflows/cmake-multi-platform.yml/badge.svg)](https://github.com/liys-online/qtc-for-harmonyos/actions/workflows/cmake-multi-platform.yml)
+[![CI macOS](https://github.com/liys-online/qtc-for-harmonyos/actions/workflows/ci-mac.yml/badge.svg)](https://github.com/liys-online/qtc-for-harmonyos/actions/workflows/ci-mac.yml)
+
+[![CI Linux](https://github.com/liys-online/qtc-for-harmonyos/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/liys-online/qtc-for-harmonyos/actions/workflows/ci-linux.yml)
+
+[![CI Windows](https://github.com/liys-online/qtc-for-harmonyos/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/liys-online/qtc-for-harmonyos/actions/workflows/ci-windows.yml)
+
 [![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=liys-online_qtc-for-harmonyos)](https://sonarcloud.io/summary/new_code?id=liys-online_qtc-for-harmonyos)
+
+---
 
 > **当前发布线：1.0.0-alpha（预览）** — 主路径（配置 → 构建 HAP → 部署 → 运行）已打通，行为与 API 仍可能调整；详见 [docs/README.md](docs/README.md)、[docs/OPERATIONS.md](docs/OPERATIONS.md) 与 [docs/PRIORITY-PLAN.md](docs/PRIORITY-PLAN.md)。**关于对话框中的版本号**来自 `Harmony.json`（由 `Harmony.json.in` 生成）：须为 **纯数字** `x.y.z`（Qt Creator 限制）；**alpha** 体现在 Tag / Release 与英文 Description。
 
