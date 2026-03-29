@@ -72,6 +72,7 @@ endif()
 add_qtc_plugin(Harmony
   PLUGIN_DEPENDS
     QtCreator::Core
+    QtCreator::Debugger
     QtCreator::ProjectExplorer
     QtCreator::QtSupport
     QtCreator::CMakeProjectManager
@@ -113,6 +114,7 @@ add_qtc_plugin(Harmony
     harmonyrunconfiguration.h harmonyrunconfiguration.cpp
     harmonymainrunsockettask.h harmonymainrunsockettask.cpp
     harmonyrunner.h harmonyrunner.cpp
+    harmonydebugsupport.h harmonydebugsupport.cpp
     ohosconstants.h
     ohostr.h
     harmonyqtcdefs.h
@@ -159,3 +161,24 @@ qt_add_resources(Harmony harmony_i18n_qm
   PREFIX "/"
   FILES "${_harmony_zh_cn_qm}")
 add_dependencies(Harmony harmony_generate_qm_files)
+
+# 将 OHOS 定制化的 lldbbridge.py 部署到构建树的 debugger/ 目录，
+# 在 LLDB attach 时由 Qt Creator LLDB 引擎加载，使其支持 remote-ohos 平台。
+# 源文件位于插件的 scripts/ 目录，以便与 Qt Creator 上游 lldbbridge.py 区分。
+# 使用 stamp 文件作为 OUTPUT 避免与上游规则声明相同 OUTPUT 产生的 ninja 冲突。
+set(_harmony_lldbbridge_src "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/lldbbridge.py")
+set(_harmony_lldbbridge_dst "${CMAKE_BINARY_DIR}/${IDE_DATA_PATH}/debugger/lldbbridge.py")
+set(_harmony_lldbbridge_stamp "${CMAKE_CURRENT_BINARY_DIR}/HarmonyLldbBridge.stamp")
+add_custom_command(
+    OUTPUT  "${_harmony_lldbbridge_stamp}"
+    COMMAND "${CMAKE_COMMAND}" -E copy "${_harmony_lldbbridge_src}" "${_harmony_lldbbridge_dst}"
+    COMMAND "${CMAKE_COMMAND}" -E touch "${_harmony_lldbbridge_stamp}"
+    DEPENDS "${_harmony_lldbbridge_src}"
+    COMMENT "Deploying OHOS lldbbridge.py to debugger resources"
+)
+add_custom_target(HarmonyLldbBridge ALL DEPENDS "${_harmony_lldbbridge_stamp}")
+# 确保在 Qt Creator 上游 copy 之后执行，避免被覆盖
+if(TARGET copy_share_files_to_builddir)
+    add_dependencies(HarmonyLldbBridge copy_share_files_to_builddir)
+endif()
+add_dependencies(Harmony HarmonyLldbBridge)

@@ -136,6 +136,16 @@ public:
             hilogFilter.setEnabled(hilogEnabled());
         });
 
+        startupBreak.setId(Constants::HARMONY_DEBUG_STARTUP_BREAK);
+        startupBreak.setSettingsKey(Constants::HARMONY_DEBUG_STARTUP_BREAK);
+        startupBreak.setLabelText(Tr::tr("Enable startup breakpoints (aa start -D)"));
+        startupBreak.setToolTip(Tr::tr(
+            "Use 'aa start -D' to pause the ArkTS/JS VM before native code runs, "
+            "allowing breakpoints to be set in C++ startup code (main(), constructors, etc.). "
+            "The ohos_lldb_debug_cli bridge binary must be next to the Qt Creator executable.\n"
+            "Disable this option only when attaching to an already running process."));
+        startupBreak.setDefaultValue(true);
+
         setUpdater([this] {
             const ProjectExplorer::BuildTargetInfo bti = buildTargetInfo();
             /*
@@ -210,6 +220,7 @@ public:
     HarmonyMigratingStringAspect abilityNameOverride{this, Key("Harmony.Run.AbilityNameOverrideKey")};
     BoolAspect hilogEnabled{this};
     HarmonyMigratingStringAspect hilogFilter{this, {}};
+    BoolAspect startupBreak{this};
 };
 namespace {
 

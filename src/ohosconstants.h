@@ -94,6 +94,8 @@ const char HARMONY_RUN_ABILITY_OVERRIDE[] = "Harmony.Run.AbilityNameOverride";
 const char HARMONY_HILOG_ENABLED[] = "Harmony.Run.HilogEnabled";
 /** Run configuration: optional hilog filter tag/pattern (empty → stream all logs). */
 const char HARMONY_HILOG_FILTER[] = "Harmony.Run.HilogFilter";
+/** Run configuration: enable startup-break mode (aa start -D + ArkTS WebSocket unblock). */
+const char HARMONY_DEBUG_STARTUP_BREAK[] = "Harmony.Debug.StartupBreak";
 const char HARMONY_BUILD_DIRECTORY[] = "ohpro";
 const char HarmonyApplicationArgs[] = "HarmonyApplicationArgs"; // QString
 

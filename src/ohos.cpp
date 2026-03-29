@@ -30,6 +30,7 @@
 #include "harmonyqtversion.h"
 #include "harmonytoolchain.h"
 #include "harmonyrunconfiguration.h"
+#include "harmonydebugsupport.h"
 #include "harmonyrunner.h"
 #include "harmonydeployqtstep.h"
 #include "harmonylogcategories.h"
@@ -121,6 +122,7 @@ public:
 
         setupHarmonyRunConfiguration();
         setupHarmonyRunWorker();
+        setupHarmonyDebugWorker();
         connect(KitManager::instance(), &KitManager::kitsLoaded, this, &OhosPlugin::kitsRestored,
                 Qt::SingleShotConnection);
         connect(ProjectManager::instance(), &ProjectManager::activeBuildConfigurationChanged,

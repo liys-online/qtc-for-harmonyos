@@ -700,7 +700,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation>构建 Harmony HAP</translation>
     </message>
     <message>
-        <location filename="harmonydebugsupport.cpp" line="+275"/>
+        <location filename="harmonydebugsupport.cpp" line="+314"/>
         <source>Harmony DAP debug: no build configuration.</source>
         <translation>Harmony DAP 调试：无构建配置。</translation>
     </message>
@@ -759,90 +759,128 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+39"/>
-        <source>Harmony DAP debug: stale lldb-server cleanup output: %1</source>
+        <location line="+43"/>
+        <source>Harmony DAP debug: step 1 — force stop</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+5"/>
-        <source>Harmony DAP debug: stale lldb-server cleanup failed: %1...</source>
+        <location line="+40"/>
+        <source>Harmony DAP debug: step 4 — %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+11"/>
-        <location line="+10"/>
-        <location line="+9"/>
-        <source>Harmony DAP debug: pre-launch command failed: %1</source>
-        <translation>Harmony DAP 调试：启动前命令失败：%1</translation>
+        <location line="+2"/>
+        <source>aa start -D (startup-break mode)</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+9"/>
-        <source>Harmony DAP debug: lldb-server pushed from: %1</source>
+        <location line="+1"/>
+        <source>aa start</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Harmony DAP debug: step 5 — poll app PID</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location line="+4"/>
-        <source>Harmony DAP debug: lldb-server verify output: %1</source>
+        <source>Harmony DAP debug: could not determine app PID after launch.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+5"/>
-        <source>Harmony DAP debug: lldb-server verify command failed: %1</source>
-        <translation>Harmony DAP 调试：lldb-server 校验命令失败：%1</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Harmony DAP debug: lldb-server is not visible on device after start...</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+10"/>
-        <source>Harmony DAP debug: launching app with &apos;aa start&apos;.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>Harmony DAP debug: aa start warning: %1</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+9"/>
-        <source>Harmony DAP debug: could not determine app PID after launch...</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Harmony DAP debug: app PID %1.</source>
+        <location line="+12"/>
+        <source>Harmony DAP debug: step 5b — ArkTS port-forward + bridge</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location line="+17"/>
-        <source>Harmony DAP debug: injecting lldb-server: %1</source>
+        <source>Harmony DAP debug: fport tcp:%1 ark:%2@%3 → %4</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>Harmony DAP debug: fport tcp:%1 ark:%2@Debugger → %3</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Harmony DAP debug: bridge started (PID %1), connecting to ws://127.0.0.1:%2…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location line="+7"/>
-        <source>Harmony DAP debug: aa process output: %1</source>
+        <source>Harmony DAP debug: bridge binary not found (%1). ArkTS startup-break may not work.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+4"/>
-        <source>Harmony DAP debug: aa process warning: %1</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+21"/>
-        <source>Harmony DAP debug: lldb-server confirmed (attempt %1): %2</source>
+        <location line="+7"/>
+        <source>Harmony DAP debug: step 6 — inject lldb-server</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location line="+8"/>
-        <source>Harmony DAP debug: WARNING — lldb-server with socket &apos;%1&apos; NOT found after 8 s. Check that the HAP is a debug build signed by DevEco Studio and that SELinux allows execution from /data/local/tmp/debugserver/.</source>
+        <source>Harmony DAP debug: injecting: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+10"/>
-        <source>Harmony DAP debug: connecting with socket=%1</source>
+        <location line="+30"/>
+        <source>Harmony DAP debug: WARNING — lldb-server with socket &apos;%1&apos; not seen after 8 s. Check the HAP is a debug build and SELinux allows /data/local/tmp/debugserver/.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Harmony DAP debug: connecting — socket=%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-190"/>
+        <source>Harmony DAP debug: step 2 — prepare remote dir</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Harmony DAP debug: failed to create remote dir: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Harmony DAP debug: step 3 — push lldb-server</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Harmony DAP debug: lldb-server pushed from: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Harmony DAP debug: lldb-server verify command failed: %1</source>
+        <translation type="vanished">Harmony DAP 调试：lldb-server 校验命令失败：%1</translation>
+    </message>
+    <message>
+        <location line="-8"/>
+        <source>Harmony DAP debug: failed to push lldb-server: %1</source>
+        <oldsource>Harmony DAP debug: lldb-server is not visible on device after start...</oldsource>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+28"/>
+        <source>Harmony DAP debug: aa start warning: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Harmony DAP debug: app PID %1.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+91"/>
+        <source>Harmony DAP debug: aa process warning: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Harmony DAP debug: lldb-server confirmed (attempt %1): %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1590,8 +1628,21 @@ If needed, add the kit’s &lt;b&gt;qmake&lt;/b&gt; under &lt;i&gt;Qt for Harmon
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+15"/>
-        <location line="+113"/>
+        <location line="+10"/>
+        <source>Enable startup breakpoints (aa start -D)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Use &apos;aa start -D&apos; to pause the ArkTS/JS VM before native code runs, allowing breakpoints to be set in C++ startup code (main(), constructors, etc.). The ohos_lldb_debug_cli bridge binary must be next to the Qt Creator executable.
+Disable this option only when attaching to an already running process.</source>
+        <oldsource>Use &apos;aa start -D&apos; to pause the ArkTS/JS VM before native code runs, allowing breakpoints to be set in C++ startup code (main(), constructors, etc.). Requires WebSocket bridge to unblock ArkTS.
+Without this option the app starts normally and LLDB attaches to the running process.</oldsource>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <location line="+114"/>
         <source>Harmony Application</source>
         <translation>Harmony 应用</translation>
     </message>
