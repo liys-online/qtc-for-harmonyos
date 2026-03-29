@@ -33,6 +33,7 @@ jobs:
           version: ${{ env.QT_VERSION }}
           target: desktop
           arch: clang_64
+          modules: "qtwebsockets"
           cache: true
 
       - name: Download and extract Qt Creator 19 (runtime + dev SDK)
@@ -118,6 +119,7 @@ jobs:
           version: ${{ env.QT_VERSION }}
           target: desktop
           arch: linux_gcc_64
+          modules: "qtwebsockets"
           cache: true
 
       - name: Download and extract Qt Creator 19 (runtime + dev SDK)
@@ -195,6 +197,7 @@ jobs:
           version: ${{ env.QT_VERSION }}
           target: desktop
           arch: win64_msvc2022_64
+          modules: "qtwebsockets"
           cache: true
 
       - name: Download and extract Qt Creator 19 (runtime + dev SDK)
