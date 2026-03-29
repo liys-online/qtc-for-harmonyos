@@ -31,6 +31,7 @@
 .qmake.stash
 .qmlls.ini
 .vscode
+*.code-workspace
 Makefile*
 Thumbs.db
 core
@@ -292,3 +293,4 @@ tmp/
 
 # Translation files
 Harmony_en.ts
+Harmony_untranslated.ts
