@@ -121,7 +121,6 @@ private:
 
     QLabel *m_hintLabel = nullptr;
     QPushButton *m_openGitCodeBtn = nullptr;
-    QPushButton *m_openHarmonySettingsBtn = nullptr;
     PathChooser *m_installRootChooser = nullptr;
     QTreeWidget *m_tree = nullptr;
     QPlainTextEdit *m_log = nullptr;
@@ -168,11 +167,6 @@ HarmonyQtOhSdkManagerDialog::HarmonyQtOhSdkManagerDialog(QWidget *parent)
             "https://gitcode.com/openharmony-sig/qt/releases")));
     });
 
-    m_openHarmonySettingsBtn = new QPushButton(Tr::tr("Open Harmony Settings…"));
-    connect(m_openHarmonySettingsBtn, &QPushButton::clicked, this, [] {
-        Core::ICore::showSettings(Id(Constants::HARMONY_SETTINGS_ID));
-    });
-
     m_installRootChooser = new PathChooser;
     m_installRootChooser->setExpectedKind(PathChooser::Directory);
     m_installRootChooser->setPromptDialogTitle(Tr::tr("Select Qt for OpenHarmony Install Root"));
@@ -208,6 +202,7 @@ HarmonyQtOhSdkManagerDialog::HarmonyQtOhSdkManagerDialog(QWidget *parent)
     m_refreshBtn = new QPushButton(Tr::tr("Refresh List"));
     m_downloadBtn = new QPushButton(Tr::tr("Download Selected"));
     m_closeBtn = new QPushButton(Tr::tr("Close"));
+    m_refreshBtn->setDefault(true);
 
     m_listDownloader = new HarmonyQtOhReleasesDownloader(this);
     connect(m_listDownloader, &HarmonyQtOhReleasesDownloader::releasesFetched, this,
@@ -225,23 +220,13 @@ HarmonyQtOhSdkManagerDialog::HarmonyQtOhSdkManagerDialog(QWidget *parent)
     connect(m_tree, &QTreeWidget::itemChanged, this, &HarmonyQtOhSdkManagerDialog::onTreeItemChanged);
 
     m_hintLabel->setText(
-        Tr::tr("Release list is loaded from the binary catalog JSON "
-               "(<code>qt-for-openharmony.binary-catalog</code> v1). The plugin first requests "
-               "the catalog from <b>GitCode</b> (raw), then falls back to <b>GitHub</b> if that "
-               "fails. Set environment variable <code>QT_OH_BINARY_CATALOG_URL</code> to override "
-               "the primary URL only. "
-               "Only prebuilt packages whose <code>platform</code> matches <b>this computer’s OS</b> "
-               "are listed. The catalog <code>arch</code> field is the <b>OpenHarmony target</b> "
-               "(not this PC’s CPU), so device and emulator builds may both appear. "
-               "<code>kind: metadata</code> source archives are hidden. "
-               "Upstream Qt OH project: <a href=\"%1\">GitCode releases</a>.")
-            .arg(QString::fromLatin1("https://gitcode.com/openharmony-sig/qt/releases")));
+        Tr::tr("Release list is loaded from the online catalog. Only packages for this platform are shown."));
 
     using namespace Layouting;
 
     Column {
         m_hintLabel,
-        Row { m_openGitCodeBtn, m_openHarmonySettingsBtn, st },
+        Row { m_openGitCodeBtn, st },
         Tr::tr("Install / download root:"),
         m_installRootChooser,
         m_autoExtractCheck,
@@ -276,8 +261,6 @@ void HarmonyQtOhSdkManagerDialog::setBusy(bool busy)
         m_autoExtractCheck->setEnabled(!busy);
     if (m_openGitCodeBtn)
         m_openGitCodeBtn->setEnabled(!busy);
-    if (m_openHarmonySettingsBtn)
-        m_openHarmonySettingsBtn->setEnabled(!busy);
 }
 
 void HarmonyQtOhSdkManagerDialog::onRefreshList()

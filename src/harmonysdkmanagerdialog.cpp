@@ -173,6 +173,7 @@ HarmonySdkManagerDialog::HarmonySdkManagerDialog(QWidget *parent)
     m_refreshBtn = new QPushButton(Tr::tr("Refresh List"));
     m_downloadBtn = new QPushButton(Tr::tr("Download Selected"));
     m_closeBtn = new QPushButton(Tr::tr("Close"));
+    m_refreshBtn->setDefault(true);
 
     m_listDownloader = new HarmonySdkDownloader(this);
     connect(m_listDownloader, &HarmonySdkDownloader::packageListFetched, this,
@@ -191,12 +192,11 @@ HarmonySdkManagerDialog::HarmonySdkManagerDialog(QWidget *parent)
     using namespace Layouting;
 
     Column {
-        Row { st, m_refreshBtn },
         m_pathsHintLabel,
         m_autoExtractCheck,
         m_tree,
         m_progress,
-        Row { m_downloadBtn, st, m_closeBtn },
+        Row { m_refreshBtn, st, m_downloadBtn, st, m_closeBtn },
         Tr::tr("Log:"),
         m_log,
     }.attachTo(this);

@@ -254,8 +254,7 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     downloadQtForHarmony->setToolTip(Tr::tr("Open Qt for Harmony download URL in the system's browser."));
     auto manageQtOhSdkBtn = new QPushButton(Tr::tr("Manage Qt for OpenHarmony SDK…"));
     manageQtOhSdkBtn->setToolTip(
-        Tr::tr("Browse Qt for OpenHarmony packages from the binary catalog JSON "
-               "(qt-oh-binary-catalog.v1.json), loaded from GitCode with GitHub fallback."));
+        Tr::tr("Browse Qt for OpenHarmony packages (online catalog)."));
     auto qtForHarmonyDetailsWidget = new DetailsWidget;
     auto harmonyDetailsWidget = new DetailsWidget;
     const QMap<int, QString> harmonyValidationPoints = {
