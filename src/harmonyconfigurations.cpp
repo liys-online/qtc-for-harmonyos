@@ -512,7 +512,7 @@ Abi abi(const QLatin1String &arch)
 
 QPair<QVersionNumber, QVersionNumber> getVersion(const Utils::FilePath &releaseFile)
 {
-    // 打开文件
+    /* ** 打开文件 */
     QPair<QVersionNumber, QVersionNumber> versionPair(QVersionNumber(-1), QVersionNumber(-1));
 
     QString filePath = releaseFile.path();
@@ -547,7 +547,7 @@ static void appendHarmonyHdcToolchainBases(QVector<FilePath> &out, const FilePat
         out.append(root / "default" / "openharmony" / "toolchains");
     };
     appendPair(sdkRoot);
-    // SDK 根下多 API 目录（如 …/sdk/18/toolchains/hdc）
+    /* ** SDK 根下多 API 目录（如 …/sdk/18/toolchains/hdc） */
     const FilePaths children = sdkRoot.dirEntries(QDir::Dirs | QDir::NoDotAndDotDot);
     for (const FilePath &ch : children) {
         if (ch.fileName() == QStringLiteral(".temp"))
@@ -663,7 +663,7 @@ FilePath ndkLocation(const Utils::FilePath &sdkLocation)
     const QVector<FilePath> candidatePaths = {
         root / "native",
         root / "default" / "openharmony" / "native",
-        // 部分 DevEco / 华为侧 SDK 布局：版本目录下直接为 openharmony/native
+        /* ** 部分 DevEco / 华为侧 SDK 布局：版本目录下直接为 openharmony/native */
         root / "openharmony" / "native",
     };
 
@@ -813,9 +813,9 @@ FilePath harmonyBundledNodeUnderTools(const FilePath &toolsDir)
     if (toolsDir.isEmpty() || !toolsDir.isReadableDir())
         return {};
     const FilePath candidates[] = {
-        // 旧布局（部分 DevEco / Windows）
+        /* ** 旧布局（部分 DevEco / Windows） */
         toolsDir / "node" / "node",
-        // 常见：macOS / 新版 DevEco 为 tools/node/bin/node
+        /* ** 常见：macOS / 新版 DevEco 为 tools/node/bin/node */
         toolsDir / "node" / "bin" / "node",
     };
     for (const FilePath &p : candidates) {
@@ -834,12 +834,12 @@ FilePath nodeLocation()
     if (!bundled.isEmpty())
         return bundled;
 
-    // 未随 DevEco 安装或路径变更时，使用系统 PATH 中的 node（brew / 官网安装均可跑 hvigor）
+    /* ** 未随 DevEco 安装或路径变更时，使用系统 PATH 中的 node（brew / 官网安装均可跑 hvigor） */
     const FilePath fromPath = Environment::systemEnvironment().searchInPath("node");
     if (fromPath.isExecutableFile())
         return fromPath;
 
-    // 供诊断：仍返回旧版默认路径（可能不存在）
+    /* ** 供诊断：仍返回旧版默认路径（可能不存在） */
     if (!tools.isEmpty())
         return (tools / "node" / "node").withExecutableSuffix();
     return {};
@@ -921,7 +921,7 @@ FilePath javaLocation()
     if (!stored.isEmpty()) {
         const FilePath jbrRoot = devecoMacBundleContentsOrSame(stored) / "jbr";
 #ifdef Q_OS_MACOS
-        // JetBrains JBR on macOS: …/jbr/Contents/Home/bin/java（勿把 JAVA_HOME 指到 jbr 根目录）
+        /* ** JetBrains JBR on macOS: …/jbr/Contents/Home/bin/java（勿把 JAVA_HOME 指到 jbr 根目录） */
         if (const FilePath macHome = javaHomeIfValid(jbrRoot / "Contents" / "Home"); !macHome.isEmpty())
             return macHome;
 #endif
@@ -1015,7 +1015,7 @@ void HarmonyConfigurations::load()
     settings->endGroup();
 
     bool needSave = false;
-    // macOS/Linux: make comes from PATH (same idea as GCC toolchain); drop stored MinGW-style root.
+    /* ** macOS/Linux：make 来自 PATH（与 GCC 工具链思路相同）；丢弃已存的 MinGW 式路径。 */
     if (!HostOsInfo::isWindowsHost() && !HarmonyConfig::makeLocation().isEmpty()) {
         HarmonyConfig::setMakeLocation({});
         needSave = true;
@@ -1042,7 +1042,7 @@ void HarmonyConfigurations::persistSettings()
 
 void HarmonyConfigurations::updateHarmonyDevice()
 {
-    // Remove any dummy Harmony device, because it won't be usable.
+    /* ** 移除虚拟 Harmony 设备（无法使用）。 */
     DeviceManager *const devMgr = DeviceManager::instance();
     IDevice::ConstPtr dev = devMgr->find(Constants::HARMONY_DEVICE_ID);
     if (dev)
@@ -1139,12 +1139,12 @@ void HarmonyConfigurations::removeOldToolchains()
 
 void HarmonyConfigurations::updateAutomaticKitList()
 {
-    // 更新现有Harmony Kit的NDK和SDK设置
+    /* ** 更新现有 Harmony Kit 的 NDK 和 SDK 设置 */
     for (Kit *k : KitManager::kits()) {
         if (RunDeviceTypeKitAspect::deviceTypeId(k) == Constants::HARMONY_DEVICE_TYPE) {
             if (k->value(Constants::HARMONY_KIT_NDK).isNull() || k->value(Constants::HARMONY_KIT_SDK).isNull()) {
                 if (QtKitAspect::qtVersion(k)) {
-                    // 设置NDK和SDK路径
+                    /* ** 设置 NDK 和 SDK 路径 */
                     const FilePath ndkPath = HarmonyConfig::ndkLocation(HarmonyConfig::defaultSdk());
                     k->setValueSilently(Constants::HARMONY_KIT_NDK, ndkPath.toSettings());
                     k->setValueSilently(Constants::HARMONY_KIT_SDK, HarmonyConfig::defaultSdk().toSettings());
@@ -1153,14 +1153,14 @@ void HarmonyConfigurations::updateAutomaticKitList()
         }
     }
 
-    // 获取现有的Harmony Kit列表
+    /* ** 获取现有的 Harmony Kit 列表 */
     const QList<Kit *> existingKits = Utils::filtered(KitManager::kits(), [](Kit *k) {
         Id deviceTypeId = RunDeviceTypeKitAspect::deviceTypeId(k);
         return k->detectionSource().isAutoDetected() && !k->detectionSource().isSdkProvided()
                && deviceTypeId == Constants::HARMONY_DEVICE_TYPE;
     });
 
-    // 按架构分组Qt版本
+    /* ** 按架构分组 Qt 版本 */
     QHash<Abi, QList<const QtVersion *>> qtVersionsForArch;
     const QtVersions qtVersions = QtVersionManager::versions([](const QtVersion *v) {
         return v->type() == Constants::HARMONY_QT_TYPE;
@@ -1173,7 +1173,7 @@ void HarmonyConfigurations::updateAutomaticKitList()
         qtVersionsForArch[qtAbis.first()].append(qtVersion);
     }
 
-    // 获取有效的工具链Bundle
+    /* ** 获取有效的工具链 Bundle */
     const QList<ToolchainBundle> bundles = Utils::filtered(
         ToolchainBundle::collectBundles(
             ToolchainManager::toolchains([](const Toolchain *tc) {
@@ -1184,11 +1184,11 @@ void HarmonyConfigurations::updateAutomaticKitList()
     qCDebug(harmonyConfigLog) << tr("Found %1 Harmony toolchain bundles").arg(bundles.size());
     QList<Kit *> unhandledKits = existingKits;
 
-    // 为每个工具链Bundle和Qt版本组合创建Kit
+    /* ** 为每个工具链 Bundle 和 Qt 版本组合创建 Kit */
     for (const ToolchainBundle &bundle : bundles) {
         const auto &versions = qtVersionsForArch.value(bundle.targetAbi());
         for (const QtVersion *qt : versions) {
-            // 检查工具链的NDK位置是否与Qt版本匹配
+            /* ** 检查工具链的 NDK 位置是否与 Qt 版本匹配 */
             const auto tcApiVersion = bundle.get(&HarmonyToolchain::apiVersion);
             const auto expectedNdkPath = bundle.get(&HarmonyToolchain::ndkLocation);
             qCDebug(harmonyConfigLog)
@@ -1208,15 +1208,15 @@ void HarmonyConfigurations::updateAutomaticKitList()
              */
             Kit *existingKit = Utils::findOrDefault(existingKits, [qt, bundle](const Kit *k) {
                 return (qt == QtKitAspect::qtVersion(k));
-                // return matchKit(bundle, k);
+                /* ** return matchKit(bundle, k); */
             });
 
-            // Kit初始化函数
+            /* ** Kit 初始化函数 */
             const auto initializeKit = [&bundle, expectedNdkPath, ohQt](Kit *k) {
 
                 using namespace CMakeProjectManager;
                 auto cmakeConfig = CMakeConfigurationKitAspect::defaultConfiguration(k);
-                // CMakeConfig 为 QMap：用 insert，无 append（Qt Creator 19+）
+                /* ** CMakeConfig 为 QMap：用 insert，无 append（Qt Creator 19+） */
                 cmakeConfig.insert(CMakeConfigItem("CMAKE_TOOLCHAIN_FILE", CMakeConfigItem::FILEPATH,
                                                    HarmonyConfig::toolchainFilePath(expectedNdkPath)
                                                        .toUserOutput()
@@ -1226,8 +1226,10 @@ void HarmonyConfigurations::updateAutomaticKitList()
                                     QByteArrayLiteral("%{Qt:QT_INSTALL_PREFIX}")));
                 cmakeConfig.insert(
                     CMakeConfigItem("OHOS_STL", CMakeConfigItem::STRING, QByteArrayLiteral("c++_shared")));
-                // targetAbi() 若未从 qdevice.pri 解析到，会得到无效 Abi → displayName 为 "unknown"，
-                // ohos.toolchain.cmake 会报 unrecognized unknown。优先用 Qt 版本身 ABI，否则用工具链 Bundle。
+                /*
+                ** targetAbi() 若未从 qdevice.pri 解析到，会得到无效 Abi → displayName 为 "unknown"，
+                ** ohos.toolchain.cmake 会报 unrecognized unknown。优先用 Qt 版本身 ABI，否则用工具链 Bundle。
+                */
                 const QByteArray rawOhosArch = [&] {
                     QByteArray a = abiToOhosNdkArchString(ohQt->targetAbi());
                     if (a.isEmpty())
@@ -1254,7 +1256,7 @@ void HarmonyConfigurations::updateAutomaticKitList()
                 cmakeConfig.insert(
                     CMakeConfigItem("OHOS_PLATFORM", CMakeConfigItem::STRING, QByteArrayLiteral("OHOS")));
 
-                // Unix Makefiles 生成器需要本机 make：PATH 优先（Homebrew 等），再试常见路径。
+                /* ** Unix Makefiles 生成器需要本机 make：PATH 优先（Homebrew 等），再试常见路径。 */
                 if (HostOsInfo::isAnyUnixHost()) {
                     const FilePath unixMake = unixHostMakeProgramForCMake();
                     if (!unixMake.isEmpty()) {
@@ -1279,18 +1281,18 @@ void HarmonyConfigurations::updateAutomaticKitList()
                 ToolchainKitAspect::setBundle(k, bundle);
                 QtKitAspect::setQtVersion(k, ohQt);
 
-                // 设置构建设备为默认桌面设备
+                /* ** 设置构建设备为默认桌面设备 */
                 BuildDeviceKitAspect::setDeviceId(k, DeviceManager::defaultDesktopDevice()->id());
 
                 CMakeConfigurationKitAspect::setConfiguration(k, cmakeConfig);
 
-                // On Windows, adapt Harmony Qt Kit to use MinGW Makefiles if possible.
+                /* ** Windows 上：将 Harmony Qt Kit 适配为使用 MinGW Makefiles（如可能）。 */
                 if (HostOsInfo::isWindowsHost()) {
                     using namespace CMakeProjectManager;
-                    // Force generator to MinGW Makefiles so CMake uses mingw32-make
+                    /* ** 强制生成器为 MinGW Makefiles，使 CMake 使用 mingw32-make */
                     CMakeGeneratorKitAspect::setGenerator(k, QStringLiteral("MinGW Makefiles"));
 
-                    // If a makeLocation (MinGW root) is configured, ensure CMAKE_MAKE_PROGRAM points to mingw32-make.exe
+                    /* ** 若已配置 makeLocation（MinGW 根目录），确保 CMAKE_MAKE_PROGRAM 指向 mingw32-make.exe */
                     const FilePath root = HarmonyConfig::makeLocation();
                     if (!root.isEmpty()) {
                         const FilePath mingwMake = root.pathAppended("bin/mingw32-make.exe");
@@ -1302,12 +1304,12 @@ void HarmonyConfigurations::updateAutomaticKitList()
                     }
                 }
                 
-                // 设置粘性属性，防止用户意外修改关键设置
+                /* ** 设置粘性属性，防止用户意外修改关键设置 */
                 k->setSticky(QtKitAspect::id(), true);
                 k->setSticky(RunDeviceTypeKitAspect::id(), true);
                 k->setSticky(ToolchainKitAspect::id(), true);
 
-                // 设置显示名称
+                /* ** 设置显示名称 */
                 QString versionStr = QLatin1String("Qt %{Qt:Version}");
                 if (!ohQt->detectionSource().isAutoDetected())
                     versionStr = QString("%1").arg(ohQt->displayName());
@@ -1317,7 +1319,7 @@ void HarmonyConfigurations::updateAutomaticKitList()
                                                      versionStr,
                                                      HarmonyConfig::displayName(ohQt->targetAbi())));
 
-                // 设置NDK和SDK路径
+                /* ** 设置 NDK 和 SDK 路径 */
                 k->setValueSilently(Constants::HARMONY_KIT_NDK, expectedNdkPath.toSettings());
                 k->setValueSilently(Constants::HARMONY_KIT_SDK, ohQt->qmakeFilePath().toSettings());
                 k->setValueSilently(Constants::HARMONY_KIT_MODULE_DEVICE_TYPES,
@@ -1325,17 +1327,17 @@ void HarmonyConfigurations::updateAutomaticKitList()
             };
 
             if (existingKit) {
-                // 更新现有Kit
+                /* ** 更新现有 Kit */
                 initializeKit(existingKit);
                 unhandledKits.removeOne(existingKit);
             } else {
-                // 注册新Kit
+                /* ** 注册新 Kit */
                 KitManager::registerKit(initializeKit);
             }
         }
     }
 
-    // 清理不再使用的Kit
+    /* ** 清理不再使用的 Kit */
     KitManager::deregisterKits(unhandledKits);
 }
 

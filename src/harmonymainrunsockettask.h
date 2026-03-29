@@ -13,7 +13,7 @@ class RunControl;
 
 namespace Ohos::Internal {
 
-/// Streams the Harmony run's device shell script over hdc daemon TCP (P2-15 phase 3).
+/* ** 通过 hdc 守护进程 TCP 流式传输 Harmony 运行的设备 Shell 脚本（P2-15 阶段三）。 */
 class HarmonyMainRunSocketTask final : public QObject
 {
     Q_OBJECT

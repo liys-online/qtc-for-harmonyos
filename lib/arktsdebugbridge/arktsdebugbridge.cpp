@@ -122,7 +122,7 @@ void ArkTSDebugBridge::onL1Connected()
     if (m_state != State::ConnectingL1)
         return;
 
-    // 停止重试定时器
+    /* ** 停止重试定时器 */
     if (m_retryTimer) {
         m_retryTimer->stop();
         m_retryTimer->deleteLater();
@@ -146,7 +146,7 @@ void ArkTSDebugBridge::onL1TextMessageReceived(const QString &message)
                 obj.value(QStringLiteral("instanceId")).toString(QStringLiteral("0"));
             log(QStringLiteral("[BRIDGE] Got addInstance, instanceId=%1").arg(instanceId));
 
-            // 取消 addInstance 超时看门狗
+            /* ** 取消 addInstance 超时看门狗 */
             if (m_deadlineTimer) {
                 m_deadlineTimer->stop();
                 m_deadlineTimer->deleteLater();
@@ -164,7 +164,7 @@ void ArkTSDebugBridge::onL1TextMessageReceived(const QString &message)
 void ArkTSDebugBridge::onL1Disconnected()
 {
     if (m_state == State::ConnectingL1) {
-        // 连接被拒绝，等待重试
+        /* ** 连接被拒绝，等待重试 */
         if (m_retryTimer == nullptr) {
             m_retryTimer = new QTimer(this);
             m_retryTimer->setSingleShot(true);
@@ -179,7 +179,7 @@ void ArkTSDebugBridge::onL1Disconnected()
         return;
     }
 
-    // 非预期状态下的断开连接
+    /* ** 非预期状态下的断开连接 */
     if (m_state != State::Idle) {
         qCWarning(arkLog) << "L1 WebSocket disconnected unexpectedly in state" << int(m_state);
     }
@@ -210,13 +210,13 @@ void ArkTSDebugBridge::startSignalWatch()
 {
     log(QStringLiteral("[BRIDGE] Waiting for signal: %1").arg(m_signalFile));
 
-    // 每 100ms 轮询一次
+    /* ** 每 100ms 轮询一次 */
     m_signalTimer = new QTimer(this);
     m_signalTimer->setInterval(kSignalPollMs);
     connect(m_signalTimer, &QTimer::timeout, this, &ArkTSDebugBridge::onSignalPollTick);
     m_signalTimer->start();
 
-    // 总超时 120s
+    /* ** 总超时 120s */
     m_deadlineTimer = new QTimer(this);
     m_deadlineTimer->setSingleShot(true);
     connect(m_deadlineTimer, &QTimer::timeout, this, &ArkTSDebugBridge::onSignalTimeout);
@@ -231,14 +231,14 @@ void ArkTSDebugBridge::onSignalPollTick()
     if (!QFile::exists(m_signalFile))
         return;
 
-    // 信号文件已出现，停止轮询和看门狗定时器
+    /* ** 信号文件已出现，停止轮询和看门狗定时器 */
     m_signalTimer->stop();
     m_signalTimer->deleteLater();
     m_signalTimer = nullptr;
 
     m_deadlineTimer->stop(); /* ** 下方复用此定时器作为 addInstance 超时 */
 
-    // 发送 {"type":"connected"}（第一级解锁）
+    /* ** 发送 {"type":"connected"}（第一级解锁）*/
     const QString connected = QStringLiteral("{\"type\":\"connected\"}");
     if (!m_l1Socket || m_l1Socket->state() != QAbstractSocket::ConnectedState) {
         fatalError(QStringLiteral("[BRIDGE] ERROR sending connected: socket not ready"));
@@ -248,13 +248,13 @@ void ArkTSDebugBridge::onSignalPollTick()
     m_l1Socket->sendTextMessage(connected);
     log(QStringLiteral("[BRIDGE] Sent {\"type\":\"connected\"} successfully"));
 
-    // 切换状态并启动 addInstance 超时（30s）
+    /* ** 切换状态并启动 addInstance 超时（30s）*/
     m_state = State::WaitingAddInstance;
     log(QStringLiteral("[BRIDGE] Waiting for addInstance response..."));
 
     m_deadlineTimer->setInterval(kAddInstanceWaitMs);
     m_deadlineTimer->setSingleShot(true);
-    // 复用同一定时器，重新绑定 addInstance 超时槽函数
+    /* ** 复用同一定时器，重新绑定 addInstance 超时槽函数 */
     disconnect(m_deadlineTimer, &QTimer::timeout, this, &ArkTSDebugBridge::onSignalTimeout);
     connect(m_deadlineTimer, &QTimer::timeout, this, [this] {
         log(QStringLiteral("[BRIDGE] WARNING: no addInstance — trying Panda CDT anyway"));
@@ -325,7 +325,7 @@ void ArkTSDebugBridge::onL2Connected()
     m_state = State::Running;
     sendCDTMessages();
 
-    // 运行 180s 窗口
+    /* ** 运行 180s 窗口 */
     m_runTimer = new QTimer(this);
     m_runTimer->setSingleShot(true);
     connect(m_runTimer, &QTimer::timeout, this, &ArkTSDebugBridge::onRunTimeout);
@@ -334,8 +334,10 @@ void ArkTSDebugBridge::onL2Connected()
 
 void ArkTSDebugBridge::sendCDTMessages()
 {
-    // 依次发送 Runtime.enable / Debugger.enable / Runtime.runIfWaitingForDebugger
-    // 每条消息间隔 100ms
+    /*
+    ** 依次发送 Runtime.enable / Debugger.enable / Runtime.runIfWaitingForDebugger
+    ** 每条消息间隔 100ms
+    */
     struct CdtMsg
     {
         const char *method;
@@ -346,7 +348,7 @@ void ArkTSDebugBridge::sendCDTMessages()
         {"Runtime.runIfWaitingForDebugger"},
     };
 
-    // 通过单次定时器链依次延迟发送
+    /* ** 通过单次定时器链依次延迟发送 */
     int delayMs = 0;
     for (const CdtMsg &m : kMsgs) {
         ++m_cdtMsgId;
@@ -401,7 +403,7 @@ void ArkTSDebugBridge::onL2TextMessageReceived(const QString &message)
 void ArkTSDebugBridge::onL2Disconnected()
 {
     if (m_state == State::ConnectingL2) {
-        // 等待重试
+        /* ** 等待重试 */
         if (m_retryTimer == nullptr) {
             m_retryTimer = new QTimer(this);
             m_retryTimer->setSingleShot(true);

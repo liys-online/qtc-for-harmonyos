@@ -57,8 +57,10 @@ public:
 
     void setPlatformLinkerFlags(const QStringList &);
 
-    // Reinterpret options for compiler drivers inheriting from GccToolchain (e.g qcc) to apply -Wp option
-    // that passes the initial options directly down to the gcc compiler
+    /*
+    ** 重运用继承自 GccToolchain 的编译器驱动程序（如 qcc）的选项，
+    ** 使其通过 -Wp 选项直接将初始选项传递给底层 gcc 编译器。
+    */
     using OptionsReinterpreter = std::function<QStringList(const QStringList &options)>;
     void setOptionsReinterpreter(const OptionsReinterpreter &optionsReinterpreter);
 

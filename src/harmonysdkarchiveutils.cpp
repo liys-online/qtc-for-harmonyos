@@ -56,7 +56,7 @@ bool extractHarmonySdkArchiveOnce(const FilePath &archive, const FilePath &destD
                      archive.toFSPathString(),
                      QStringLiteral("-C"),
                      destDir.toFSPathString()})));
-    // Default Process::runBlocking() timeout is 10s — Qt/OH SDK archives need much longer.
+    /* ** Process::runBlocking() 默认超时为 10s —— Qt/OH SDK 归档文件需要更长时间。 */
     proc.runBlocking(std::chrono::hours(1));
 
     if (proc.result() != ProcessResult::FinishedWithSuccess) {

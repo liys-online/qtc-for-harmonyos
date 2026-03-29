@@ -89,7 +89,7 @@ void HarmonyHdcTargetsParserTest::testParseLineKind()
 
 void HarmonyHdcTargetsParserTest::testParseDeviceRow_preservesColumns()
 {
-    // Mock：常见 hdc 文本形态（制表符 / 多空格），不依赖本机 hdc。
+    /* ** Mock：常见 hdc 文本形态（制表符 / 多空格），不依赖本机 hdc。 */
     const QString tabLine = QStringLiteral("192.168.1.2:5555\tWLAN\t已连接\n");
     const HdcListTargetsParseResult a = parseHdcListTargetsLine(tabLine);
     QCOMPARE(int(a.kind), int(HdcListTargetsLineKind::DeviceDataRow));

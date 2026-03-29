@@ -222,7 +222,7 @@ static QJsonObject buildCatalog(const QJsonArray &releasesRaw, const QString &re
         outReleases.append(rel);
     }
 
-    // Sort by createdAt descending (string compare works for ISO Z)
+    /* ** 按 createdAt 降序排序（ISO Z 格式可直接进行字符串比较）*/
     QVector<QJsonValue> rows;
     rows.reserve(outReleases.size());
     for (const QJsonValue &v : std::as_const(outReleases))

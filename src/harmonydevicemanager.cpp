@@ -75,7 +75,7 @@ static void handleDevicesListChange(const QString &serialNumber)
                                 || dirtySerial.contains(QStringLiteral("emulator"), Qt::CaseInsensitive);
         QString displayName = QString("%1[%2]").arg(deviceName, dirtySerial);
         if (isEmulator) {
-            // TODO: Implement emulator support
+            /* ** TODO: 实现模拟器支持 */
             qCWarning(harmonyDeviceLog) << QString("The simulator is not yet supported \"%1\".")
                                              .arg(dirtySerial);
         }

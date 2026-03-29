@@ -68,7 +68,7 @@ bool shouldShowCatalogAssetForHost(const QtForOhReleaseAsset &asset)
     if (asset.catalogPlatform != hostPlat)
         return false;
 
-    // catalog `arch` is OpenHarmony *target* ABI (e.g. arm64 device vs x86_64 emulator), not host CPU.
+    /* ** catalog 的 arch 字段为 OpenHarmony *目标* ABI（如设备侧 arm64、模拟器侧 x86_64），而非主机 CPU。 */
     return true;
 }
 

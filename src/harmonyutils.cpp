@@ -201,7 +201,7 @@ Utils::FilePath buildDirectory(const ProjectExplorer::BuildConfiguration *bc)
 {
     const QString buildKey = bc->activeBuildKey();
 
-    // Get the target build dir based on the settings file path
+    /* ** 根据设置文件路径获取目标构建目录 */
     FilePath buildDir;
     const ProjectNode *node = bc->project()->findNodeForBuildKey(buildKey);
     if (node) {
@@ -212,7 +212,7 @@ Utils::FilePath buildDirectory(const ProjectExplorer::BuildConfiguration *bc)
     if (!buildDir.isEmpty())
         return buildDir;
 
-    // Otherwise fallback to target working dir
+    /* ** 否则回退到目标工作目录 */
     buildDir = bc->buildDirectory();
     return buildDir;
 }

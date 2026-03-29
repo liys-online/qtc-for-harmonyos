@@ -42,11 +42,11 @@ enum class HdcTargetConnectionState {
     Disconnected,
 };
 
-// 无 I/O、无 HarmonyConfig；供设备管理与单测共用。
+/* ** 无 I/O、无 HarmonyConfig；供设备管理与单测共用。 */
 HdcListTargetsParseResult parseHdcListTargetsLine(const QString &line);
 HdcTargetConnectionState hdcListTargetsStateToConnectionState(const QString &trimmedState);
 
-// 供单测与诊断：与 \c parseHdcListTargetsLine 内部分词策略一致。
+/* ** 供单测与诊断：与 \c parseHdcListTargetsLine 内部分词策略一致。 */
 QStringList splitHdcListTargetsLine(const QString &line);
 bool hdcListTargetsLineLooksLikeHeader(const QStringList &parts);
 

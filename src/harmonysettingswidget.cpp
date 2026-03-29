@@ -394,10 +394,12 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         executeHarmonyQtOhSdkManagerDialog(Core::ICore::dialogParent());
     });
     setOnApply([] { HarmonyConfigurations::applyConfig(); });
-    // 1) IOptionsPageWidget 无 Aspect/dirtyChecker 时 isDirty() 默认 true。
-    // 2) Utils::markSettingsDirty() 会把整个「偏好设置」的 m_isDirty 置 true；切换子页时会弹
-    //    “The previous page contains unsaved changes.”，与 (1) 无关。本页已用 HarmonyConfig 即时写盘，
-    //    validateSdk() 也会在首次显示时跑一遍，故不得调用 markSettingsDirty()。
+    /*
+    ** 1) IOptionsPageWidget 无 Aspect/dirtyChecker 时 isDirty() 默认 true。
+    ** 2) Utils::markSettingsDirty() 会把整个「偏好设置」的 m_isDirty 置 true；切换子页时会弹
+    **    "The previous page contains unsaved changes."，与 (1) 无关。本页已用 HarmonyConfig 即时写盘，
+    **    validateSdk() 也会在首次显示时跑一遍，故不得调用 markSettingsDirty()。
+    */
     setDirtyChecker([] { return false; });
 
     connect(HarmonyConfigurations::instance(), &HarmonyConfigurations::updated, this, [this] {
@@ -556,7 +558,7 @@ void HarmonySettingsWidget::setAllOk()
 {
     m_harmonySummary->setPointValid(AllEssentialsInstalledRow,
                                     m_harmonySummary->rowsOk(harmonyRowsForAllEssentials()));
-    // Mark default entry in NDK list widget
+    /* ** 标记 NDK 列表控件中的默认条目 */
     {
         const QFont font = m_sdkListWidget->font();
         QFont markedFont = font;

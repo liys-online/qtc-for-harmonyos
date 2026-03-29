@@ -308,7 +308,7 @@ void HarmonySdkManagerDialog::onTreeItemChanged(QTreeWidgetItem *item, int colum
 {
     if (column != 0 || !item)
         return;
-    // Top-level API row: only sync when fully checked/unchecked (not partial from mixed children).
+    /* ** 顶层 API 行：仅在完全选中/取消选中时同步（不处理子项混合状态）。 */
     if (item->parent() == nullptr && item->childCount() > 0) {
         const Qt::CheckState st = item->checkState(0);
         if (st == Qt::PartiallyChecked)

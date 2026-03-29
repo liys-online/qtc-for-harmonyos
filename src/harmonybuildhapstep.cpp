@@ -37,7 +37,7 @@
 #include <utils/id.h>
 #include <QVariant>
 
-// 勿在此 using namespace QtTaskTree：会与 Layouting::Group（layoutbuilder）歧义。
+/* ** 勿在此 using namespace QtTaskTree：会与 Layouting::Group（layoutbuilder）歧义。 */
 using namespace Utils;
 using ProjectExplorer::BuildSystemTask;
 
@@ -73,7 +73,7 @@ void applyHvigorWorkingDirectoryEnv(Environment &evn, const FilePath &absoluteCw
         return;
     const QString p = absoluteCwd.nativePath();
     evn.set(QStringLiteral("PWD"), p);
-    // Node/libuv 与部分 hvigor 子进程依赖 cwd；与 PWD 一致可减少 macOS 上 uv_cwd EPERM
+    /* ** Node/libuv 与部分 hvigor 子进程依赖 cwd；与 PWD 一致可减少 macOS 上 uv_cwd EPERM */
     evn.set(QStringLiteral("INIT_CWD"), p);
 }
 } // namespace
@@ -193,7 +193,7 @@ public:
         // connect(m_certificatesAliasComboBox, &QComboBox::currentIndexChanged, this, updateAlias);
 
 
-        // Application group
+        /* ** Application group */
 
         QList<int>  buildToolsVersions = {HarmonyConfig::devecoStudioVersion().first};
         QStringList versions = HarmonyConfig::apiLevelNamesFor(buildToolsVersions);
@@ -334,7 +334,7 @@ public:
             }
         };
 
-        // main layout
+        /* ** main layout */
         Column {
             signPackageGroup,
             applicationGroup,
@@ -643,9 +643,11 @@ bool HarmonyBuildHapStep::setupProcess(Utils::Process &process)
 
     process.setUseCtrlCStub(HostOsInfo::isWindowsHost());
     process.setWorkingDirectory(workingDir);
-    // Enforce PWD in the environment because some build tools use that.
-    // PWD can be different from getcwd in case of symbolic links (getcwd resolves symlinks).
-    // For example Clang uses PWD for paths in debug info, see QTCREATORBUG-23788
+    /*
+    ** 在环境变量中强制设置 PWD，因为部分构建工具依赖此变量。
+    ** PWD 可能与 getcwd 不同（后者会解析符号链接）。
+    ** 例如，Clang 使用 PWD 生成调试信息中的路径，参见 QTCREATORBUG-23788。
+    */
     Environment envWithPwd = params->environment();
     qCDebug(harmonyBuildLog) << "Environment PATH prepared";
     envWithPwd.set(QStringLiteral("PWD"), workingDir.nativePath());

@@ -33,8 +33,10 @@ void HarmonyQtVersion::addToBuildEnvironment(const ProjectExplorer::Kit *k, Util
             }
         }
     }
-    // 自动注入 JAVA_HOME（DevEco JBR → JAVA_HOME 环境变量 → macOS java_home → PATH），
-    // 使 CMake/hvigor/终端构建无需用户手工配置。
+    /*
+    ** 自动注入 JAVA_HOME（DevEco JBR → JAVA_HOME 环境变量 → macOS java_home → PATH），
+    ** 使 CMake/hvigor/终端构建无需用户手工配置。
+    */
     const FilePath javaHome = HarmonyConfig::javaLocation();
     const FilePath javaExe = (javaHome / "bin" / "java").withExecutableSuffix();
     if (!javaHome.isEmpty() && javaExe.isExecutableFile()) {
@@ -112,9 +114,11 @@ ProjectExplorer::Abi HarmonyQtVersion::targetAbi() const
     if (!qconfigFile.open(QIODevice::ReadOnly | QIODevice::Text))
         return {};
 
-    // 旧实现：任意「包含 OHOS_ARCH 子串」的行都取最后一个词。会误匹配注释，例如
-    // 「# OHOS_ARCH unknown」→ 得到 unknown → abi() 失败 → 无效 Abi；若别处再把
-    // displayName/错误字符串写进 CMake，就会出现 ohos.toolchain.cmake 的 unrecognized unknown。
+    /*
+    ** 旧实现：任意「包含 OHOS_ARCH 子串」的行都取最后一个词。会误匹配注释，例如
+    ** 「# OHOS_ARCH unknown」→ 得到 unknown → abi() 失败 → 无效 Abi；若别处再把
+    ** displayName/错误字符串写进 CMake，就会出现 ohos.toolchain.cmake 的 unrecognized unknown。
+    */
     static const QRegularExpression assignRe(
         QStringLiteral(R"(OHOS_ARCH\s*[=:]\s*(\S+))"),
         QRegularExpression::CaseInsensitiveOption);
@@ -134,7 +138,7 @@ ProjectExplorer::Abi HarmonyQtVersion::targetAbi() const
             return HarmonyConfig::abi(QLatin1String(token.constData(), token.size()));
         }
 
-        // 无等号：「OHOS_ARCH arm64-v8a」；要求首词即为 OHOS_ARCH，避免匹配 DEFINES 等行。
+        /* ** 无等号：「OHOS_ARCH arm64-v8a」；要求首词即为 OHOS_ARCH，避免匹配 DEFINES 等行。 */
         const QStringList parts = trimmed.split(QLatin1Char(' '), Qt::SkipEmptyParts);
         if (parts.size() >= 2
             && parts.constFirst().compare(QString::fromLatin1(Constants::OHOS_ARCH),
@@ -148,7 +152,7 @@ ProjectExplorer::Abi HarmonyQtVersion::targetAbi() const
     return {};
 }
 
-// Factory
+/* ** Factory */
 
 class HarmonyQtVersionFactory : public QtSupport::QtVersionFactory
 {

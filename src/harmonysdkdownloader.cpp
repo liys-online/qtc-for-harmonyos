@@ -19,8 +19,10 @@ using namespace Ohos;
 namespace Ohos::Internal {
 namespace {
 
-// 与 sibling 仓库 `build_qt/configure.json` → dependencies.ohos_sdk 及
-// `build_qt/build_qt/config.py` 中 OhosSdkDownloader(...) 参数一致。
+/*
+** 与 sibling 仓库 `build_qt/configure.json` → dependencies.ohos_sdk 及
+** `build_qt/build_qt/config.py` 中 OhosSdkDownloader(...) 参数一致。
+*/
 
 QString detectOsTypeForSdkList()
 {

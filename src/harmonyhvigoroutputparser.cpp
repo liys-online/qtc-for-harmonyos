@@ -15,25 +15,25 @@ using namespace Utils;
 namespace Ohos::Internal {
 namespace {
 
-// ArkTS / TS-like: path.ext:line:col: message
+/* ** ArkTS/TS 风格：path.ext:行:列: 消息 */
 const QRegularExpression kPathLineColMessage(
     QStringLiteral(R"(^(.+\.(?:ets|ts|tsx|js|jsx|json5?|mjs|cjs|hml|css|java)):(\d+):(\d+):\s*(.+)$)"));
 
-// path.ext:line: message (no column)
+/* ** path.ext:行: 消息（无列号） */
 const QRegularExpression kPathLineMessage(
     QStringLiteral(R"(^(.+\.(?:ets|ts|tsx|js|jsx|json5?|mjs|cjs|hml|css|java)):(\d+):\s*(.+)$)"));
 
-// path.ext(line,col): message
+/* ** path.ext(行,列): 消息 */
 const QRegularExpression kPathParenLineCol(
     QStringLiteral(R"(^(.+\.(?:ets|ts|tsx|js|jsx|json5?|mjs|cjs|hml|css|java))\((\d+),(\d+)\):\s*(.+)$)"));
 
-// hvigor / stack traces
+/* ** hvigor / 堆栈跟踪 */
 const QRegularExpression kAtFile(QStringLiteral(R"(.*\bAt file:\s*(.+)$)"));
 
-// ohpm / npm style path hint
+/* ** ohpm / npm 路径提示 */
 const QRegularExpression kNpmErrPath(QStringLiteral(R"(^npm ERR!\s+.*\b(?:path|file)\s+([^\s].+)$)"));
 
-// Summary lines (no file) — still surface in Issues
+/* ** 摘要行（无文件）— 仍会在 Issues 中显示 */
 const QRegularExpression kHvigorErrorPrefix(QStringLiteral(R"(^(?:> )?hvigor\s+ERROR:\s*(.+)$)"));
 const QRegularExpression kOhpmErrorLine(QStringLiteral(R"(^ohpm\s+ERROR:?\s*(.+)$)"));
 
@@ -95,13 +95,13 @@ OutputLineParser::Result HarmonyHvigorOhpmOutputParser::handleLine(const QString
         return OutputLineParser::Result{Status::Done, linkSpecs};
     };
 
-    // Groups: file, line, column, description
+    /* ** 分组：文件、行、列、描述 */
     if (auto r = tryCompilePattern(kPathLineColMessage, 1, 2, 3, 4, true))
         return *r;
-    // Groups: file, line, description
+    /* ** 分组：文件、行、描述 */
     if (auto r = tryCompilePattern(kPathLineMessage, 1, 2, -1, 3, false))
         return *r;
-    // Groups: file, line, column, description
+    /* ** 分组：文件、行、列、描述 */
     if (auto r = tryCompilePattern(kPathParenLineCol, 1, 2, 3, 4, true))
         return *r;
 

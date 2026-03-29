@@ -35,7 +35,7 @@ HarmonyDeviceWidget::HarmonyDeviceWidget(const IDevice::Ptr &device)
 
 static void updateDeviceState(const IDevice::ConstPtr &device)
 {
-    // hdc 无单设备查询 API：刷新即全量 list targets（与计划 P1-06 一致）。
+    /* ** hdc 无单设备查询 API：刷新即全量 list targets（与计划 P1-06 一致）。 */
     qCDebug(harmonyDeviceLog) << "Refresh requested for device" << (device ? device->id().toString() : QString());
     instance()->queryDevice();
 }
@@ -73,8 +73,9 @@ QStringList HarmonyDevice::supportedAbis() const
 
 bool HarmonyDevice::canSupportAbis(const QStringList &abis) const
 {
-    // If the list is empty, no valid decision can be made, this means something is wrong
-    // somewhere, but let's not stop deployment.
+    /*
+    ** 若列表为空，则无法做出有效决策，说明某处出现了问题，但不应因此中断部署。
+    */
     QTC_ASSERT(!abis.isEmpty(), return true);
 
     const QStringList ourAbis = supportedAbis();
@@ -84,18 +85,19 @@ bool HarmonyDevice::canSupportAbis(const QStringList &abis) const
         if (ourAbis.contains(abi))
             return true; // it's enough if only one abi match is found
 
-    // If no exact match is found, let's take ABI backward compatibility into account
-    // arm64 usually can run {arm, armv7}, x86 can support {arm, armv7}, and 64-bit devices
-    // can support their 32-bit variants.
+    /*
+    ** 若未找到精确匹配，考虑 ABI 向后兼容性：
+    ** arm64 通常可运行 {arm, armv7}，x86 可支持 {arm, armv7}，64 位设备可支持 32 位变体。
+    */
     const bool isTheirsArm = abis.contains(Constants::HARMONY_ABI_ARMEABI)
                              || abis.contains(Constants::HARMONY_ABI_ARMEABI_V7A);
-    // The primary ABI at the first index
+    /* ** 首选 ABI 位于第一个索引处 */
     const bool oursSupportsArm = ourAbis.first() == Constants::HARMONY_ABI_ARM64_V8A
                                  || ourAbis.first() == Constants::HARMONY_ABI_X86;
-    // arm64 and x86 can run armv7 and arm
+    /* ** arm64 和 x86 可运行 armv7 和 arm */
     if (isTheirsArm && oursSupportsArm)
         return true;
-    // x64 can run x86
+    /* ** x64 可运行 x86 */
     if (ourAbis.first() == Constants::HARMONY_ABI_X86_64 && abis.contains(Constants::HARMONY_ABI_X86))
         return true;
 
@@ -104,7 +106,7 @@ bool HarmonyDevice::canSupportAbis(const QStringList &abis) const
 
 bool HarmonyDevice::canHandleDeployments() const
 {
-    // If hardware and disconnected, it would not be possible to start it, unlike an emulator.
+    /* ** 若设备为硬件且已断开连接，则无法启动（与模拟器不同）。 */
     if (machineType() == Hardware && deviceState() == DeviceDisconnected)
         return false;
     return true;
@@ -121,7 +123,7 @@ IDeviceWidget *HarmonyDevice::createWidget()
 }
 
 
-// Factory
+/* ** Factory */
 
 class HarmonyDeviceFactory final : public IDeviceFactory
 {
@@ -130,7 +132,7 @@ public:
         : IDeviceFactory(Constants::HARMONY_DEVICE_TYPE)
     {
         setDisplayName(Tr::tr("HarmonyOS Device"));
-        // 不引用 Android 插件资源；使用 ProjectExplorer 内置通用设备图标（本插件已依赖 PE）。
+        /* ** 不引用 Android 插件资源；使用 ProjectExplorer 内置通用设备图标（本插件已依赖 PE）。 */
         setCombinedIcon(":/projectexplorer/images/desktopdevice.png",
                         ":/projectexplorer/images/desktopdevice@2x.png");
         setConstructionFunction(&HarmonyDevice::create);

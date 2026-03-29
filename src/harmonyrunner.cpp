@@ -35,19 +35,19 @@ using namespace Utils;
 
 namespace Ohos::Internal {
 
-// ---------------------------------------------------------------------------
-// hilog severity → output format
-// Typical hilog line (OpenHarmony):
-//   "MM-DD HH:MM:SS.mmm  <pid>  <tid> <Level> <domain>/<Tag>: <message>"
-// where <Level> is one of D I W E F.
-// We scan positions 4-6 of the whitespace-split parts.
-//
-// Colour mapping (Application Output pane):
-//   D  → StdOutFormat       (normal foreground – unobtrusive)
-//   I  → StdOutFormat       (normal foreground – most readable)
-//   W  → LogMessageFormat   (amber / yellow in most themes)
-//   E/F→ ErrorMessageFormat  (red)
-// ---------------------------------------------------------------------------
+/*
+** hilog 严重性 → 输出格式
+** 典型 hilog 行格式（OpenHarmony）：
+**   "MM-DD HH:MM:SS.mmm  <pid>  <tid> <Level> <domain>/<Tag>: <message>"
+** 其中 <Level> 为 D I W E F 之一。
+** 扫描空格分割后的第 4–6 个部分。
+**
+** 颜色映射（应用输出面板）：
+**   D  → StdOutFormat（正常前景—不显眼）
+**   I  → StdOutFormat（正常前景—最易阅读）
+**   W  → LogMessageFormat（大多数主题中为璐色/黄色）
+**   E/F → ErrorMessageFormat（红色）
+*/
 static OutputFormat hilogLineFormat(const QString &line)
 {
     const QStringList parts = line.split(u' ', Qt::SkipEmptyParts);
@@ -113,7 +113,9 @@ struct HdcShellOutcome {
     QString errorDetail;
 };
 
-// P2-15 phase 2: socket first + hdc.exe fallback is implemented in HdcSocketClient::runSyncWithCliFallback.
+/*
+** P2-15 阶段二：socket 优先 + hdc.exe 回退已实现于 HdcSocketClient::runSyncWithCliFallback。
+*/
 static HdcShellOutcome runHdcShellSocketThenCli(RunControl *runControl,
                                                 const QString &serial,
                                                 const QString &shellLine,
@@ -236,9 +238,9 @@ void stopHarmonyApplicationOnDevice(RunControl *runControl)
     }
 }
 
-// ---------------------------------------------------------------------------
-// P2-14: helper – read a bool/string aspect value from RunControl settings.
-// ---------------------------------------------------------------------------
+/*
+** P2-14：辅助函数—从 RunControl 设置中读取 bool/string 类型的 Aspect 値。
+*/
 static bool readBoolSetting(RunControl *rc, Id key, bool defaultVal)
 {
     const Store sd = rc->settingsData(key);
@@ -259,11 +261,10 @@ static QString readStringSetting(RunControl *rc, Id key)
     return {};
 }
 
-// ---------------------------------------------------------------------------
-// P2-14: resolve device serial for hilog (same two-step logic as the main runner).
-// If serial is empty we omit "-t" and let hdc choose the default device,
-// matching the main runner which also runs without "-t".
-// ---------------------------------------------------------------------------
+/*
+** P2-14：解析 hilog 的设备序列号（与主运行器相同的两步逻辑）。
+** 序列号为空时省略 "-t"，让 hdc 选择默认设备（主运行器也是这样做的）。
+*/
 static QString resolveSerial(RunControl *rc)
 {
     const BuildConfiguration *bc = rc->buildConfiguration();
@@ -279,7 +280,9 @@ static QString resolveSerial(RunControl *rc)
     return serial;
 }
 
-// P2-15 phase 3: device script passed as hdc argv after "shell" (see HarmonyRunConfiguration).
+/*
+** P2-15 阶段三：将设备 shell 脚本作为 hdc argv 中 "shell" 后的参数（见 HarmonyRunConfiguration）。
+*/
 static QString extractHarmonyDeviceShellScript(const RunControl *rc)
 {
     if (!rc)
@@ -308,7 +311,7 @@ public:
             const QString deviceScript = extractHarmonyDeviceShellScript(runControl);
             const bool useMainSocket = !harmonyHdcShellPreferCli() && !deviceScript.isEmpty();
 
-            // ---- Hilog sidecar task (P2-14) ----
+            /* ** Hilog 伴随任务（P2-14） */
             const bool hilogEnabled =
                 readBoolSetting(runControl, Id(Constants::HARMONY_HILOG_ENABLED), true);
             const QString hilogFilter =
@@ -316,9 +319,9 @@ public:
             const FilePath hdc    = HarmonyConfig::hdcToolPath();
             const bool canStream  = hilogEnabled && hdc.isExecutableFile();
 
-            // Resolve bundle name for PID-based filtering.
-            // Without PID filtering, hilog dumps the entire device log (thousands
-            // of lines/sec) and overwhelms the UI event loop, freezing Qt Creator.
+            /* ** 解析包名用于基于 PID 的过滤。
+            ** 不过滤 PID 时，hilog 会输出整个设备日志（每秒天级行数），
+            ** 将过载 UI 事件循环并导致 Qt Creator 卡顿。 */
             QString bundleName;
             {
                 QString ov = readStringSetting(
@@ -330,15 +333,12 @@ public:
                 }
             }
 
-            // ---- Hilog via direct hdc-daemon socket (P2-14) ----
-            // Instead of spawning "hdc.exe shell hilog" as a subprocess (which
-            // suffers from host-side pipe buffering), we open a TCP socket to the
-            // hdc daemon (port 8710) and use the same binary protocol that DevEco
-            // Studio uses.  TCP_NODELAY eliminates Nagle delay, giving us real-time
-            // log delivery identical to DevEco.
-            //
-            // The QSyncTask completes immediately; the socket runs asynchronously
-            // via Qt's event loop, parented to RunControl for lifetime management.
+            /* ** 通过 hdc 守护进程直接实现 hilog 流式传输（P2-14）
+            ** 直接向 hdc 守护进程（端口 8710）开启 TCP socket，
+            ** 使用 DevEco Studio 相同的二进制协议。TCP_NODELAY 消除 Nagle 延迟，
+            ** 实现与 DevEco 相同的实时日志投递。
+            ** QSyncTask 立即完成；socket 通过 Qt 事件循环异步运行，
+            ** 以 RunControl 为父对象管理生命周期。 */
             auto hilogTask = QSyncTask(
                 [runControl, canStream, hdc, deviceSerial, hilogFilter, bundleName] {
                     if (!canStream) {
@@ -356,8 +356,8 @@ public:
                         return;
                     }
 
-                    // POSIX shell script that polls pidof every 0.5 s (up to ~15 s)
-                    // then exec's hilog -P <PID> for app-only output.
+                    /* ** POSIX shell 脚本：每 0.5s 轮询 pidof（最多约 15s），
+                    ** 然后 exec hilog -P <PID> 以只输出应用日志。 */
                     QString script;
                     script += QStringLiteral(
                         "PID=; i=0; "
@@ -404,17 +404,13 @@ public:
                         NormalMessageFormat);
                 });
 
-            // Run main session and hilog socket concurrently.
-            // hilogTask (QSyncTask) completes immediately after creating the
-            // HdcSocketClient; the socket streams asynchronously until RunControl
-            // emits stopped(), at which point HdcSocketClient::stop() closes it.
-            //
-            // FinishAllAndSuccess: group finishes when the main task finishes.
-            // hilogTask already completed (StopWithSuccess) so only the main task
-            // keeps the group alive.
-            //
-            // P2-15 phase 3: default main session = hdc daemon TCP (same wire as hilog);
-            // QTC_HARMONY_HDC_USE_CLI / harmonyHdcShellPreferCli() or missing script → hdc.exe QProcess.
+            /* ** 并行运行主会话和 hilog socket。
+            ** hilogTask（QSyncTask）创建 HdcSocketClient 后立即完成；
+            ** socket 异步流式传输，直到 RunControl 发出 stopped()。
+            ** FinishAllAndSuccess：主任务完成时组即完成；
+            ** hilogTask 已完成（StopWithSuccess）所以只有主任务保持组活跃。
+            ** P2-15 阶段三：默认主会话 = hdc 守护进程 TCP；
+            ** QTC_HARMONY_HDC_USE_CLI / CLI 优先模式或脚本缺失时 → hdc.exe QProcess。 */
             const auto startedBarrier = [&](auto mainTask, auto startedSignal) {
                 return Group{
                     parallel,

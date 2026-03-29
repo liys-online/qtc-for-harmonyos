@@ -12,7 +12,7 @@ const char HARMONY_POSTFINISHSHELLCMDLIST[] = "Harmony.PostFinishShellCmdList";
 const char HARMONY_DEVICE_ID[] = "Harmony Device";
 const char HARMONY_DEVICE_TYPE[] = "Harmony.Device.Type";
 
-// Harmony ABIs
+/* ** Harmony ABI 标识符 */
 const char HARMONY_ABI_ARMEABI[] = "armeabi";
 const char HARMONY_ABI_ARMEABI_V7A[] = "armeabi-v7a";
 const char HARMONY_ABI_ARM64_V8A[] = "arm64-v8a";
@@ -24,26 +24,44 @@ const char DevecoStudioLocationKey[] = "Harmony.DevecoStudioPath";
 const char QmakeLocationKey[] = "Harmony.QmakeLocations";
 const char SDKLocationsKey[] = "Harmony.SDKLocations";
 const char DefaultSDKLocationKey[] = "Harmony.DefaultSDKLocation";
-/** Root for SDK Manager: downloads in .temp/, extracts to <api_version>/ (same idea as Android SDK location). */
+/*
+** SDK 管理器根目录：下载至 .temp/，解压至 <api_version>/（与 Android SDK 目录类似）。
+*/
 const char OhosSdkRootKey[] = "Harmony.OhosSdkRoot";
-/** Empty in settings → use \c defaultOhpmRegistryUrl() for \c ohpm install --registry. */
+/*
+** 为空时使用 defaultOhpmRegistryUrl() 作为 ohpm install --registry 的地址。
+*/
 const char OhpmRegistryUrlKey[] = "Harmony.OhpmRegistryUrl";
-/** Persisted; default true when key absent (matches previous hardcoded behavior). */
+/*
+** 持久化；键缺失时默认为 true（与之前硬编码行为一致）。
+*/
 const char OhpmStrictSslKey[] = "Harmony.OhpmStrictSsl";
-/** Comma-separated ohpro \c module.deviceTypes (e.g. \c phone,\c 2in1). Empty stored list → default \c 2in1 at runtime. */
+/*
+** 逗号分隔的 ohpro module.deviceTypes（如 phone,2in1）。空存储列表⇒运行时默认为 2in1。
+*/
 const char OhModuleDeviceTypesKey[] = "Harmony.OhModuleDeviceTypes";
-/** Kit copy of effective module device types (refreshed when kits sync). */
+/*
+** Kit 中存储的模块设备类型（同步 Kit 时刷新）。
+*/
 const char HARMONY_KIT_MODULE_DEVICE_TYPES[] = "Harmony.ModuleDeviceTypes";
-/** Default catalog: GitCode raw \c qt-oh-binary-catalog.v1.json (primary source). */
+/*
+** 默认 catalog：GitCode raw qt-oh-binary-catalog.v1.json（主要源）。
+*/
 const char QtOhBinaryCatalogDefaultGitcodeUrl[] =
     "https://raw.gitcode.com/Li-Yaosong/qtc-for-harmonyos/raw/main/docs/qt-oh-binary-catalog.v1.json";
-/** Default catalog: GitHub raw (used when primary fails). */
+/*
+** 默认 catalog：GitHub raw（主要源失败时使用）。
+*/
 const char QtOhBinaryCatalogDefaultGithubUrl[] =
     "https://raw.githubusercontent.com/liys-online/qtc-for-harmonyos/refs/heads/main/docs/qt-oh-binary-catalog.v1.json";
 const char OHOS_SDK_ENV_VAR[] = "OHOS_SDK_PATH";
-/** Optional; checked before OHOS_SDK_PATH for default HarmonyOS SDK root (SDK Manager layout). */
+/*
+** 可选；在 OHOS_SDK_PATH 之前检查，作为默认 HarmonyOS SDK 根目录（SDK 管理器布局）。
+*/
 const char OHOS_SDK_HOME_ENV_VAR[] = "OHOS_SDK_HOME";
-/** Optional; when Harmony.DevecoStudioPath is empty, used for DevEco Studio auto-detection (all platforms). */
+/*
+** 可选；当 Harmony.DevecoStudioPath 为空时，用于 DevEco Studio 自动检测（全平台）。
+*/
 const char DEVECO_STUDIO_HOME_ENV_VAR[] = "DEVECO_STUDIO_HOME";
 const char OHOS_SDK_VERSION[] = "OHOS_SDK_VERSION";
 const char OHOS_ARCH[] = "OHOS_ARCH";

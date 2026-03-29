@@ -27,9 +27,9 @@ HdcSocketClient::~HdcSocketClient()
     stop();
 }
 
-// ---------------------------------------------------------------------------
-// Port
-// ---------------------------------------------------------------------------
+/*
+** 服务端口
+*/
 int HdcSocketClient::serverPort()
 {
     bool ok = false;
@@ -37,9 +37,9 @@ int HdcSocketClient::serverPort()
     return (ok && port > 0 && port <= 65535) ? port : kDefaultPort;
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
+/*
+** 公共接口
+*/
 void HdcSocketClient::start(const QString &serial, const QString &command)
 {
     if (m_phase != Phase::Idle) {
@@ -81,9 +81,9 @@ bool HdcSocketClient::isRunning() const
     return m_phase == Phase::Streaming;
 }
 
-// ---------------------------------------------------------------------------
-// Socket callbacks
-// ---------------------------------------------------------------------------
+/*
+** Socket 回调
+*/
 void HdcSocketClient::onConnected()
 {
     qCDebug(hdcSocketLog) << "HdcSocketClient: connected to hdc daemon on port" << serverPort();
@@ -127,9 +127,9 @@ void HdcSocketClient::onSocketError(QAbstractSocket::SocketError error)
         stop();
 }
 
-// ---------------------------------------------------------------------------
-// Protocol state machine
-// ---------------------------------------------------------------------------
+/*
+** 协议状态机
+*/
 bool HdcSocketClient::processHandshake()
 {
     if (m_readBuf.size() < HdcSocketProtocol::handshakeSize)
@@ -212,9 +212,9 @@ void HdcSocketClient::emitLines(const QByteArray &payload)
         m_lineRemainder.remove(0, start);
 }
 
-// ---------------------------------------------------------------------------
-// Blocking sync shell (P2-15 phase 1) — separate connection from streaming @c start().
-// ---------------------------------------------------------------------------
+/*
+** 阻塞同步 shell（P2-15 阶段一）— 独立于流式 start() 的新连接。
+*/
 HdcShellSyncResult HdcSocketClient::runShellSync(const QString &serial,
                                                  const QString &command,
                                                  int timeoutMs)

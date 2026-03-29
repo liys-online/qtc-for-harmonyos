@@ -65,8 +65,8 @@ private:
 const ClangTargetsType &clangTargets()
 {
     static const ClangTargetsType targets {
-        // {"armv7-linux-ohos",
-        //  Abi(Abi::ArmArchitecture, Abi::LinuxOS, Abi::GenericFlavor, Abi::ElfFormat, 32)},
+        /* ** {"armv7-linux-ohos",
+        **  Abi(Abi::ArmArchitecture, Abi::LinuxOS, Abi::GenericFlavor, Abi::ElfFormat, 32)}, */
         {"x86_64-linux-ohos",
          Abi(Abi::X86Architecture, Abi::LinuxOS, Abi::GenericFlavor, Abi::ElfFormat, 64)},
         {"aarch64-linux-ohos",
@@ -151,7 +151,7 @@ static Result<ProjectExplorer::Macros> gccPredefinedMacros(
         if (idx != -1)
             predefinedMacros[idx] = blocksUndefine;
 
-        // Define __strong and __weak (used for Apple's GC extension of C) to be empty
+        /* ** 将 Apple GC 扩展中使用的 __strong 和 __weak 定义为空 */
         predefinedMacros.append({"__strong"});
         predefinedMacros.append({"__weak"});
     }
@@ -250,8 +250,8 @@ void HarmonyToolchain::fromMap(const Utils::Store &data)
     m_platformCodeGenFlags = data.value(compilerPlatformCodeGenFlagsKeyC).toStringList();
     m_platformLinkerFlags = data.value(compilerPlatformLinkerFlagsKeyC).toStringList();
     m_originalTargetTriple = data.value(originalTargetTripleKeyC).toString();
-    // clang 19 is not accepting "--target=unknown-qnx-gnu" anymore
-    //   error: unknown target triple 'unknown-qnx-unknown-gnu'
+    /* ** clang 19 不再接受 "--target=unknown-qnx-gnu"
+    **   error: unknown target triple 'unknown-qnx-unknown-gnu' */
     if (m_originalTargetTriple == "unknown-qnx-gnu")
         m_originalTargetTriple.clear();
     const QStringList abiList = data.value(supportedAbisKeyC).toStringList();
@@ -293,8 +293,8 @@ void HarmonyToolchain::resetToolchain(const FilePath &path)
 
 bool HarmonyToolchain::isValid() const
 {
-    // 确保NDK位置被正确推断（如果还没有设置的话）
-    ndkLocation(); // 这会触发自动推断逻辑
+    /* ** 确保 NDK 位置被正确推断（如果还没有设置的话） */
+    ndkLocation(); /* ** 这会触发自动推断逻辑 */
     
     const bool isChildofNdk = compilerCommand().isChildOf(m_ndkLocation);
     const bool hasValidNdk = !m_ndkLocation.isEmpty() && m_ndkLocation.exists();
@@ -341,7 +341,9 @@ void HarmonyToolchain::setPlatformLinkerFlags(const QStringList &flags)
     }
 }
 
-// For querying operations such as -dM
+/*
+** 用于 查询操作（如 -dM）
+*/
 static QStringList filteredFlags(const QStringList &allFlags, bool considerSysroot)
 {
     QStringList filtered;
@@ -386,21 +388,19 @@ static bool isNetworkCompiler(const QString &dirPath)
 
 static FilePath findLocalCompiler(const FilePath &compilerPath, const Environment &env)
 {
-    // Find the "real" compiler if icecc, distcc or similar are in use. Ignore ccache, since that
-    // is local already.
+    /* ** 如果使用了 icecc/distcc 等网络编译器，查找真实编译器；ccache 已是本地的，不需处理。 */
 
-    // Get the path to the compiler, ignoring direct calls to icecc and distcc as we cannot
-    // do anything about those.
+    /* ** 获取编译器路径，忽略对 icecc/distcc 的直接调用（我们无法处理那种情况）。 */
     if (!isNetworkCompiler(compilerPath.parentDir().path()))
         return compilerPath;
 
-    // Filter out network compilers
+    /* ** 过滤掉网络编译器 */
     const FilePaths pathComponents = Utils::filtered(env.path(), [] (const FilePath &dirPath) {
         return !isNetworkCompiler(dirPath.path());
     });
 
-    // This effectively searches the PATH twice, once via pathComponents and once via PATH itself:
-    // searchInPath filters duplicates, so that will not hurt.
+    /* ** 该操作实际搜索 PATH 两次（分别通过 pathComponents 和 PATH 本身）；
+    ** searchInPath 会过滤重复项，因此不会有副作用。 */
     const FilePath path = env.searchInPath(compilerPath.fileName(), pathComponents);
 
     return path.isEmpty() ? compilerPath : path;
@@ -469,7 +469,7 @@ static HeaderPaths builtInHeaderPaths(const Environment &env,
                                                 languageId);
     arguments = reinterpretOptions(arguments);
 
-    // Must be clang case only.
+    /* ** 仅限 clang 情况 */
     if (!originalTargetTriple.isEmpty())
         arguments << "-target" << originalTargetTriple;
 
@@ -496,11 +496,11 @@ static HeaderPaths builtInHeaderPaths(const Environment &env,
 Toolchain::BuiltInHeaderPathsRunner HarmonyToolchain::createBuiltInHeaderPathsRunner(
     const Utils::Environment &env) const
 {
-    // Using a clean environment breaks ccache/distcc/etc.
+    /* ** 使用干净环境会破坏 ccache/distcc 等工具。 */
     Environment fullEnv = env;
     addToEnvironment(fullEnv);
 
-        // This runner must be thread-safe!
+        /* ** 此 runner 必须是线程安全的！ */
         return [fullEnv,
                 compilerCommand = compilerCommand(),
                 platformCodeGenFlags = m_platformCodeGenFlags,
@@ -528,7 +528,7 @@ const QStringList gccPredefinedMacrosOptions(Id languageId)
 }
 Toolchain::MacroInspectionRunner HarmonyToolchain::createMacroInspectionRunner() const
 {
-    // Using a clean environment breaks ccache/distcc/etc.
+    /* ** 使用干净环境会破坏 ccache/distcc 等工具。 */
     Environment env = compilerCommand().deviceEnvironment();
     addToEnvironment(env);
     const QStringList platformCodeGenFlags = m_platformCodeGenFlags;
@@ -580,7 +580,7 @@ Toolchain::MacroInspectionRunner HarmonyToolchain::createMacroInspectionRunner()
 
 WarningFlags HarmonyToolchain::warningFlags(const QStringList &cflags) const
 {
-    // based on 'LC_ALL="en" gcc -Q --help=warnings | grep enabled'
+    /* ** 基于 'LC_ALL="en" gcc -Q --help=warnings | grep enabled' */
     WarningFlags flags(WarningFlags::Deprecated | WarningFlags::IgnoredQualifiers
                        | WarningFlags::SignedComparison | WarningFlags::UninitializedVars);
     WarningFlags groupWall(WarningFlags::All | WarningFlags::UnknownPragma | WarningFlags::UnusedFunctions
@@ -599,7 +599,7 @@ WarningFlags HarmonyToolchain::warningFlags(const QStringList &cflags) const
         if (add.triggered())
             continue;
 
-        // supported by clang too
+        /* ** clang 同样支持 */
         add("error", WarningFlags::AsErrors);
         add("all", groupWall);
         add("extra", groupWextra);
@@ -655,7 +655,7 @@ LanguageExtensions HarmonyToolchain::languageExtensions(const QStringList &cxxfl
         }
     }
 
-    // Clang knows -fborland-extensions".
+    /* ** Clang 支持 -fborland-extensions */
     if (cxxflags.contains("-fborland-extensions"))
         extensions |= LanguageExtension::Borland;
 
@@ -694,8 +694,8 @@ static const GccToolchain *mingwToolchainFromId(const QByteArray &id)
 
 void HarmonyToolchain::syncAutodetectedWithParentToolchains()
 {
-    // Match GccToolchain::syncAutodetectedWithParentToolchains (Windows + Clang family only).
-    // Was incorrectly checking CLANG_TOOLCHAIN_TYPEID so this never ran for Harmony.
+    /* ** 匹配 GccToolchain::syncAutodetectedWithParentToolchains（仅限 Windows + Clang 系列）。
+    ** 之前错误检查了 CLANG_TOOLCHAIN_TYPEID，导致 Harmony 从未运行此逻辑。 */
     if (!HostOsInfo::isWindowsHost() || typeId() != Id(Constants::HARMONY_TOOLCHAIN_TYPEID)
         || !detectionSource().isAutoDetected()) {
         return;
@@ -720,7 +720,7 @@ void HarmonyToolchain::syncAutodetectedWithParentToolchains()
         m_parentToolchainId = mingwTCs.isEmpty() ? QByteArray() : mingwTCs.front()->id();
     }
 
-    // Subscribe only autodetected toolchains.
+    /* ** 仅订阅自动检测的工具链。 */
     ToolchainManager *tcManager = ToolchainManager::instance();
     m_mingwToolchainAddedConnection
         = connect(tcManager, &ToolchainManager::toolchainsRegistered, this,
@@ -780,7 +780,7 @@ static Abis guessGccAbi(const QString &m, const ProjectExplorer::Macros &macros)
     }
 
     if (os == Abi::DarwinOS) {
-        // Apple does PPC and x86!
+        /* ** Apple 支持 PPC 和 x86！ */
         abiList << Abi(arch, os, flavor, format, width);
         abiList << Abi(arch, os, flavor, format, width == 64 ? 32 : 64);
     } else if (arch == Abi::X86Architecture && (width == 0 || width == 64)) {
@@ -812,7 +812,7 @@ static HarmonyToolchain::DetectedAbisResult guessGccAbi(const FilePath &path,
 
     QString machine = result->section('\n', 0, 0, QString::SectionSkipEmpty);
     if (machine.isEmpty()) {
-        // ICC does not implement the -dumpmachine option on macOS.
+        /* ** ICC 在 macOS 上未实现 -dumpmachine 选项。 */
         if (HostOsInfo::isMacHost() && (path.fileName() == "icc" || path.fileName() == "icpc"))
             return HarmonyToolchain::DetectedAbisResult({Abi::hostAbi()});
         return HarmonyToolchain::DetectedAbisResult(); // no need to continue if running failed once...
@@ -832,20 +832,20 @@ HarmonyToolchain::DetectedAbisResult HarmonyToolchain::detectSupportedAbis() con
 
 FilePath HarmonyToolchain::ndkLocation() const
 {
-    // 如果NDK位置为空，尝试从编译器路径推断
+    /* ** 如果 NDK 位置为空，尝试从编译器路径推断 */
     if (m_ndkLocation.isEmpty()) {
         const QString compilerPath = compilerCommand().toFSPathString();
         
-        // HarmonyOS NDK的典型路径结构：.../native/llvm/bin/clang
+        /* ** HarmonyOS NDK 的典型路径结构：.../native/llvm/bin/clang */
         QStringList ndkParts = compilerPath.split("/native/llvm/");
         if (ndkParts.size() > 1) {
             QString inferredNdkLocation = ndkParts.first() + "/native";
             m_ndkLocation = FilePath::fromString(inferredNdkLocation);
         } else {
-            // 备用方案：尝试其他可能的路径模式
+            /* ** 备用方案：尝试其他可能的路径模式 */
             ndkParts = compilerPath.split("/llvm/");
             if (ndkParts.size() > 1) {
-                // 检查是否在 native 目录下
+                /* ** 检查是否在 native 目录下 */
                 QString basePath = ndkParts.first();
                 if (basePath.endsWith("/native")) {
                     m_ndkLocation = FilePath::fromString(basePath);
@@ -858,7 +858,7 @@ FilePath HarmonyToolchain::ndkLocation() const
 
 FilePath HarmonyToolchain::makeCommand(const Utils::Environment &environment) const
 {
-    // Unix / macOS: same idea as GccToolchain::mingwAwareMakeCommand — prefer PATH, include gmake (BSD).
+    /* ** Unix/macOS：与 GccToolchain::mingwAwareMakeCommand 思路相同 — 优先 PATH，包含 gmake（BSD）。 */
     if (!HostOsInfo::isWindowsHost()) {
         const QStringList names{QStringLiteral("make"), QStringLiteral("gmake")};
         for (const QString &name : names) {

@@ -151,11 +151,11 @@ public:
         const bool hasQt = hasHarmonyQtVersions();
         const bool hasSdk = hasRegisteredValidHarmonySdk();
 
-        // Fully configured — nothing to suggest.
+        /* ** 已完全配置——无需任何提示。 */
         if (hasQt && hasSdk)
             return;
 
-        // User has not started Harmony setup (no Qt and no SDK path) — stay quiet.
+        /* ** 用户尚未开始 Harmony 配置（无 Qt 且无 SDK 路径）——保持静默。 */
         if (!hasQt && !hasSdk)
             return;
 
@@ -187,7 +187,7 @@ public:
             return;
         }
 
-        // hasSdk && !hasQt — SDK is set up but no Harmony Qt registered yet.
+        /* ** hasSdk && !hasQt —— SDK 已配置但尚未注册 Harmony Qt。 */
         QTC_CHECK(hasSdk && !hasQt);
         if (!infoBar->canInfoBeAdded(Utils::Id(kSetupHarmonyQtInfoBarId)))
             return;

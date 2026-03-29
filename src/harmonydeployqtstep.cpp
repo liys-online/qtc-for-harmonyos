@@ -82,7 +82,7 @@ public:
     HarmonyDeployQtStep(BuildStepList *parent, Id id);
 
 private:
-    // BuildStep interface
+    /* ** BuildStep 接口 */
     void fromMap(const Store &map) override;
     bool init() final;
 
@@ -162,7 +162,7 @@ bool HarmonyDeployQtStep::init()
 
     const BuildSystem *bs = buildSystem();
     QStringList selectedAbis;
-    // QStringList selectedAbis = bs->property(Constants::HarmonyAbis).toStringList();
+    /* ** QStringList selectedAbis = bs->property(Constants::HarmonyAbis).toStringList(); */
 
     const QString dataBuildKey = Internal::buildKeyForCMakeExtraData(buildConfiguration());
     // if (selectedAbis.isEmpty())
@@ -182,7 +182,7 @@ bool HarmonyDeployQtStep::init()
         return false;
     }
 
-    // TODO: use HarmonyDevice directly instead of HarmonyDeviceInfo.
+    /* ** TODO: 直接使用 HarmonyDevice 而非 HarmonyDeviceInfo。 */
     const HarmonyDeviceInfo info = HarmonyDevice::harmonyDeviceInfoFromDevice(dev);
 
     if (!info.isValid()) {
@@ -215,7 +215,7 @@ bool HarmonyDeployQtStep::init()
                                             .arg(info.cpuAbi.first())));
     }
 
-    // m_avdName = info.avdName;
+    /* ** m_avdName = info.avdName; */
     m_serialNumber = info.serialNumber.trimmed();
     qCDebug(harmonyDeployLog) << "Selected device info:" << info;
 
@@ -236,7 +236,7 @@ bool HarmonyDeployQtStep::init()
 
     m_uninstallPreviousPackageRun = m_uninstallPreviousPackage();
 
-    // No ProjectNode is required: HAP path comes from harmonyBuildDirectory / findBuiltHapPackage.
+    /* ** 无需 ProjectNode：HAP 路径来自 harmonyBuildDirectory / findBuiltHapPackage。 */
     m_hdcPath = HarmonyConfig::hdcToolPath();
     if (!m_hdcPath.isExecutableFile()) {
         reportWarningOrError(
@@ -438,8 +438,10 @@ Group HarmonyDeployQtStep::deployRecipe()
                 return false;
             }
         } else if (exitCode != 0 || exitStatus != QProcess::NormalExit) {
-            // Set the deployError to Failure when no deployError code was detected
-            // but the adb tool failed otherwise relay the detected deployError.
+            /*
+            ** 当未检测到 deployError 代码但 adb 工具失败时，将 deployError 设置为 Failure；
+            ** 否则转发已检测到的 deployError。
+            */
             reportWarningOrError(Tr::tr("Installing the app failed with an unknown error."), Task::Error);
             return false;
         }
@@ -699,7 +701,7 @@ void HarmonyDeployQtStep::reportWarningOrError(const QString &message, Task::Tas
     TaskHub::addTask(DeploymentTask(type, message));
 }
 
-// HarmonyDeployQtStepFactory
+/* ** HarmonyDeployQtStepFactory */
 class HarmonyDeployQtStepFactory final : public BuildStepFactory
 {
 public:

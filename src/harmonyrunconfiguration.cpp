@@ -51,13 +51,13 @@ public:
         if (!m_legacyProjectStoreKey.isEmpty() && !copy.contains(settingsKey())
             && copy.contains(m_legacyProjectStoreKey))
             copy.insert(settingsKey(), copy.value(m_legacyProjectStoreKey));
-        // Pre Qt Creator 5.0 hack: Reads QStringList as QString
+        /* ** Qt Creator 5.0 之前的兼容处理：将 QStringList 读取为 QString */
         setValue(copy.value(settingsKey()).toStringList().join('\n'));
     }
 
     void toMap(Store &map) const final
     {
-        // Pre Qt Creator 5.0 hack: Writes QString as QStringList
+        /* ** Qt Creator 5.0 之前的兼容处理：将 QString 写出为 QStringList */
         map.insert(settingsKey(), value().split('\n'));
     }
 
@@ -138,8 +138,10 @@ public:
 
         setUpdater([this] {
             const ProjectExplorer::BuildTargetInfo bti = buildTargetInfo();
-            // Qt for OH / HAP 工程在 CMake 侧常为 MODULE_LIBRARY 等，不会进入 applicationTargets；
-            // FixedRunConfigurationFactory 提供无 buildKey 的条目，此时 displayName 为空，用默认名。
+            /*
+            ** Qt for OH / HAP 工程在 CMake 侧常为 MODULE_LIBRARY 等，不会进入 applicationTargets；
+            ** FixedRunConfigurationFactory 提供无 buildKey 的条目，此时 displayName 为空，用默认名。
+            */
             const QString name = bti.displayName.isEmpty()
                 ? Tr::tr("Harmony Application")
                 : bti.displayName;
@@ -185,12 +187,14 @@ public:
             }
             allDeviceCommands << startCommand;
 
-            // `aa start` returns immediately; if the device shell exits right away, hdc finishes and
-            // RunControl's task tree ends before the UI treats the run as active (Stop stays disabled).
-            // Keep the shell session open until the user stops the run (same idea as Android's PID wait).
+            /*
+            ** `aa start` 立即返回；若设备 shell 随即退出，hdc 完成且 RunControl 的任务树
+            ** 在 UI 认为运行已激活之前结束（Stop 按鈕保持禁用）。
+            ** 保持 shell 会话开启，直到用户停止运行（与 Android 的 PID 等待思路相同）。
+            */
             allDeviceCommands << QStringLiteral("while true; do sleep 2; done");
 
-            // postStartShellCmd (Post-quit…) runs when the hdc session ends — see harmonyrunner.cpp.
+            /* ** postStartShellCmd（退出后命令）在 hdc 会话结束时运行——见 harmonyrunner.cpp。 */
             cmd.addArg(allDeviceCommands.join(" ; "));
 
             return cmd;
@@ -239,11 +243,13 @@ protected:
         QList<RunConfigurationCreationInfo> items = RunConfigurationFactory::availableCreators(bc);
         if (!items.isEmpty())
             return items;
-        // CMake 的 applicationTargets 仅含 Executable；Qt for OH 常为 MODULE_LIBRARY，列表为空。
+        /* ** CMake 的 applicationTargets 仅含 Executable；Qt for OH 常为 MODULE_LIBRARY，列表为空。 */
         if (!harmonyRunConfigCanAddDefault(bc))
             return items;
-        // 在尚无解析数据时若仍返回 AlwaysCreate，Qt Creator 无法把已有 RC 记入 existing
-        // （见 BuildConfiguration::updateDefaultRunConfigurations），会导致每次打开项目重复添加。
+        /*
+        ** 在尚无解析数据时若仍返回 AlwaysCreate，Qt Creator 无法把已有 RC 记入 existing
+        **（见 BuildConfiguration::updateDefaultRunConfigurations），会导致每次打开项目重复添加。
+        */
         if (!bc->buildSystem()->hasParsingData())
             return items;
 
