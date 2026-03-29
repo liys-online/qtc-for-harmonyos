@@ -138,7 +138,7 @@
 
 | # | Android 能力 / 典型文件 | Harmony 对应 | 进度 | 备注 |
 |---|---------------------------|--------------|------|------|
-| 11.1 | `AndroidDebugWorkerFactory`（LLDB 远程） | `harmonydebugsupport.*`（`HarmonyDebugWorkerFactory`） | 🔄 | **§7.2** 自动编排（HAP、`aa`、`abstract`、PID）；**不做** §7.1+fport 全自动（零售无 root）；`HARMONY_DEBUG_LEGACY` 仅 TCP 端口 |
+| 11.1 | `AndroidDebugWorkerFactory`（LLDB 远程） | `harmonydebugsupport.*`（`HarmonyDebugWorkerFactory`）+ `scripts/lldbbridge.py` | ✅ | **§7.2** 自动编排（HAP、`aa`、`abstract`、PID）**已验证断点命中、变量查看**。关键机制：`workingDirectory` 字段传信号文件路径 → lldbbridge.py 在 attach 后创建文件解除 ArkTS 阻塞；`scripts/lldbbridge.py` 为插件自有版（基于 Qt Creator 19.0.0，不修改上游），含 `remote-ohos` attach 分支与 OHOS 后置命令；solib 路径以 hvigor cmake 目录优先确保 build-id 匹配；**不做** §7.1+fport 全自动（零售无 root）；`HARMONY_DEBUG_LEGACY` 仅 TCP 端口 |
 | 11.2 | `AndroidQmlToolingSupportFactory` | — | ⬜ | — |
 | 11.3 | RunnerWorker 内日志（logcat） | — | ⬜ | 可对 `hilog` |
 

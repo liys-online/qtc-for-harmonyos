@@ -86,6 +86,11 @@
 - [x] **4.2** **sysroot**：若 Kit `SysRoot` 为空或路径不可读，则按 **Kit `Harmony.NDK`** 尝试 **`$NDK/sysroot`**、**`$NDK/llvm/sysroot`**（与常见 OpenHarmony NDK 布局一致；若你方 SDK 不同，可再补候选路径）。  
 - [x] **4.3** **inferior / attach（user + abstract，默认）**：`harmonydebugsupport.cpp` 在 **C++ 调试** 且未设置 **`HARMONY_DEBUG_LEGACY`** 时，按官方 **§7.2** 顺序：`mkdir` → `hdc file send` **lldb-server** → `chmod` → 推送 **debug HAP** → **`bm install -p <设备上 .hap 路径>`** → **`aa start -a/-b`** → **`aa attach -b`** → **`sh -c 'aa process … -D "<lldb-server> platform --listen unix-abstract:///lldb-server/platform.sock" &'`**；主机 LLDB **`unix-abstract-connect:///lldb-server/platform.sock`**（**不**走 TCP `setupPortsGatherer`）。**不设** root + TCP + **fport** 的自动编排（当前官方零售机无 root）。**`HARMONY_DEBUG_LEGACY=1`**：仅启用 **`setupPortsGatherer`** 分配本机调试端口，**不会**自动推送 `lldb-server` 或执行 `fport`；供 **root 工程机**上**已手动**按 §7.1 起服后实验，或排障对比，**零售机请勿依赖**。  
 - [x] **4.4** **PID 获取**：`harmonyutils::harmonyQueryApplicationPid` — 依次 **`bm dump -n`**、**`aa dump -b`**、**`ps -A` / `ps -ef`** 解析；结果写入 **`RunControl::setAttachPid`** → LLDB **remote attach**。若你机输出格式不同，可把样例贴 issue 以改进解析。  
+- [x] **4.7** **lldbbridge.py 插件自有化**：Qt Creator 上游的 `share/qtcreator/debugger/lldbbridge.py` **不修改**；在插件 `scripts/lldbbridge.py` 维护 OHOS 专用版本（基于 Qt Creator 19.0.0）。`src/CMakeLists.txt` 新增 `HarmonyLldbBridge` 自定义目标，在 `copy_share_files_to_builddir` 之后将插件版覆盖到构建目录，确保优先生效。采用 stamp 文件作为 OUTPUT，避免 ninja 重复输出冲突。  
+- [x] **4.8** **`commandsAfterConnect` 移除**：Qt Creator LLDB 引擎从不读取/执行 `commandsAfterConnect`（仅 GDB/CDB 使用），故从插件中删除相关死代码。所有 OHOS 调试后处理命令（signal 设置、`stop-on-sharedlibrary-events false` 等）直接硬编码于 `scripts/lldbbridge.py` 的 `remote-ohos` 分支中。  
+- [x] **4.9** **信号文件机制**：OHOS attach 模式下 `workingDirectory` 字段未被使用，插件借用它传递信号文件路径（`harmonydebugsupport.cpp`）。`scripts/lldbbridge.py` 的 `remote-ohos` 分支在 `process attach` 成功后读取 `self.workingDirectory_` 并创建该文件 → Qt Creator 侧桥接代码检测到后向 ArkTS 发送 `Runtime.runIfWaitingForDebugger` → native `main()` 正常运行 → 断点命中。  
+- [x] **4.10** **solib 搜索路径顺序修正**：`harmonydebugsupport.cpp` 中 solib 路径顺序调整为 **hvigor cmake obj/libs 目录优先，build root 兜底**。此前 build root（Qt Creator cmake 独立编译产物）排在首位，导致 LLDB 加载了与设备部署二进制 build-id 不符的 `.so`，造成断点行号偏移。  
+- [x] **4.11** **模块 UUID 诊断日志**：attach 成功后遍历 `SBTarget.GetNumModules()`，对每个 `.so` 打印 UUID 与符号文件路径，输出到 Qt Creator「应用输出」面板，便于排查 build-id 不匹配导致的行号偏移问题。  
 - [ ] **4.5** 与 **`HarmonyProcessRunnerFactory`** 关系：**Debug** 模式下是否 **先部署再调试用 hdc**，避免与 **Run** 重复安装 —— 定一种策略并文档化。  
 - [ ] **4.6** **环境变量**：如需向 lldb 子进程注入 `HDC_SERVER_PORT` 等，对标 Android `modifyDebuggerEnvironment`。  
 
@@ -95,8 +100,8 @@
 
 - [ ] **5.1** 运行配置 UI：必要时增加**简短说明**或链接到 [HARMONY-LLDB-DEBUG.md](HARMONY-LLDB-DEBUG.md)（user/root、勿锁屏、开发者选项）。  
 - [ ] **5.2** 将官方 [FAQ §8](HARMONY-LLDB-DEBUG.md) 中 **A packet error 8**、**Permission denied** 转为 **Issues / 弹窗** 可识别文案。  
-- [ ] **5.3** 更新 [COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md) **§11.1**（`HarmonyDebugWorkerFactory` 状态与备注）。  
-- [ ] **5.4** 更新 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) **P2-01** 状态；**P2-07** 在 fport 合入后勾连说明。  
+- [x] **5.3** 更新 [COMPARISON-PROGRESS.md](COMPARISON-PROGRESS.md) **§11.1**（`HarmonyDebugWorkerFactory` 状态与备注）。  
+- [x] **5.4** 更新 [PRIORITY-PLAN.md](PRIORITY-PLAN.md) **P2-01** 状态；**P2-07** 在 fport 合入后勾连说明。  
 - [ ] **5.5**（可选）**WITH_TESTS**：mock `hdc` 文本输出，测 **PID 解析 / fport 命令拼装**（不设网络 CI 硬依赖）。  
 
 ---
