@@ -20,9 +20,12 @@
 
 #include <cstdlib>
 #include <iostream>
-#include <unistd.h>
 #include <vector>
 #include <string>
+
+#if !defined(Q_OS_WIN)
+#include <unistd.h>
+#endif
 
 using namespace Ohos::Internal;
 
@@ -662,6 +665,16 @@ int main(int argc, char *argv[])
     const std::string lldbCmdsStd  = lldbCmdsFile.toStdString();
 
     std::vector<std::string> lldbArgsStd = {lldbBinStd, "-s", lldbCmdsStd};
+
+#if defined(Q_OS_WIN)
+    /*
+    ** Windows 无 execvp；改用 QProcess::execute 阻塞等待 lldb 退出。
+    ** 效果等价：本进程在 lldb 退出后才返回。
+    */
+    QStringList lldbArgs;
+    lldbArgs << QStringLiteral("-s") << lldbCmdsFile;
+    return QProcess::execute(lldbBin, lldbArgs);
+#else
     std::vector<char *>      lldbArgv;
     for (auto &s : lldbArgsStd)
         lldbArgv.push_back(const_cast<char *>(s.c_str()));
@@ -676,4 +689,5 @@ int main(int argc, char *argv[])
     /* ** 仅在 execvp 失败时才会到达此处 */
     err(QStringLiteral("Failed to exec lldb: ") + lldbBin);
     return 1;
+#endif
 }
