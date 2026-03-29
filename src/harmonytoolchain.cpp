@@ -140,11 +140,11 @@ static Result<ProjectExplorer::Macros> gccPredefinedMacros(
         return make_unexpected(result.error());
 
     ProjectExplorer::Macros predefinedMacros = Macro::toMacros(result->toUtf8());
-    // Sanity check in case we get an error message instead of real output:
+    /* ** 健康性检查：防止得到的是错误消息而非真实输出 */
     QTC_CHECK(predefinedMacros.isEmpty()
               || predefinedMacros.front().type == ProjectExplorer::MacroType::Define);
     if (HostOsInfo::isMacHost()) {
-        // Turn off flag indicating Apple's blocks support
+        /* ** 关闭表示 Apple blocks 支持的标志 */
         const ProjectExplorer::Macro blocksDefine("__BLOCKS__", "1");
         const ProjectExplorer::Macro blocksUndefine("__BLOCKS__", ProjectExplorer::MacroType::Undefine);
         const int idx = predefinedMacros.indexOf(blocksDefine);
