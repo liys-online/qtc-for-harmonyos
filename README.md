@@ -2,7 +2,7 @@
 
 [![CI macOS](https://github.com/liys-online/qtc-for-harmonyos/actions/workflows/ci-mac.yml/badge.svg)](https://github.com/liys-online/qtc-for-harmonyos/actions/workflows/ci-mac.yml) [![CI Linux](https://github.com/liys-online/qtc-for-harmonyos/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/liys-online/qtc-for-harmonyos/actions/workflows/ci-linux.yml) [![CI Windows](https://github.com/liys-online/qtc-for-harmonyos/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/liys-online/qtc-for-harmonyos/actions/workflows/ci-windows.yml)
 
-[![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=liys-online_qtc-for-harmonyos)](https://sonarcloud.io/summary/new_code?id=liys-online_qtc-for-harmonyos)
+[![SonarQube Cloud](https://sonarcloud.io/images/project_badges/sonarcloud-light.svg)](https://sonarcloud.io/summary/new_code?id=liys-online_qtc-for-harmonyos)
 
 ---
 
