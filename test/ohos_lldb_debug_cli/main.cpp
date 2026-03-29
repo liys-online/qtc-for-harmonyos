@@ -26,12 +26,12 @@
 
 using namespace Ohos::Internal;
 
-/* ** 全局状态 */────
+/* ** 全局状态 */
 
 /* ** g_hdcPath 仍需用于仅 CLI 操作：hdc list targets、file send、fport。 */
 static QString g_hdcPath;
 
-/* ** 日志 */──
+/* ** 日志 */
 
 static void log(const QString &msg)
 {
