@@ -4,14 +4,18 @@
 <context>
     <name>Ohos::Internal::HarmonyConfigurations</name>
     <message>
-        <location filename="harmonyconfigurations.cpp" line="+1349"/>
+        <location filename="harmonyconfigurations.cpp" line="+1243"/>
         <source>Found %1 Harmony toolchain bundles</source>
         <translation>找到 %1 个鸿蒙工具链包</translation>
     </message>
     <message>
         <location line="+11"/>
         <source>Processing Qt %1 for HarmonyOS %2 with NDK %3</source>
-        <translation>正在处理 Qt %1（HarmonyOS %2，NDK %3）</translation>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Browse Qt for OpenHarmony packages (online catalog).</source>
+        <translation type="vanished">浏览 Qt for OpenHarmony 软件包（在线目录）。</translation>
     </message>
     <message>
         <location line="+5"/>
@@ -22,12 +26,16 @@
 <context>
     <name>QObject</name>
     <message>
-        <location line="-1250"/>
         <source>Harmony LLDB DAP</source>
-        <translation>Harmony LLDB DAP</translation>
+        <translation type="vanished">Harmony LLDB DAP</translation>
     </message>
     <message>
-        <location line="+1290"/>
+        <location line="-66"/>
+        <source>OHOS LLDB (%1)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+106"/>
         <source>Harmony Kit: Could not detect OHOS_ARCH from Qt or toolchain; defaulting CMake variable to %1. If configure still fails, add OHOS_ARCH in Kit CMake configuration or fix Qt mkspecs qdevice.pri.</source>
         <translation>Harmony 套件：无法从 Qt 或工具链检测到 OHOS_ARCH，已将 CMake 变量默认设为 %1。若配置仍失败，请在套件的 CMake 配置中添加 OHOS_ARCH，或修复 Qt mkspecs 中的 qdevice.pri。</translation>
     </message>
@@ -37,7 +45,7 @@
         <translation>Harmony 套件：OHOS_ARCH 值 %1 对 OpenHarmony ohos.toolchain.cmake 无效（允许：arm64-v8a、armeabi-v7a、x86_64）。将改用 %2。若配置仍失败，请从套件的附加 CMake 参数中移除冲突的 -DOHOS_ARCH。</translation>
     </message>
     <message>
-        <location line="+71"/>
+        <location line="+74"/>
         <source>HarmonyOS%1 %2 Clang %3</source>
         <translation>HarmonyOS%1 %2 Clang %3</translation>
     </message>
@@ -62,8 +70,6 @@
     </message>
     <message>
         <location line="+21"/>
-        <location filename="harmonyqttsdkmanagerdialog.cpp" line="+171"/>
-        <location filename="harmonysdkmanagerdialog.cpp" line="+149"/>
         <source>Open Harmony Settings…</source>
         <translation>打开鸿蒙设置....</translation>
     </message>
@@ -84,7 +90,7 @@
     </message>
     <message>
         <location line="+8"/>
-        <location filename="harmonydevice.cpp" line="+8"/>
+        <location filename="harmonydevice.cpp" line="+6"/>
         <source>Refresh</source>
         <translation>刷新</translation>
     </message>
@@ -165,7 +171,7 @@
         <translation>HarmonyOS设备</translation>
     </message>
     <message>
-        <location filename="harmonysettingswidget.cpp" line="+149"/>
+        <location filename="harmonysettingswidget.cpp" line="+144"/>
         <source>Harmony Configuration</source>
         <translation>鸿蒙设置</translation>
     </message>
@@ -229,7 +235,7 @@
         <translation type="vanished">选择 OpenHarmony SDK目录</translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="+24"/>
         <source>Open Deveco Studio download URL in the system&apos;s browser.</source>
         <translation>在系统浏览器中打开 Deveco Studio 下载 URL。</translation>
     </message>
@@ -238,7 +244,7 @@
         <translation type="vanished">选择qmake路径</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+16"/>
         <source>Open Qt for Harmony download URL in the system&apos;s browser.</source>
         <translation>在系统的浏览器中打开Qt for  Harmony下载 URL。</translation>
     </message>
@@ -248,12 +254,11 @@
         <translation>管理 Qt for OpenHarmony SDK…</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Browse Qt for OpenHarmony packages from the binary catalog JSON (qt-oh-binary-catalog.v1.json), loaded from GitCode with GitHub fallback.</source>
-        <translation>从二进制目录 JSON (qt-oh-binary-catalog.v1.json) 中浏览 Qt for OpenHarmony 软件包，该目录从 GitCode 加载，并有 GitHub 作为备用方案。</translation>
+        <translation type="vanished">从二进制目录 JSON (qt-oh-binary-catalog.v1.json) 中浏览 Qt for OpenHarmony 软件包，该目录从 GitCode 加载，并有 GitHub 作为备用方案。</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Deveco Studio path exists and is writable</source>
         <translation>Deveco Studio 路径存在且可写</translation>
     </message>
@@ -273,37 +278,33 @@
         <translation>已安装 SDK 工具</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>DevEco sdk/default (for LLDB) exists</source>
-        <translation>DevEco sdk/default（适用于 LLDB）存在</translation>
+        <translation type="vanished">DevEco sdk/default（适用于 LLDB）存在</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>Host LLDB (openharmony/native/llvm/bin)</source>
-        <translation>主机 LLDB（openharmony/native/llvm/bin）</translation>
+        <location line="+9"/>
+        <source>Qt for Harmony settings are OK.</source>
+        <oldsource>Host LLDB (openharmony/native/llvm/bin)</oldsource>
+        <translation>鸿蒙Qt设置正常。</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>lldb-server (aarch64-linux-ohos, device)</source>
-        <translation>lldb-server（aarch64-linux-ohos，设备）</translation>
+        <translation type="vanished">lldb-server（aarch64-linux-ohos，设备）</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>lldb-server (arm-linux-ohos)</source>
-        <translation>lldb-server（arm-linux-ohos）</translation>
+        <translation type="vanished">lldb-server（arm-linux-ohos）</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>lldb-server (x86_64-linux-ohos, emulator)</source>
-        <translation>lldb-server（x86_64-linux-ohos，模拟器）</translation>
+        <translation type="vanished">lldb-server（x86_64-linux-ohos，模拟器）</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Static lldb (aarch64, optional — device-local debug only)</source>
-        <translation>静态 lldb（aarch64，可选 — 仅设备本地调试）</translation>
+        <translation type="vanished">静态 lldb（aarch64，可选 — 仅设备本地调试）</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-8"/>
         <source>All essentials installed</source>
         <translation>所有必需品均已安装</translation>
     </message>
@@ -324,12 +325,7 @@
         <translation>Qt for Harmony 的qmake 存在</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>Qt for Harmony settings are OK.</source>
-        <translation>Qt for Harmony 设置正常。</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+3"/>
         <source>Qt for Harmony settings have errors.</source>
         <translation>Qt for Harmony 设置错误。</translation>
     </message>
@@ -359,32 +355,27 @@
         <translation>Qt for Harmony 列表:</translation>
     </message>
     <message>
-        <location line="+128"/>
         <source>Set a valid DevEco Studio path first.</source>
-        <translation>请先设置有效的 DevEco Studio 路径。</translation>
+        <translation type="vanished">请先设置有效的 DevEco Studio 路径。</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>sdk/default not found (install OpenHarmony SDK via DevEco).</source>
-        <translation>未找到 sdk/default（请通过 DevEco 安装 OpenHarmony SDK）。</translation>
+        <translation type="vanished">未找到 sdk/default（请通过 DevEco 安装 OpenHarmony SDK）。</translation>
     </message>
     <message>
-        <location line="+13"/>
         <source>Missing: sdk/default/openharmony/native/llvm/bin/lldb</source>
-        <translation>缺失：sdk/default/openharmony/native/llvm/bin/lldb</translation>
+        <translation type="vanished">缺失：sdk/default/openharmony/native/llvm/bin/lldb</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Missing lldb-server under hms/native/lldb/%1</source>
-        <translation>在 hms/native/lldb/%1 下缺少 lldb-server</translation>
+        <translation type="vanished">在 hms/native/lldb/%1 下缺少 lldb-server</translation>
     </message>
     <message>
-        <location line="+14"/>
         <source>Optional: static lldb under llvm/lib/clang/…/bin/aarch64-linux-ohos (remote debug does not require it)</source>
-        <translation>可选：llvm/lib/clang/…/bin/aarch64-linux-ohos 下的静态 lldb（远程调试不需要）</translation>
+        <translation type="vanished">可选：llvm/lib/clang/…/bin/aarch64-linux-ohos 下的静态 lldb（远程调试不需要）</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+150"/>
         <source>Select an NDK</source>
         <translation>选择 NDK</translation>
     </message>
@@ -438,29 +429,28 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation>HarmonyOS SDK 目录不可写</translation>
     </message>
     <message>
-        <location line="-604"/>
+        <location line="-524"/>
         <source>All changes on this page take effect immediately.</source>
         <translation>本页面上的所有更改均立即生效。</translation>
     </message>
     <message>
         <location line="+70"/>
-        <location line="+32"/>
+        <location line="+31"/>
         <source>Add...</source>
         <translation>添加…</translation>
     </message>
     <message>
-        <location line="-31"/>
         <source>Add the selected SDK. The toolchains and debuggers will be created automatically.</source>
-        <translation>添加所选 SDK。将自动创建工具链与调试器。</translation>
+        <translation type="vanished">添加所选 SDK。将自动创建工具链与调试器。</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <location line="+32"/>
+        <location line="-29"/>
+        <location line="+31"/>
         <source>Remove</source>
         <translation>移除</translation>
     </message>
     <message>
-        <location line="-30"/>
+        <location line="-29"/>
         <source>Remove the selected SDK if it has been added manually.</source>
         <translation>若所选 SDK 为手动添加，则将其移除。</translation>
     </message>
@@ -475,22 +465,36 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation>使用官方组件索引下载 OpenHarmony SDK（与 Qt for OHOS 构建脚本所用 API 相同）。</translation>
     </message>
     <message>
-        <location line="+24"/>
         <source>Add the selected qmake. The toolchains and debuggers will be created automatically.</source>
-        <translation>添加所选 qmake。将自动创建工具链与调试器。</translation>
+        <translation type="vanished">添加所选 qmake。将自动创建工具链与调试器。</translation>
     </message>
     <message>
-        <location line="+43"/>
+        <location line="+57"/>
         <source>Harmony Settings</source>
         <translation>鸿蒙设置</translation>
     </message>
     <message>
-        <location line="-140"/>
+        <location line="-129"/>
         <source>Make location:</source>
         <translation>Make 路径：</translation>
     </message>
     <message>
-        <location line="+146"/>
+        <location line="+65"/>
+        <source>Add the selected SDK. Toolchains will be created automatically.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+31"/>
+        <source>Add the selected qmake. Toolchains will be created automatically.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Browse Qt for OpenHarmony packages (online catalog).</source>
+        <translation type="unfinished">浏览 Qt for OpenHarmony 软件包（在线目录）。</translation>
+    </message>
+    <message>
+        <location line="+30"/>
         <source>Deveco studio location:</source>
         <translation>Deveco Studio 路径：</translation>
     </message>
@@ -509,7 +513,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation type="obsolete">Qt for Harmony qmake路径：</translation>
     </message>
     <message>
-        <location line="+248"/>
+        <location line="+179"/>
         <source>SDK path does not exist or is not writable</source>
         <translation>SDK 路径不存在或不可写</translation>
     </message>
@@ -645,7 +649,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
     <message>
         <location line="+62"/>
         <location line="+80"/>
-        <location filename="harmonydeployqtstep.cpp" line="+361"/>
+        <location filename="harmonydeployqtstep.cpp" line="+413"/>
         <source>Starting: &quot;%1&quot;</source>
         <translation>正在启动：“%1”</translation>
     </message>
@@ -696,174 +700,257 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation>构建 Harmony HAP</translation>
     </message>
     <message>
-        <location filename="harmonydebugsupport.cpp" line="+216"/>
+        <location filename="harmonydebugsupport.cpp" line="+265"/>
         <source>Harmony DAP debug: no build configuration.</source>
         <translation>Harmony DAP 调试：无构建配置。</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Harmony DAP debug: hdc was not found.</source>
-        <translation>Harmony DAP 调试：未找到 hdc。</translation>
+        <translation type="vanished">Harmony DAP 调试：未找到 hdc。</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Harmony DAP debug: no target device serial.</source>
-        <translation>Harmony DAP 调试：无目标设备序列号。</translation>
+        <translation type="vanished">Harmony DAP 调试：无目标设备序列号。</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Harmony DAP debug: bundle name is unknown.</source>
-        <translation>Harmony DAP 调试：包名未知。</translation>
+        <translation type="vanished">Harmony DAP 调试：包名未知。</translation>
     </message>
     <message>
-        <location line="+9"/>
         <source>Harmony DAP debug: cannot determine OHOS ABI/triple.</source>
-        <translation>Harmony DAP 调试：无法确定 OHOS ABI/三元组。</translation>
+        <translation type="vanished">Harmony DAP 调试：无法确定 OHOS ABI/三元组。</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Harmony DAP debug: lldb-server not found for triple %1.</source>
-        <translation>Harmony DAP 调试：未找到适用于三元组 %1 的 lldb-server。</translation>
+        <translation type="vanished">Harmony DAP 调试：未找到适用于三元组 %1 的 lldb-server。</translation>
+    </message>
+    <message>
+        <source>Harmony DAP debug: launching app with &apos;aa start -D&apos; before attaching adapter.</source>
+        <translation type="vanished">Harmony DAP 调试：在附加适配器前使用“aa start -D”启动应用。</translation>
+    </message>
+    <message>
+        <location line="-7"/>
+        <source>Harmony DAP debug: preparing…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Harmony DAP debug: hdc was not found (check HarmonyOS kit settings).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Harmony DAP debug: no target device serial (is a device connected?).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Harmony DAP debug: bundle/package name is unknown (check project settings).</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location line="+19"/>
-        <source>Harmony DAP debug: launching app with &apos;aa start -D&apos; before attaching adapter.</source>
-        <translation>Harmony DAP 调试：在附加适配器前使用“aa start -D”启动应用。</translation>
+        <source>Harmony DAP debug: unknown ABI &apos;%1&apos;, defaulting to aarch64-linux-ohos.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+163"/>
+        <location line="+9"/>
+        <source>Harmony DAP debug: lldb-server not found for triple &apos;%1&apos; (searched DevEco SDK and registered NDK paths).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+35"/>
+        <source>Harmony DAP debug: stale lldb-server cleanup output: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Harmony DAP debug: stale lldb-server cleanup failed: %1...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <location line="+10"/>
+        <location line="+9"/>
         <source>Harmony DAP debug: pre-launch command failed: %1</source>
         <translation>Harmony DAP 调试：启动前命令失败：%1</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
+        <source>Harmony DAP debug: lldb-server pushed from: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Harmony DAP debug: lldb-server verify output: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+5"/>
         <source>Harmony DAP debug: lldb-server verify command failed: %1</source>
         <translation>Harmony DAP 调试：lldb-server 校验命令失败：%1</translation>
     </message>
     <message>
+        <location line="+4"/>
+        <source>Harmony DAP debug: lldb-server is not visible on device after start...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Harmony DAP debug: launching app with &apos;aa start&apos;.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Harmony DAP debug: aa start warning: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Harmony DAP debug: could not determine app PID after launch...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Harmony DAP debug: app PID %1.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Harmony DAP debug: injecting lldb-server: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Harmony DAP debug: aa process output: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Harmony DAP debug: aa process warning: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location line="+21"/>
+        <source>Harmony DAP debug: lldb-server confirmed (attempt %1): %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Harmony DAP debug: WARNING — lldb-server with socket &apos;%1&apos; NOT found after 8 s. Check that the HAP is a debug build signed by DevEco Studio and that SELinux allows execution from /data/local/tmp/debugserver/.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Harmony DAP debug: connecting with socket=%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Harmony DAP debug: lldb-server is not visible on device after start.
 verify output:
 %1</source>
-        <translation>Harmony DAP 调试：启动后设备上看不到 lldb-server。
+        <translation type="vanished">Harmony DAP 调试：启动后设备上看不到 lldb-server。
 校验输出：
 %1</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Harmony DAP debug: lldb-server verify output:
 %1</source>
-        <translation>Harmony DAP 调试：lldb-server 校验输出：
+        <translation type="vanished">Harmony DAP 调试：lldb-server 校验输出：
 %1</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Harmony DAP debug: aa process result=%1
 output:
 %2</source>
-        <translation>Harmony DAP 调试：aa 进程结果=%1
+        <translation type="vanished">Harmony DAP 调试：aa 进程结果=%1
 输出：
 %2</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>Harmony DAP debug: stale lldb-server cleanup failed: %1
 output:
 %2</source>
-        <translation>Harmony DAP 调试：清理残留 lldb-server 失败：%1
+        <translation type="vanished">Harmony DAP 调试：清理残留 lldb-server 失败：%1
 输出：
 %2</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Harmony DAP debug: stale lldb-server cleanup output:
 %1</source>
-        <translation>Harmony DAP 调试：清理残留 lldb-server 输出：
+        <translation type="vanished">Harmony DAP 调试：清理残留 lldb-server 输出：
 %1</translation>
     </message>
     <message>
-        <location line="+10"/>
         <source>Harmony DAP debug: could not determine app PID after launch.
 Try: hdc -t %1 shell ps -A</source>
-        <translation>Harmony DAP 调试：启动后无法确定应用 PID。
+        <translation type="vanished">Harmony DAP 调试：启动后无法确定应用 PID。
 可尝试：hdc -t %1 shell ps -A</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Harmony DAP debug: attach PID %1 (source: %2).</source>
-        <translation>Harmony DAP 调试：附加 PID %1（来源：%2）。</translation>
+        <translation type="vanished">Harmony DAP 调试：附加 PID %1（来源：%2）。</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>unknown</source>
-        <translation>未知</translation>
+        <translation type="vanished">未知</translation>
     </message>
     <message>
-        <location line="+355"/>
         <source>Harmony DAP Proxy</source>
-        <translation>Harmony DAP 代理</translation>
+        <translation type="vanished">Harmony DAP 代理</translation>
     </message>
     <message>
-        <location line="+15"/>
         <source>Harmony DAP debug: run configuration has no kit.</source>
-        <translation>Harmony DAP 调试：运行配置未关联套件。</translation>
+        <translation type="vanished">Harmony DAP 调试：运行配置未关联套件。</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>Harmony DAP debug requires C++ debugger enabled in run configuration.</source>
-        <translation>Harmony DAP 调试需要在运行配置中启用 C++ 调试器。</translation>
+        <translation type="vanished">Harmony DAP 调试需要在运行配置中启用 C++ 调试器。</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Harmony debug was migrated to DAP-only.
 Please select an LLDB DAP debugger in Projects &gt; Kits &gt; Debugger.</source>
-        <translation>Harmony 调试已仅支持 DAP。
+        <translation type="vanished">Harmony 调试已仅支持 DAP。
 请在“项目 &gt; 套件 &gt; 调试器”中选择 LLDB DAP 调试器。</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>Harmony DAP debug: failed to prepare DAP proxy script.</source>
-        <translation>Harmony DAP 调试：准备 DAP 代理脚本失败。</translation>
+        <translation type="vanished">Harmony DAP 调试：准备 DAP 代理脚本失败。</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>Harmony DAP debug: failed to register proxy debugger item.</source>
-        <translation>Harmony DAP 调试：注册代理调试器项失败。</translation>
+        <translation type="vanished">Harmony DAP 调试：注册代理调试器项失败。</translation>
     </message>
     <message>
-        <location line="+23"/>
         <source>Harmony DAP debug: invalid remote attach context.
 serial=&apos;%1&apos;
 bundle=&apos;%2&apos;
 remoteAddress=&apos;%3&apos;</source>
-        <translation>Harmony DAP 调试：远程附加上下文无效。
+        <translation type="vanished">Harmony DAP 调试：远程附加上下文无效。
 serial=&apos;%1&apos;
 bundle=&apos;%2&apos;
 remoteAddress=&apos;%3&apos;</translation>
     </message>
     <message>
-        <location line="+18"/>
         <source>Harmony DAP env: serial=&apos;%1&apos; bundle=&apos;%2&apos; remoteAddress=&apos;%3&apos; remoteAddressSimple=&apos;%4&apos; HDC_UTID=&apos;%5&apos;</source>
-        <translation>Harmony DAP 环境：serial=&apos;%1&apos; bundle=&apos;%2&apos; remoteAddress=&apos;%3&apos; remoteAddressSimple=&apos;%4&apos; HDC_UTID=&apos;%5&apos;</translation>
+        <translation type="vanished">Harmony DAP 环境：serial=&apos;%1&apos; bundle=&apos;%2&apos; remoteAddress=&apos;%3&apos; remoteAddressSimple=&apos;%4&apos; HDC_UTID=&apos;%5&apos;</translation>
     </message>
     <message>
-        <location line="+6"/>
         <source>Harmony DAP debug: debugger executable does not look like a DAP adapter:
 %1
 
 Expected harmony-dap-proxy / lldb-dap / lldb-vscode.</source>
-        <translation>Harmony DAP 调试：调试器可执行文件不像 DAP 适配器：
+        <translation type="vanished">Harmony DAP 调试：调试器可执行文件不像 DAP 适配器：
 %1
 
 应为 harmony-dap-proxy / lldb-dap / lldb-vscode。</translation>
     </message>
     <message>
-        <location line="+14"/>
         <source>Harmony DAP debug: using adapter %1</source>
-        <translation>Harmony DAP 调试：使用适配器 %1</translation>
+        <translation type="vanished">Harmony DAP 调试：使用适配器 %1</translation>
     </message>
     <message>
-        <location filename="harmonydeployqtstep.cpp" line="-245"/>
+        <location filename="harmonydeployqtstep.cpp" line="-294"/>
         <source>Uninstall the existing app before deployment</source>
         <translation>部署前卸载已安装应用</translation>
     </message>
@@ -910,12 +997,11 @@ The kit supports &quot;%2&quot;, but the device uses &quot;%3&quot;.</source>
         <translation>部署设备“%1”已断开连接。</translation>
     </message>
     <message>
-        <location line="+8"/>
         <source>HarmonyOS: The main ABI of the deployment device (%1) is not selected. The app execution or debugging might not work properly. Add it from Projects &gt; Build &gt; Build Steps &gt; qmake &gt; ABIs.</source>
-        <translation>HarmonyOS：未选择部署设备的主 ABI（%1）。运行或调试可能异常。请在“项目 &gt; 构建 &gt; 构建步骤 &gt; qmake &gt; ABI”中添加。</translation>
+        <translation type="vanished">HarmonyOS：未选择部署设备的主 ABI（%1）。运行或调试可能异常。请在“项目 &gt; 构建 &gt; 构建步骤 &gt; qmake &gt; ABI”中添加。</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+20"/>
         <source>No device serial number is available for &quot;%1&quot;. Connect a device, refresh the device list, or select another kit/run device in Projects.</source>
         <translation>“%1”没有可用设备序列号。请连接设备、刷新设备列表，或在“项目”中选择其他套件/运行设备。</translation>
     </message>
@@ -982,12 +1068,16 @@ Ensure AppScope/app.json5 exists and contains app.bundleName.</source>
         <translation>正在卸载旧包“%1”。</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Package deploy: Running command &quot;%1&quot;.</source>
-        <translation>包部署：正在运行命令“%1”。</translation>
+        <translation type="vanished">包部署：正在运行命令“%1”。</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="-107"/>
+        <source>HarmonyOS: The main ABI of the deployment device (%1) is not selected. The app might not run correctly. Add it from Projects &gt; Build &gt; Build Steps &gt; qmake &gt; ABIs.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+209"/>
         <source>The process &quot;%1&quot; exited normally.</source>
         <translation>进程“%1”已正常退出。</translation>
     </message>
@@ -1060,12 +1150,13 @@ Ensure AppScope/app.json5 exists and contains app.bundleName.</source>
         <location line="+9"/>
         <location line="+10"/>
         <location line="+9"/>
-        <location line="+22"/>
+        <location line="+45"/>
+        <location line="+19"/>
         <source>Install HAP</source>
         <translation>安装 HAP</translation>
     </message>
     <message>
-        <location line="-93"/>
+        <location line="-135"/>
         <source>The selected file cannot be read:
 %1</source>
         <translation>无法读取所选文件：
@@ -1130,12 +1221,14 @@ Wait until the device is ready, then try again.</source>
 请等待就绪后重试。</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+31"/>
+        <location line="+27"/>
         <source>HarmonyOS package was installed successfully.</source>
         <translation>HarmonyOS 包安装成功。</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="-13"/>
+        <location line="+19"/>
         <source>Installation failed.
 
 %1</source>
@@ -1144,7 +1237,8 @@ Wait until the device is ready, then try again.</source>
 %1</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="-15"/>
+        <location line="+19"/>
         <source>HAP installation failed: %1</source>
         <translation>HAP 安装失败：%1</translation>
     </message>
@@ -1154,14 +1248,12 @@ Wait until the device is ready, then try again.</source>
         <translation>部署到 HarmonyOS 设备</translation>
     </message>
     <message>
-        <location filename="harmonyhdcforward.cpp" line="+27"/>
         <source>The hdc tool is missing or not executable.</source>
-        <translation>未找到 hdc 或不可执行。</translation>
+        <translation type="vanished">未找到 hdc 或不可执行。</translation>
     </message>
     <message>
-        <location line="+20"/>
         <source>Command failed: %1</source>
-        <translation>命令失败：%1</translation>
+        <translation type="vanished">命令失败：%1</translation>
     </message>
     <message>
         <location filename="harmonyqttreleasesdownloader.cpp" line="+138"/>
@@ -1179,7 +1271,7 @@ Wait until the device is ready, then try again.</source>
         <translation>内部错误：无响应。</translation>
     </message>
     <message>
-        <location filename="harmonyqttsdkmanagerdialog.cpp" line="-15"/>
+        <location filename="harmonyqttsdkmanagerdialog.cpp" line="+155"/>
         <source>Qt for OpenHarmony SDK Manager</source>
         <translation>Qt for OpenHarmony SDK 管理器</translation>
     </message>
@@ -1189,7 +1281,7 @@ Wait until the device is ready, then try again.</source>
         <translation>打开 GitCode 发行版页面…</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+8"/>
         <source>Select Qt for OpenHarmony Install Root</source>
         <translation>选择 Qt for OpenHarmony 安装根目录</translation>
     </message>
@@ -1200,7 +1292,7 @@ Wait until the device is ready, then try again.</source>
     </message>
     <message>
         <location line="+9"/>
-        <location filename="harmonysdkmanagerdialog.cpp" line="+16"/>
+        <location filename="harmonysdkmanagerdialog.cpp" line="+154"/>
         <source>Get</source>
         <translation>获取</translation>
     </message>
@@ -1216,7 +1308,7 @@ Wait until the device is ready, then try again.</source>
     </message>
     <message>
         <location line="+15"/>
-        <location filename="harmonysdkmanagerdialog.cpp" line="+20"/>
+        <location filename="harmonysdkmanagerdialog.cpp" line="+19"/>
         <source>Refresh List</source>
         <translation>刷新列表</translation>
     </message>
@@ -1233,23 +1325,27 @@ Wait until the device is ready, then try again.</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+10"/>
         <source>Releases</source>
         <translation>发行版</translation>
     </message>
     <message>
-        <location line="+9"/>
-        <source>Release list is loaded from the binary catalog JSON (&lt;code&gt;qt-for-openharmony.binary-catalog&lt;/code&gt; v1). The plugin first requests the catalog from &lt;b&gt;GitCode&lt;/b&gt; (raw), then falls back to &lt;b&gt;GitHub&lt;/b&gt; if that fails. Set environment variable &lt;code&gt;QT_OH_BINARY_CATALOG_URL&lt;/code&gt; to override the primary URL only. Only prebuilt packages whose &lt;code&gt;platform&lt;/code&gt; matches &lt;b&gt;this computer’s OS&lt;/b&gt; are listed. The catalog &lt;code&gt;arch&lt;/code&gt; field is the &lt;b&gt;OpenHarmony target&lt;/b&gt; (not this PC’s CPU), so device and emulator builds may both appear. &lt;code&gt;kind: metadata&lt;/code&gt; source archives are hidden. Upstream Qt OH project: &lt;a href=&quot;%1&quot;&gt;GitCode releases&lt;/a&gt;.</source>
-        <translation>发行版列表来自二进制目录 JSON（&lt;code&gt;qt-for-openharmony.binary-catalog&lt;/code&gt; v1）。插件先向 &lt;b&gt;GitCode&lt;/b&gt;（raw）请求目录，失败则回退 &lt;b&gt;GitHub&lt;/b&gt;。环境变量 &lt;code&gt;QT_OH_BINARY_CATALOG_URL&lt;/code&gt; 仅覆盖主 URL。仅列出 &lt;code&gt;platform&lt;/code&gt; 与&lt;b&gt;本机操作系统&lt;/b&gt;匹配的预编译包。目录中 &lt;code&gt;arch&lt;/code&gt; 为 &lt;b&gt;OpenHarmony 目标&lt;/b&gt;（非本机 CPU），故可能同时出现设备与模拟器构建。&lt;code&gt;kind: metadata&lt;/code&gt; 源码包已隐藏。上游 Qt OH：&lt;a href=&quot;%1&quot;&gt;GitCode 发行版&lt;/a&gt;。</translation>
+        <source>Release list is loaded from the binary catalog JSON (&lt;code&gt;qt-for-openharmony.binary-catalog&lt;/code&gt; v1). The plugin prefers GitCode with a GitHub fallback; set &lt;code&gt;QT_OH_BINARY_CATALOG_URL&lt;/code&gt; to override. Only packages for this host platform are shown (catalog &lt;code&gt;arch&lt;/code&gt; is the OpenHarmony target). Upstream: &lt;a href=&quot;%1&quot;&gt;GitCode releases&lt;/a&gt;.</source>
+        <translation type="vanished">发行列表来自二进制目录 JSON（&lt;code&gt;qt-for-openharmony.binary-catalog&lt;/code&gt; v1）。插件优先使用 GitCode，失败时回退到 GitHub；可通过环境变量 &lt;code&gt;QT_OH_BINARY_CATALOG_URL&lt;/code&gt; 指定。仅显示与本机平台匹配的包（目录的 &lt;code&gt;arch&lt;/code&gt; 表示 OpenHarmony 目标）。上游：&lt;a href=&quot;%1&quot;&gt;GitCode 发行版&lt;/a&gt;。</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+9"/>
+        <source>Release list is loaded from the online catalog. Only packages for this platform are shown.</source>
+        <translation>发布列表来自在线目录，仅显示适用于本机平台的软件包。</translation>
+    </message>
+    <message>
+        <location line="+7"/>
         <source>Install / download root:</source>
         <translation>安装/下载根目录：</translation>
     </message>
     <message>
         <location line="+6"/>
-        <location filename="harmonysdkmanagerdialog.cpp" line="+27"/>
+        <location filename="harmonysdkmanagerdialog.cpp" line="+25"/>
         <source>Log:</source>
         <translation>日志：</translation>
     </message>
@@ -1259,7 +1355,7 @@ Wait until the device is ready, then try again.</source>
         <translation>点击“刷新列表”加载发行版（GitCode 目录，GitHub 备用）。</translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="+28"/>
         <source>Requesting catalog…</source>
         <translation>正在请求目录…</translation>
     </message>
@@ -1275,7 +1371,7 @@ Wait until the device is ready, then try again.</source>
     </message>
     <message>
         <location line="+21"/>
-        <location filename="harmonysdkmanagerdialog.cpp" line="+132"/>
+        <location filename="harmonysdkmanagerdialog.cpp" line="+125"/>
         <source>A download is already in progress.</source>
         <translation>已有下载正在进行。</translation>
     </message>
@@ -1469,28 +1565,53 @@ If needed, add the kit’s &lt;b&gt;qmake&lt;/b&gt; under &lt;i&gt;Qt for Harmon
         <translation>留空则从 ohpro 下 module.json5 读取第一个合适的 Ability（优先 entry 模块，其次首个导出或首个 Ability）。若未找到则使用 EntryAbility。</translation>
     </message>
     <message>
-        <location line="+11"/>
-        <location line="+107"/>
+        <location line="+8"/>
+        <source>Stream hilog to output panel:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Attaches an hdc hilog reader filtered by the application PID that streams on-device log output to the Application Output panel while the application is running.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>hilog filter:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Extra arguments appended to the hilog command. The application PID filter (-P) is added automatically. Leave empty to stream all of the application&apos;s logs.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Auto-filtered by PID; e.g. &quot;-T MyTag&quot; or &quot;-e pattern&quot;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <location line="+109"/>
         <source>Harmony Application</source>
         <translation>Harmony 应用</translation>
     </message>
     <message>
-        <location filename="harmonyrunner.cpp" line="+84"/>
+        <location filename="harmonyrunner.cpp" line="+161"/>
         <source>Skipping post-quit on-device shell commands: no device serial.</source>
         <translation>跳过退出后设备命令：无设备序列号。</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
         <source>Skipping post-quit on-device shell commands: hdc executable not found.</source>
         <translation>跳过退出后设备命令：未找到 hdc。</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Running post-quit on-device shell commands…</source>
         <translation>正在运行退出后设备 Shell 命令…</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+7"/>
         <source>Post-quit command finished: %1</source>
         <translation>退出后命令已完成：%1</translation>
     </message>
@@ -1500,7 +1621,7 @@ If needed, add the kit’s &lt;b&gt;qmake&lt;/b&gt; under &lt;i&gt;Qt for Harmon
         <translation>退出后命令失败：%1 — %2</translation>
     </message>
     <message>
-        <location line="+18"/>
+        <location line="+17"/>
         <source>Cannot stop application on device: bundle name is unknown.</source>
         <translation>无法在设备上停止应用：包名未知。</translation>
     </message>
@@ -1510,12 +1631,12 @@ If needed, add the kit’s &lt;b&gt;qmake&lt;/b&gt; under &lt;i&gt;Qt for Harmon
         <translation>无法在设备上停止应用：无设备序列号（请先部署或选择运行设备）。</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+8"/>
         <source>Cannot stop application on device: hdc executable not found.</source>
         <translation>无法在设备上停止应用：未找到 hdc。</translation>
     </message>
     <message>
-        <location line="+15"/>
+        <location line="+11"/>
         <source>Requested force-stop on device for &quot;%1&quot;.</source>
         <translation>已请求对“%1”在设备上强制停止。</translation>
     </message>
@@ -1523,6 +1644,26 @@ If needed, add the kit’s &lt;b&gt;qmake&lt;/b&gt; under &lt;i&gt;Qt for Harmon
         <location line="+4"/>
         <source>force-stop failed for &quot;%1&quot;: %2</source>
         <translation>“%1”强制停止失败：%2</translation>
+    </message>
+    <message>
+        <location line="+119"/>
+        <source>Harmony: hilog skipped – bundle name unknown (cannot filter by PID).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+37"/>
+        <source>Harmony hilog socket: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Harmony: streaming hilog for %1 via hdc socket (waiting for PID…)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+49"/>
+        <source>Starting Harmony application via hdc daemon socket…</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="harmonysdkarchiveutils.cpp" line="+37"/>
@@ -1579,22 +1720,20 @@ Extract manually, then add the SDK root in Harmony settings.</source>
         <translation>未配置 SDK 列表端点。</translation>
     </message>
     <message>
-        <location filename="harmonysdkmanagerdialog.cpp" line="-371"/>
+        <location filename="harmonysdkmanagerdialog.cpp" line="-352"/>
         <source>OpenHarmony SDK Manager</source>
         <translation>OpenHarmony SDK 管理器</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>Primary server + GitCode backup mirror</source>
-        <translation>主站 + GitCode 备用镜像</translation>
+        <translation type="vanished">主站 + GitCode 备用镜像</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Primary server + GitHub backup mirror</source>
-        <translation>主站 + GitHub 备用镜像</translation>
+        <translation type="vanished">主站 + GitHub 备用镜像</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+8"/>
         <source>After each download, extract with the system &quot;tar&quot; into &lt;HarmonyOS SDK location&gt;/&lt;API version&gt;/ (macOS, Linux, Windows 10+).</source>
         <translation>每次下载后，用系统“tar”解压到 &lt;HarmonyOS SDK 位置&gt;/&lt;API 版本&gt;/（macOS、Linux、Windows 10+）。</translation>
     </message>
@@ -1619,27 +1758,24 @@ Extract manually, then add the SDK root in Harmony settings.</source>
         <translation>大小</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>URL</source>
-        <translation>URL</translation>
+        <translation type="vanished">URL</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+27"/>
         <source>SDK List</source>
         <translation>SDK 列表</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>Fetch component index from HarmonyOS / mirror (same protocol as Qt for OHOS build scripts).</source>
-        <translation>从 HarmonyOS / 镜像获取组件索引（协议与 Qt for OHOS 构建脚本相同）。</translation>
+        <translation type="vanished">从 HarmonyOS / 镜像获取组件索引（协议与 Qt for OHOS 构建脚本相同）。</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Backup mirror:</source>
-        <translation>备用镜像：</translation>
+        <translation type="vanished">备用镜像：</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+21"/>
         <source>Click &quot;Refresh List&quot; to load packages.</source>
         <translation>点击“刷新列表”加载组件包。</translation>
     </message>
@@ -1668,14 +1804,13 @@ SDK 根：%1
 • 解压：%3/&lt;API 版本&gt;/</translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="+25"/>
         <source>Requesting package list (POST %1)…</source>
         <translation>正在请求组件列表（POST %1）…</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>Backup GET %1</source>
-        <translation>备用 GET %1</translation>
+        <translation type="vanished">备用 GET %1</translation>
     </message>
     <message>
         <location line="+15"/>
@@ -1688,7 +1823,7 @@ SDK 根：%1
         <translation>%1 个组件</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+21"/>
         <source>Loaded %1 package(s) in %2 API group(s).</source>
         <translation>已加载 %1 个包，分属 %2 个 API 组。</translation>
     </message>
@@ -1860,6 +1995,11 @@ Enable extraction or add the SDK path under Harmony settings.</source>
         <location line="+4"/>
         <source>Add Harmony Qt?</source>
         <translation>添加 Harmony Qt？</translation>
+    </message>
+    <message>
+        <location filename="harmonymainrunsockettask.cpp" line="+49"/>
+        <source>Harmony main shell (socket): %1</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 </TS>
