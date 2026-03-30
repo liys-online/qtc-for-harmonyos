@@ -67,49 +67,20 @@ namespace Ohos::Internal {
 static FilePath lldbServerForAbi(const QString &abiTriple)
 {
     /*
-    ** 辅助函数：枚举 clang 版本子目录并检查 lldb-server 是否存在。
-    ** ndkRoot 为 "native" 目录（包含 llvm/）。
+    ** DevEco Studio openharmony/native 路径
     */
-    const auto tryClangBin = [&](const FilePath &ndkRoot) -> FilePath {
-        const FilePath clangBase = ndkRoot / "llvm" / "lib" / "clang";
-        const QStringList vers = QDir(clangBase.toUserOutput())
-                                     .entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-        for (const QString &ver : vers) {
-            const FilePath candidate = clangBase / ver / "bin" / abiTriple / "lldb-server";
-            if (candidate.isExecutableFile())
-                return candidate;
-        }
-        return {};
-    };
-
-    /* ** (1) 已注册的 OpenHarmony SDK —— SDK 15 lldb-server 经确认可用 */
-    for (const QString &s : HarmonyConfig::getSdkList()) {
-        const FilePath ndk = HarmonyConfig::ndkLocation(FilePath::fromUserInput(s));
-        if (const FilePath r = tryClangBin(ndk); !r.isEmpty())
-            return r;
-    }
-    if (const FilePath r = tryClangBin(HarmonyConfig::ndkLocation(HarmonyConfig::defaultSdk())); !r.isEmpty())
-        return r;
-
-    /* ** (2) DevEco Studio openharmony/native 路径 */
     const FilePath tools = HarmonyConfig::devecoToolsLocation();
     if (!tools.isEmpty()) {
         const FilePath devecoNdk = tools.parentDir() / "sdk" / "default" / "openharmony" / "native";
-        if (const FilePath r = tryClangBin(devecoNdk); !r.isEmpty())
-            return r;
 
-        /* ** (3) DevEco Studio hms 路径（华为签名，用于严格用户镜像） */
+        /*
+        ** DevEco Studio hms 路径（华为签名，用于严格用户镜像）
+        */
         const FilePath hmsCand = tools.parentDir()
                                  / "sdk" / "default" / "hms" / "native" / "lldb"
                                  / abiTriple / "lldb-server";
-        if (hmsCand.isExecutableFile())
+        if (hmsCand.exists())
             return hmsCand;
-    }
-
-    /* ** (4) 已注册 SDK 的 hms 路径（最后备选） */
-    for (const QString &s : HarmonyConfig::getSdkList()) {
-        const FilePath c = FilePath::fromUserInput(s) / "hms" / "native" / "lldb" / abiTriple / "lldb-server";
-        if (c.isExecutableFile()) return c;
     }
     return {};
 }
@@ -363,7 +334,7 @@ public:
                 }
 
                 const FilePath lldbServer = lldbServerForAbi(ohosTriple);
-                if (!lldbServer.isExecutableFile()) {
+                if (!lldbServer.exists()) {
                     runControl->postMessage(
                         Tr::tr("Harmony DAP debug: lldb-server not found for triple '%1' "
                                "(searched DevEco SDK and registered NDK paths).")
