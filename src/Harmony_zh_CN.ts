@@ -700,7 +700,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation>构建 Harmony HAP</translation>
     </message>
     <message>
-        <location filename="harmonydebugsupport.cpp" line="+314"/>
+        <location filename="harmonydebugsupport.cpp" line="+285"/>
         <source>Harmony DAP debug: no build configuration.</source>
         <translation>Harmony DAP 调试：无构建配置。</translation>
     </message>
@@ -804,7 +804,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+26"/>
         <source>Harmony DAP debug: bridge started (PID %1), connecting to ws://127.0.0.1:%2…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -834,7 +834,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-190"/>
+        <location line="-189"/>
         <source>Harmony DAP debug: step 2 — prepare remote dir</source>
         <translation type="unfinished"></translation>
     </message>
@@ -874,7 +874,7 @@ On macOS, select the application bundle (e.g. DevEco-Studio.app under /Applicati
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+91"/>
+        <location line="+90"/>
         <source>Harmony DAP debug: aa process warning: %1</source>
         <translation type="unfinished"></translation>
     </message>
