@@ -15,9 +15,10 @@ add_library(usbmonitor STATIC
   usbmonitor.cpp
   usbmonitor.h
 )
-get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
-target_include_directories(usbmonitor PUBLIC ${PARENT_DIR}/3rdparty)
-target_link_libraries(usbmonitor PUBLIC libusb)
 target_link_libraries(usbmonitor PRIVATE Qt${QT_VERSION_MAJOR}::Core)
+
+if(WIN32)
+    target_link_libraries(usbmonitor PRIVATE user32)
+endif()
 
 target_compile_definitions(usbmonitor PRIVATE USBMONITOR_LIBRARY)
