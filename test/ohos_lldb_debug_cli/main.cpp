@@ -1,7 +1,6 @@
 // Copyright (C) 2026 Li-Yaosong
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only WITH Qt-GPL-exception-1.0
 
-#include "arktsdebugbridge.h"
 #include "hdcsocketclient.h"
 
 #include <QCoreApplication>
@@ -159,30 +158,6 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("ohos_lldb_debug_cli"));
-
-    /*
-    ** 桥接模式提前退出：
-    ** 由正常流程通过 QProcess::startDetached() 在独立子进程中启动，
-    ** 用于执行两级 ArkTS 解锁协议。
-    ** argv: <exe> --bridge-mode <connectPort> <pandaPort> <signalFile>
-    */
-    if (argc == 5 && QByteArray(argv[1]) == "--bridge-mode") {
-        const quint16 connectPort = QByteArray(argv[2]).toUShort();
-        const quint16 pandaPort   = QByteArray(argv[3]).toUShort();
-        const QString signalFile  = QString::fromLocal8Bit(argv[4]);
-        ArkTSDebugBridge bridge;
-        QObject::connect(&bridge, &ArkTSDebugBridge::logMessage, [](const QString &m) {
-            std::cout << m.toStdString() << "\n";
-            std::cout.flush();
-        });
-        QObject::connect(&bridge, &ArkTSDebugBridge::errorOccurred, [](const QString &m) {
-            std::cerr << m.toStdString() << "\n";
-            std::cerr.flush();
-        });
-        QObject::connect(&bridge, &ArkTSDebugBridge::finished, qApp, &QCoreApplication::quit);
-        bridge.start(connectPort, pandaPort, signalFile);
-        return app.exec();
-    }
 
     /* ** 参数解析 */
 
@@ -477,15 +452,19 @@ int main(int argc, char *argv[])
         wsSignalFile = tmpDir + QStringLiteral("/signal");
 
         /*
-        ** 通过 startDetached 在独立子进程中启动 ArkTSDebugBridge。
-        ** QProcess::startDetached 内部执行 fork+exec，为子进程提供全新的进程映像——
-        ** 避免 macOS 上 Qt 基于 CoreFoundation 的事件循环的 fork 安全问题。
+        ** 通过 startDetached 启动独立的 arktsdebugbridge 子进程。
+        ** arktsdebugbridge 与本可执行文件位于同一目录。
         */
-        const QString appPath = QCoreApplication::applicationFilePath();
+        const QString bridgePath = QCoreApplication::applicationDirPath()
+#if defined(Q_OS_WIN)
+            + QStringLiteral("/arktsdebugbridge.exe");
+#else
+            + QStringLiteral("/arktsdebugbridge");
+#endif
         qint64 bridgePid = 0;
         const bool bridgeStarted = QProcess::startDetached(
-            appPath,
-            {QStringLiteral("--bridge-mode"), localWsPortStr, localPandaPortStr, wsSignalFile},
+            bridgePath,
+            {localWsPortStr, localPandaPortStr, wsSignalFile},
             QString(),
             &bridgePid);
         if (!bridgeStarted) {

@@ -530,12 +530,11 @@ public:
                     ** 二进制安装在 libexec 目录下（与 perfparser、iostool 等同级），
                     ** 使用 ICore::libexecPath() 定位，兼容所有平台和沙盒构建。 */
                     const QString bridgeBin = Core::ICore::libexecPath(
-                        QStringLiteral("ohos_lldb_debug_cli")).toUrlishString();
+                        QStringLiteral("arktsdebugbridge")).toUrlishString();
                     qint64 bridgePid = 0;
                     const bool bridgeStarted = QProcess::startDetached(
                         bridgeBin,
-                        {QStringLiteral("--bridge-mode"),
-                         QString::number(localWsPort),
+                        {QString::number(localWsPort),
                          QString::number(localPandaPort),
                          wsSignalFile},
                         QString(),

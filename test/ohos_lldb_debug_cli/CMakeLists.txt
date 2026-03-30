@@ -19,21 +19,13 @@ target_link_libraries(ohos_lldb_debug_cli
         Qt6::Network
         Qt6::WebSockets
         hdcsocketclient
-        arktsdebugbridge
 )
 
 include(GNUInstallDirs)
-
-# Install to Qt Creator's libexec directory so ICore::libexecPath("ohos_lldb_debug_cli") finds it.
-# IDE_LIBEXEC_PATH is set by QtCreatorAPIInternal.cmake when building inside the Qt Creator tree.
-# Fall back to ${CMAKE_INSTALL_BINDIR} for standalone builds.
-if(DEFINED IDE_LIBEXEC_PATH)
-    set(_HARMONY_LIBEXEC_DEST "${IDE_LIBEXEC_PATH}")
-else()
-    set(_HARMONY_LIBEXEC_DEST "${CMAKE_INSTALL_BINDIR}")
-endif()
-
 install(TARGETS ohos_lldb_debug_cli
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${_HARMONY_LIBEXEC_DEST}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+enable_testing()
+add_test(NAME ohos_lldb_debug_cli COMMAND ohos_lldb_debug_cli)
