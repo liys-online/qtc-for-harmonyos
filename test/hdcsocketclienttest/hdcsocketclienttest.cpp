@@ -35,8 +35,14 @@ public:
             qputenv("OHOS_HDC_SERVER_PORT", m_old);
     }
 
+    EnvHdcPort(const EnvHdcPort&) = delete;
+    EnvHdcPort& operator=(const EnvHdcPort&) = delete;
+
+    EnvHdcPort(EnvHdcPort&&) = default;
+    EnvHdcPort& operator=(EnvHdcPort&&) = default;
+
 private:
-    const QByteArray m_old;
+    QByteArray m_old;
 };
 
 QByteArray makeValidHandshake()
