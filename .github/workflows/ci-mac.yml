@@ -96,3 +96,5 @@ jobs:
           name: qtc4harmony-QtCreator-19.0.0-macos
           path: |
             build/**/libHarmony.dylib
+            build/**/lldbbridge.py
+            build/**/arktsdebugbridge

@@ -79,3 +79,5 @@ jobs:
           name: qtc4harmony-QtCreator-19.0.0-linux
           path: |
             build/**/libHarmony.so
+            build/**/lldbbridge.py
+            build/**/arktsdebugbridge
