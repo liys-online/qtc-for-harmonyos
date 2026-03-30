@@ -79,7 +79,8 @@
 | P2-11 | P2  | 向导       | 新建 Harmony + CMake 工程向导                   | 模板与 ohpro 生成                                                                                                                                                                                                                                                                                                                                                                                                                         | —                                                                           | `manifestwizard.cpp`                          | —                                                                | 待开始                   |
 | P2-12 | P2  | 模板       | `ohprojectecreator` 去个人路径、动态 API 表        | 资源与 `sdkVersionMap`                                                                                                                                                                                                                                                                                                                                                                                                                  | —                                                                           | —                                             | —                                                                | 待开始                   |
 | P2-13 | P2  | 测试       | 单元测试骨架 + hdc 输出 mock                      | 除 P1-08 外其它模块 `*_test`、CI 矩阵仍待                                                                                                                                                                                                                                                                                                                                                                                                       | P1-08                                                                       | `sdkmanageroutputparser_test.cpp`             | CI 需固定工具版本                                                       | 部分完成                  |
-| P2-14 | P2  | 运行       | 应用日志流（hilog）到输出面板                         | RunWorker 附加 reader                                                                                                                                                                                                                                                                                                                                                                                                                  | P0-01                                                                       | logcat 思路                                     | hdc 缓冲与性能                                                        | 已完成                   |
+| P2-14 | P2  | 运行       | 应用日志流（hilog）到输出面板                         | RunWorker 附加 reader；**流式 hilog** 已走 hdc daemon Socket（`hdcsocketclient`），见 v2.0 修订记录                                                                                                                                                                                                                                                                                                                                                  | P0-01                                                                       | logcat 思路                                     | 其它 hdc 调用扩展见 **P2-15**                                              | 已完成                   |
+| P2-15 | P2  | hdc / 设备 | 扩展 hdc daemon Socket，替代更多 `hdc.exe` 子进程     | **§8**。**阶段 1–4（除 debug `file send`）已落地**：`list targets` / `install` / `uninstall` 与 §8 一致 socket 优先 + CLI 回退；主运行、hilog、属性与 shell 辅助同前。**待做**：§8 验收；`harmonydebugsupport` 的 `hdc file` / 多步 shell 迁 socket（若协议不同则维持 CLI）。                                                                                                                                                                                          | P2-14（socket 基础）                                                            | —                                             | hdc 协议无官方文档；daemon 对 `list`/`install` 的 wire 与 CLI 一致性为**经验假设**，异常时用 `QTC_HARMONY_HDC_USE_CLI`                               | 部分完成                  |
 | P3-01 | P3  | 研究       | `harmonydeployqt` 独立工具链                   | 是否由 Qt 提供类似 androiddeployqt                                                                                                                                                                                                                                                                                                                                                                                                          | Qt 商业/开源路线                                                                  | `androiddeployqt`                             | **可能无法实现**：无官方工具则长期仅用 hdc                                        | 待开始                   |
 | P3-02 | P3  | 研究       | 与 DevEco 深度集成                             | 协议、自动化 API                                                                                                                                                                                                                                                                                                                                                                                                                           | —                                                                           | —                                             | **可能无法实现**：封闭 IDE、无公开 API                                        | 待开始                   |
 | P3-03 | P3  | 研究       | 应用内 Profiler（非 QML）                       | 系统工具                                                                                                                                                                                                                                                                                                                                                                                                                                 | —                                                                           | —                                             | **可能无法实现**                                                       | 待开始                   |
@@ -94,7 +95,7 @@
 3. **P0-07 → P0-08**（跨平台工具链）— *已完成：`harmonytoolchain` `makeCommand` + MinGW 父链 ID；Kit CMake `CMAKE_MAKE_PROGRAM` Unix 解析*
 4. **P0-09 → P0-10**（配置与 Kit）— *均已完成*
 5. 进入 **P1** 按「日志→错误→设备→解析→常量/ID」顺序（**P1-14** hvigor 输出进 Issues 可与构建体验衔接）
-6. **P2** 按业务价值选：解析器、设备图标、hilog、签名文档化、向导
+6. **P2** 按业务价值选：解析器、设备图标、hilog、签名文档化、向导；**P2-15**（hdc Socket 扩展）可在 P2-14 稳定后插入，与设备/部署相关任务并行推进
 7. **P3** 仅评估，确认后转 P2 或 **已搁置**
 
 ---
@@ -133,8 +134,11 @@
 | 1.8 | 2026-03-24 | **P1-15**：`HarmonyQtVersion::supportsMultipleQtAbis` 改为 `qtAbis().size() > 1`，去掉对 `5.15.12` 的硬编码。                                                                  |
 | 1.9 | 2026-03-26 | **P2-14**：hilog sidecar 改为自动 PID 过滤（`pidof <bundle>` → `hilog -P $PID`），解决全量日志淹没 UI 导致 Qt Creator 卡死问题；`setStdOutLineCallback` + `hilogLineFormat` 逐行上色。 |
 | 2.0 | 2026-03-26 | **P2-14（socket）**：仿照 DevEco Studio，将 hilog 传输从 `hdc.exe` 子进程改为 **直接 TCP Socket 连接 hdc daemon**（端口 8710）。新增 `hdcsocketclient.{h,cpp}` 实现 hdc 二进制协议（48 字节握手 + 帧解析），`TCP_NODELAY` 消除宿主机侧 Nagle/管道缓冲，实现实时日志流。 |
-| 2.1 | 2026-03-30 | **P2-01 / DEBUG-TASKS 4.7–4.11**：断点调试完整闭环。`scripts/lldbbridge.py` 插件自有化（基于 Qt Creator 19.0.0，含 `remote-ohos` 分支，不改 Qt Creator 核心）；`HarmonyLldbBridge` CMake 目标控制部署顺序；`workingDirectory_` 传信号文件路径解除 ArkTS 阻塞；`commandsAfterConnect` 死代码移除；solib 路径改为 hvigor cmake 目录优先（修正 build-id 不匹配导致的行号偏移）；attach 后模块 UUID 诊断日志。**断点命中、变量查看验证通过，P2-01 → 已完成。** |
-
+| 2.1 | 2026-03-27 | 新增 **P2-15** 与 **§8**：将其余 hdc 调用逐步改为 daemon Socket 的**分阶段改造计划**（同步 shell API → 替换配置/运行中的 `shell` 调用 → 主运行可选 → `list`/`install` 研究）。 |
+| 2.2 | 2026-03-27 | **P2-15 阶段 1**：`HdcSocketClient::runShellSync`（`HdcShellSyncResult`）— 短连接 + `QEventLoop` 阻塞直至对端关闭/超时；与流式 `start()` 并存。§8 阶段 1 前两子项已勾选。 |
+| 2.3 | 2026-03-27 | **P2-15 阶段 2**：`harmonyHdcShellPreferCli()` + `QTC_HARMONY_HDC_USE_CLI`；`getDeviceProperty` / post-quit shell / `force-stop` 优先 Socket 并回退 `hdc.exe`。 |
+| 2.4 | 2026-03-27 | **P2-15 阶段 3**：主运行 `aa start` + 保活默认走 `HarmonyMainRunSocketTask`（`QCustomTask` + hdc daemon 长连接）；`RunControl::canceled`/`stopped` → `stopShell()`；post-quit 仍挂 `done`；CLI 与解析回退同 §8。 |
+| 2.5 | 2026-03-30 | **P2-01 / DEBUG-TASKS 4.7–4.11**：断点调试完整闭环。`scripts/lldbbridge.py` 插件自有化（基于 Qt Creator 19.0.0，含 `remote-ohos` 分支，不改 Qt Creator 核心）；`HarmonyLldbBridge` CMake 目标控制部署顺序；`workingDirectory_` 传信号文件路径解除 ArkTS 阻塞；`commandsAfterConnect` 死代码移除；solib 路径改为 hvigor cmake 目录优先（修正 build-id 不匹配导致的行号偏移）；attach 后模块 UUID 诊断日志。**断点命中、变量查看验证通过，P2-01 → 已完成。** |
 
 ---
 
@@ -164,5 +168,48 @@
 | **工程 Store 键（P1-12）**                   | 运行 aspects：`Harmony.AaStartArgs` 等（旧 `Harmony.AaStartArgsKey` 等仍可读）；HAP：`Harmony.BuildHap.TargetSdk` / `Harmony.BuildHap.BuildToolsVersion`；部署：`Harmony.Deploy.UninstallPreviousPackage`                                                                                                                                |
 | **CMake 构建配置 UI（P1-13）**                | `HarmonyCMakeBuildConfiguration`：`HarmonyCMakeSummaryWidget`（只读摘要 + 快捷打开设置）；其后仍为通用 **Build environment** / **Custom parsers**                                                                                                                                                                                           |
 | **多 ABI 判定（P1-15）**                     | `HarmonyQtVersion::supportsMultipleQtAbis`：以 `**qtAbis()`** 是否多于一项为准（与 qmake / 元数据一致）                                                                                                                                                                                                                                   |
+
+
+---
+
+## 8. hdc daemon Socket 扩展计划（**P2-15**）
+
+> **状态**：总表 ID **P2-15** 为 **部分完成**（阶段 1–3 已勾选；阶段 4 与下方验收项仍待）；完成某阶段后在下方勾选并更新总表 **状态 / 备注**。
+
+### 背景与原则
+
+- **已完成**：P2-14 用 `hdcsocketclient.{h,cpp}` 对 **hilog** 做长连接、按行流式输出（对齐 DevEco 思路）。
+- **目标**：在可行范围内减少 `hdc.exe` 子进程，统一走 **127.0.0.1:8710**（或 `OHOS_HDC_SERVER_PORT`）daemon 协议。
+- **原则**：
+  - 实时/高吞吐流 **优先 Socket**；
+  - 等价于 **`hdc shell …`** 的一次性命令，可迁 Socket，但需 **同步 API**（或明确异步 + 完成信号），且保留 **CLI 回退** 便于排障；
+  - **`hdc list targets` / `install` / `uninstall` / `file` 等** 若非 `shell` 子协议，须 **对照 hdc 源码或 hdclib 逆向** 后再实现，**禁止** 假设与当前 `shell` 帧格式相同。
+
+### 阶段 1 — 扩展 `HdcSocketClient`
+
+- [x] 增加 **短连接 / 同步 `shell`** API：`HdcSocketClient::runShellSync(serial, daemonCommand, timeoutMs)`，独立 TCP 连接，`QEventLoop` 阻塞至对端关闭、超时或错误；结果 `HdcShellSyncResult`（`Code` + `standardOutput` + `errorMessage`）。`daemonCommand` 与流式 `start()` 相同（完整 wire 命令，如 `shell param get …`）。
+- [x] 与现有 **流式** `start(serial, command)` 并存（未改 hilog 路径）。
+- [x] （可选）独立目标 **`hdcsocketclienttest`**（`test/hdcsocketclienttest`）：`HdcSocketProtocol` 单元项 + 本地 `QTcpServer` mock（流式 `lineReceived`、`runShellSync`）；`ctest -R hdcsocketclienttest` 或运行可执行文件。
+
+### 阶段 2 — 替换现有「纯 shell」调用点
+
+- [x] `harmonyconfigurations.cpp`：`getDeviceProperty`（`shell param get …`）— 默认 `runShellSync`，失败或 `QTC_HARMONY_HDC_USE_CLI` 时 `hdc.exe`；CLI 路径 `setUtf8Codec()`。
+- [x] `harmonyrunner.cpp`：`runPostQuitShellCommandsOnDevice`、`stopHarmonyApplicationOnDevice` — 共用 `runHdcShellSocketThenCli`（socket → 回退 CLI）；强制 CLI 同上环境变量。
+- [x] 环境变量 **`QTC_HARMONY_HDC_USE_CLI`**（`1` / `true` / `yes`）→ 仅用 `hdc.exe`（`harmonyHdcShellPreferCli()`）。编译期开关未加（与计划「或」字相容，后续可选）。
+
+### 阶段 3 — 主运行会话（可选）
+
+- [x] 将运行配置中的 **`aa start` + 保活循环** 从 `QProcess` 迁到 Socket 长连接（`HarmonyMainRunSocketTask` + `QCustomTask`，与 hilog 同协议）；`harmonyHdcShellPreferCli()` / 脚本解析失败时仍为 `processTask`。
+- [ ] 验收：停止运行、断连、默认设备与 `-t serial` 与现状一致（需在真机/daemon 上回归）。
+
+### 阶段 4 — 研究 / 长期
+
+- [x] **`hdc list targets`**：`harmonydevicemanager.cpp` 默认 `runShellSync("", "list targets -v")`；失败或 `harmonyHdcShellPreferCli()` 时 CLI。无 `hdc.exe` 且非强制 CLI 时仍可启动 device watcher（仅靠 socket）。
+- [x] **`hdc install` / `uninstall`**：`harmonydeployqtstep.cpp`（含部署与「安装 HAP」对话框）同上 socket 优先 + 输出走现有 `parseDeployErrors` 检测；失败或检测到部署错误码则 **回退 CLI**。**`hdc file send` 等** 仍未迁（见 `harmonydebugsupport.cpp`）。
+
+### 完成定义（P2-15 标为「已完成」的最低门槛）
+
+- 阶段 **1 + 2** 在默认配置下可编译运行，且阶段 2 涉及路径具备 **可关闭的 CLI 回退**。
+- 阶段 **3–4** 完成则勾选；若不做，总表 **备注** 写「阶段 3–4 已搁置 + 原因」。
 
 
