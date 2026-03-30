@@ -86,6 +86,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: qtc4harmony-QtCreator-19.0.0-windows
+          retention-days: 1
           path: |
             build/**/Harmony.dll
             build/**/Harmony.lib
