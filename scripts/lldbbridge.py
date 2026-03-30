@@ -1093,20 +1093,6 @@ class Dumper(DumperBase):
 
                 DumperBase.warn("OHOS: attached to PID %s" % self.process.GetProcessID())
 
-                # Diagnose which symbol files LLDB loaded for user shared libraries.
-                # This helps detect build-id mismatches where LLDB resolves symbols from
-                # the wrong binary (e.g. the standalone Qt Creator cmake build instead of
-                # the hvigor-packaged binary deployed to the device), which would cause
-                # breakpoints to land at wrong addresses and appear as line-number offsets.
-                for _mi in range(self.target.GetNumModules()):
-                    _m = self.target.GetModuleAtIndex(_mi)
-                    _mname = _m.GetFileSpec().GetFilename() or ''
-                    if not _mname or _mname.startswith('lib') or _mname.endswith('.so'):
-                        _uuid = _m.GetUUIDString() or 'no-uuid'
-                        _sym = _m.GetSymbolFileSpec()
-                        _sym_path = (_sym.GetDirectory() or '') + '/' + (_sym.GetFilename() or '')
-                        DumperBase.warn("OHOS module: %s  uuid=%s  sym=%s"
-                                        % (_mname, _uuid, _sym_path))
 
                 # OHOS-specific post-attach LLDB settings
                 _ohos_cmds = [
