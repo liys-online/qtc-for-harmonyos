@@ -28,11 +28,6 @@
 
 using namespace Ohos::Internal;
 
-/* ** 全局状态 */
-
-/* ** g_hdcPath 仍需用于仅 CLI 操作：hdc list targets、file send、fport。 */
-static QString g_hdcPath;
-
 /* ** 日志 */
 
 static void log(const QString &msg)
@@ -86,13 +81,13 @@ static QStringList hdcCliArgs(const QString &serial, const QStringList &args)
 ** 通过 HdcSocketClient（TCP 守护进程）在设备上执行 shell 命令，
 ** 当守护进程不可用时自动回退到 hdc CLI 二进制文件。
 */
-static HdcShellSyncResult runShell(const QString &serial, const QString &shellCmd,
+static HdcShellSyncResult runShell(const QString hdcPath, const QString &serial, const QString &shellCmd,
                                    int timeoutMs = 30000)
 {
     const QString daemonCmd = QStringLiteral("shell ") + shellCmd;
     const QStringList cliArgs = hdcCliArgs(serial, {QStringLiteral("shell"), shellCmd});
     return HdcSocketClient::runSyncWithCliFallback(
-        serial, daemonCmd, g_hdcPath, cliArgs, timeoutMs);
+        serial, daemonCmd, hdcPath, cliArgs, timeoutMs);
 }
 
 /* ** 端口辅助函数 */
@@ -282,8 +277,7 @@ int main(int argc, char *argv[])
     }
 
     /* ** 定位 hdc */
-
-    g_hdcPath = autoDetectHdc();
+    const QString g_hdcPath = autoDetectHdc();
     if (g_hdcPath.isEmpty()) {
         err(QStringLiteral("hdc not found. Install DevEco Studio or add hdc to PATH."));
         return 1;
@@ -346,14 +340,15 @@ int main(int argc, char *argv[])
 
     if (!skipForceStop) {
         log(QStringLiteral("Step 1: aa force-stop"));
-        runShell(serial, QStringLiteral("aa force-stop '") + bundle + QLatin1Char('\''));
+        runShell(g_hdcPath, serial, QStringLiteral("aa force-stop '") + bundle + QLatin1Char('\''));
         QThread::msleep(500);
     }
 
     /* ** 步骤 2：准备远程目录 */
 
     log(QStringLiteral("Step 2: prepare remote directory"));
-    runShell(serial,
+    runShell(g_hdcPath,
+             serial,
              QStringLiteral("mkdir -p '") + remoteRoot
                  + QStringLiteral("' && chmod 757 '") + remoteRoot + QLatin1Char('\''));
 
@@ -363,13 +358,15 @@ int main(int argc, char *argv[])
     **（mv 技巧在 OHOS 上因 hdc file send 设置 SELinux 标签而无效）。
     */
     log(QStringLiteral("Step 3: push lldb-server"));
-    runShell(serial,
+    runShell(g_hdcPath,
+             serial,
              QStringLiteral("for p in $(ps -ef | grep lldb-server | grep -v grep | awk '{print $2}');"
                             " do kill -9 $p 2>/dev/null || true; done; sleep 0.3"));
     /* ** file send 无 socket 等价命令——使用 CLI。 */
     runCmd(g_hdcPath, hdcCliArgs(serial, {QStringLiteral("file"), QStringLiteral("send"),
                                           lldbServerLocal, remoteLs}));
-    runShell(serial,
+    runShell(g_hdcPath,
+             serial,
              QStringLiteral("chmod 755 '") + remoteLs
                  + QStringLiteral("'; rm -f '") + remoteRoot + QStringLiteral("'/*.log"));
 
@@ -383,10 +380,10 @@ int main(int argc, char *argv[])
     if (startupBreak) {
         log(QStringLiteral("Step 4: aa start -D -a ") + ability
             + QStringLiteral(" -b ") + bundle + QStringLiteral("  (startup-break mode)"));
-        runShell(serial, QStringLiteral("aa start -D -a ") + ability + QStringLiteral(" -b ") + bundle);
+        runShell(g_hdcPath, serial, QStringLiteral("aa start -D -a ") + ability + QStringLiteral(" -b ") + bundle);
     } else {
         log(QStringLiteral("Step 4: aa start -a ") + ability + QStringLiteral(" -b ") + bundle);
-        runShell(serial, QStringLiteral("aa start -a ") + ability + QStringLiteral(" -b ") + bundle);
+        runShell(g_hdcPath, serial, QStringLiteral("aa start -a ") + ability + QStringLiteral(" -b ") + bundle);
     }
 
     /*
@@ -397,7 +394,7 @@ int main(int argc, char *argv[])
     log(QStringLiteral("Step 5: resolving app PID"));
     QString pid;
     for (int i = 0; i < 20 && pid.isEmpty(); ++i) {
-        const HdcShellSyncResult ps = runShell(serial, QStringLiteral("ps -ef"));
+        const HdcShellSyncResult ps = runShell(g_hdcPath, serial, QStringLiteral("ps -ef"));
         for (const QString &line : ps.standardOutput.split(QLatin1Char('\n'))) {
             if (!line.contains(bundle) || line.contains(QLatin1String("grep"))
                 || line.contains(QLatin1String("lldb")))
@@ -497,11 +494,12 @@ int main(int argc, char *argv[])
         QStringLiteral("aa process -a ") + ability + QStringLiteral(" -b ") + bundle
         + QStringLiteral(" -D \"") + debugCmd + QLatin1Char('"');
     log(QStringLiteral("hdc -t \"") + serial + QStringLiteral("\" shell \"") + aaProcessCmd + QLatin1Char('"'));
-    runShell(serial, aaProcessCmd);
+    runShell(g_hdcPath, serial, aaProcessCmd);
 
     /* ** 轮询 lldb-server 进程直到稳定（最多 8 秒）*/
     for (int i = 0; i < 16; ++i) {
         const HdcShellSyncResult ps = runShell(
+            g_hdcPath,
             serial,
             QStringLiteral("ps -ef 2>/dev/null | grep lldb-server | grep '")
                 + socketName + QStringLiteral("' | grep -v grep"));
@@ -512,7 +510,7 @@ int main(int argc, char *argv[])
         if (i == 15) {
             log(QStringLiteral("  WARN: lldb-server not observed in ps for socket ") + socketName
                 + QStringLiteral("; continuing to connect immediately"));
-            runShell(serial, QStringLiteral("ps -ef | grep lldb-server | grep -v grep"));
+            runShell(g_hdcPath, serial, QStringLiteral("ps -ef | grep lldb-server | grep -v grep"));
         }
         QThread::msleep(500);
     }
