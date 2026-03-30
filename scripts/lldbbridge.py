@@ -1093,6 +1093,10 @@ class Dumper(DumperBase):
 
                 DumperBase.warn("OHOS: attached to PID %s" % self.process.GetProcessID())
 
+                # Fix: OHOS LLDB on Windows lacks base64, so hexencode_ falls back to
+                # '%x' (no zero-padding), garbling 0x00 bytes in UTF-16 QString data.
+                import dumper as _dumper_mod
+                _dumper_mod.hexencode_ = lambda s: bytes(s).hex()
 
                 # OHOS-specific post-attach LLDB settings
                 _ohos_cmds = [
