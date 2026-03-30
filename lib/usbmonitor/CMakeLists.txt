@@ -19,6 +19,11 @@ target_link_libraries(usbmonitor PRIVATE Qt${QT_VERSION_MAJOR}::Core)
 
 if(WIN32)
     target_link_libraries(usbmonitor PRIVATE user32)
+elseif(APPLE)
+    target_link_libraries(usbmonitor PRIVATE
+        "-framework IOKit"
+        "-framework CoreFoundation"
+    )
 endif()
 
 target_compile_definitions(usbmonitor PRIVATE USBMONITOR_LIBRARY)

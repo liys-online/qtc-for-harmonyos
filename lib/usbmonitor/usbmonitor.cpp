@@ -9,8 +9,11 @@ Q_LOGGING_CATEGORY(harmonyUsbMonitorLog, "qtc.harmony.device.usbmonitor", QtWarn
 #  include <QThread>
 #  include <qt_windows.h>
 #  include <dbt.h>
-#elif defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
+#elif defined(Q_OS_LINUX)
 #  include <QFileSystemWatcher>
+#elif defined(Q_OS_MACOS)
+#  include <CoreFoundation/CoreFoundation.h>
+#  include <IOKit/IOKitLib.h>
 #endif
 
 // ── Windows: dedicated Win32 message-pump thread ──────────────────────────
@@ -108,6 +111,104 @@ private:
 };
 #endif // Q_OS_WIN
 
+// ── macOS: IOKit USB notification thread ─────────────────────────────────
+// QCoreApplication does NOT drive CFRunLoopGetMain() continuously, so we
+// cannot rely on the main thread's CFRunLoop for IOKit notifications.
+// Instead we spin up a dedicated background thread that owns its own
+// CFRunLoop, exactly as WinUsbMonitorThread does on Windows.
+#if defined(Q_OS_MACOS)
+#  include <QMutex>
+#  include <QThread>
+
+static void macUsbDeviceCallback(void *refCon, io_iterator_t iterator)
+{
+    // Drain the iterator — required or future notifications won't fire.
+    io_object_t obj;
+    while ((obj = IOIteratorNext(iterator)) != 0)
+        IOObjectRelease(obj);
+
+    auto *target = static_cast<QObject *>(refCon);
+    QMetaObject::invokeMethod(target, "onUsbEvent", Qt::QueuedConnection);
+}
+
+class MacUsbMonitorThread : public QThread
+{
+public:
+    explicit MacUsbMonitorThread(QObject *notifyTarget)
+        : m_notifyTarget(notifyTarget) {}
+
+    void stop()
+    {
+        m_mutex.lock();
+        CFRunLoopRef rl = m_runLoop;
+        m_mutex.unlock();
+        if (rl)
+            CFRunLoopStop(rl);
+        wait();
+    }
+
+protected:
+    void run() override
+    {
+        IONotificationPortRef notifyPort = IONotificationPortCreate(0);
+        if (!notifyPort) {
+            qCWarning(harmonyUsbMonitorLog) << "UsbMonitor: IONotificationPortCreate failed";
+            return;
+        }
+
+        CFRunLoopRef rl = CFRunLoopGetCurrent();
+        CFRetain(rl);
+        {
+            QMutexLocker lk(&m_mutex);
+            m_runLoop = rl;
+        }
+
+        CFRunLoopSourceRef src = IONotificationPortGetRunLoopSource(notifyPort);
+        CFRunLoopAddSource(rl, src, kCFRunLoopDefaultMode);
+
+        io_iterator_t addIter = 0, removeIter = 0;
+
+        // "IOUSBDevice" matches both legacy IOUSBFamily and the
+        // IOUSBHostFamily compatibility nub (macOS 10.12+).
+        CFMutableDictionaryRef matchAdd = IOServiceMatching("IOUSBDevice");
+        IOServiceAddMatchingNotification(notifyPort, kIOFirstMatchNotification,
+                                         matchAdd, macUsbDeviceCallback,
+                                         m_notifyTarget, &addIter);
+        if (addIter) {
+            io_object_t obj;
+            while ((obj = IOIteratorNext(addIter)) != 0)
+                IOObjectRelease(obj);
+        }
+
+        CFMutableDictionaryRef matchRemove = IOServiceMatching("IOUSBDevice");
+        IOServiceAddMatchingNotification(notifyPort, kIOTerminatedNotification,
+                                         matchRemove, macUsbDeviceCallback,
+                                         m_notifyTarget, &removeIter);
+        if (removeIter) {
+            io_object_t obj;
+            while ((obj = IOIteratorNext(removeIter)) != 0)
+                IOObjectRelease(obj);
+        }
+
+        qCDebug(harmonyUsbMonitorLog) << "UsbMonitor: IOKit monitor thread running.";
+        CFRunLoopRun(); // blocks until stop() calls CFRunLoopStop()
+
+        if (addIter)    IOObjectRelease(addIter);
+        if (removeIter) IOObjectRelease(removeIter);
+        IONotificationPortDestroy(notifyPort);
+
+        QMutexLocker lk(&m_mutex);
+        CFRelease(m_runLoop);
+        m_runLoop = nullptr;
+    }
+
+private:
+    QObject     *m_notifyTarget = nullptr;
+    QMutex       m_mutex;
+    CFRunLoopRef m_runLoop      = nullptr;
+};
+#endif // Q_OS_MACOS
+
 // ── Private data ──────────────────────────────────────────────────────────
 class UsbMonitorPrivate
 {
@@ -118,8 +219,10 @@ public:
 
 #if defined(Q_OS_WIN)
     WinUsbMonitorThread *winThread = nullptr;
-#elif defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
+#elif defined(Q_OS_LINUX)
     QFileSystemWatcher *watcher = nullptr;
+#elif defined(Q_OS_MACOS)
+    MacUsbMonitorThread *macThread = nullptr;
 #endif
 };
 
@@ -180,16 +283,9 @@ void UsbMonitor::startMonitor()
         }
     }
 #elif defined(Q_OS_MACOS)
-    if (!inst->m_p->watcher) {
-        inst->m_p->watcher = new QFileSystemWatcher(inst);
-        const QString devPath = QStringLiteral("/dev");
-        if (inst->m_p->watcher->addPath(devPath)) {
-            QObject::connect(inst->m_p->watcher, &QFileSystemWatcher::directoryChanged,
-                             inst, &UsbMonitor::onUsbEvent);
-            qCDebug(harmonyUsbMonitorLog) << "UsbMonitor: watching" << devPath;
-        } else {
-            qCWarning(harmonyUsbMonitorLog) << "UsbMonitor: failed to watch" << devPath;
-        }
+    if (!inst->m_p->macThread) {
+        inst->m_p->macThread = new MacUsbMonitorThread(inst);
+        inst->m_p->macThread->start();
     }
 #endif
 }
@@ -207,10 +303,16 @@ void UsbMonitor::stopMonitor()
         delete inst->m_p->winThread;
         inst->m_p->winThread = nullptr;
     }
-#elif defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
+#elif defined(Q_OS_LINUX)
     if (inst->m_p->watcher) {
         delete inst->m_p->watcher;
         inst->m_p->watcher = nullptr;
+    }
+#elif defined(Q_OS_MACOS)
+    if (inst->m_p->macThread) {
+        inst->m_p->macThread->stop();
+        delete inst->m_p->macThread;
+        inst->m_p->macThread = nullptr;
     }
 #endif
 }
