@@ -97,4 +97,4 @@ jobs:
           path: |
             build/**/libHarmony.dylib
             build/**/lldbbridge.py
-            build/tools/arktsdebugbridge/**/arktsdebugbridge
+            build/Qt Creator.app/**/arktsdebugbridge

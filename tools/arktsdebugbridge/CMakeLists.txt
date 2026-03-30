@@ -21,4 +21,13 @@ add_qtc_executable(arktsdebugbridge_exe
 
 set_target_properties(arktsdebugbridge_exe PROPERTIES OUTPUT_NAME arktsdebugbridge)
 
+if(APPLE)
+    set_target_properties(arktsdebugbridge_exe PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Qt Creator.app/Contents/Resources/libexec"
+    )
+else()
+    set_target_properties(arktsdebugbridge_exe PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+endif()
 target_link_libraries(arktsdebugbridge_exe PRIVATE arktsdebugbridge)
