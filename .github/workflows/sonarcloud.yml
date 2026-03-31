@@ -1,15 +1,17 @@
 name: SonarCloud Analysis
 
-# 本流水线只负责将已提交到仓库的分析制品上传至 SonarCloud。
-# 覆盖率报告（coverage.xml）和编译数据库（compile_commands.json）
-# 需在本地生成后 git commit 并推送，流水线不再重复构建或运行测试。
-# 本地生成方法参见 scripts/run-coverage.ps1。
+# 本流水线在 CI 中完整执行：构建（--coverage）→ 运行测试 → 生成 coverage.xml → SonarCloud 扫描。
+# 本地生成 coverage.xml 的方法参见 scripts/run-coverage.sh。
 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+
+env:
+  QT_VERSION: "6.10.2"
+  QTC_SOURCE_BASE_LINUX: "https://download.qt.io/official_releases/qtcreator/19.0/19.0.0/installer_source/linux_x64"
 
 jobs:
   sonarcloud:
@@ -20,10 +22,132 @@ jobs:
         with:
           fetch-depth: 0  # SonarCloud 需要完整历史以进行 blame / new-code 分析
 
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build p7zip-full libudev-dev
+          pip install gcovr
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          target: desktop
+          arch: linux_gcc_64
+          modules: "qtwebsockets"
+          cache: true
+
+      - name: Download and extract Qt Creator 19 (runtime + dev SDK)
+        env:
+          QTC_BASE: ${{ env.QTC_SOURCE_BASE_LINUX }}
+        run: |
+          set -eu
+          mkdir -p qtcreator-dev
+          for arc in qtcreator.7z qtcreator_dev.7z; do
+            echo "Downloading ${arc}..."
+            curl -fSL --retry 3 --retry-delay 10 -o "${arc}" "${QTC_BASE}/${arc}"
+            7z x "${arc}" -oqtcreator-dev -y
+            rm -f "${arc}"
+          done
+
+      - name: Locate Qt Creator CMake prefix
+        id: qtc
+        run: |
+          set -eu
+          DEV="${GITHUB_WORKSPACE}/qtcreator-dev"
+          CONFIG=$(find "${DEV}" -name QtCreatorConfig.cmake 2>/dev/null | head -n 1 || true)
+          if [ -z "${CONFIG}" ]; then
+            echo "QtCreatorConfig.cmake not found under qtcreator-dev" >&2
+            exit 1
+          fi
+          QTC_ROOT=$(cd "$(dirname "${CONFIG}")/../../.." && pwd)
+          echo "root=${QTC_ROOT}" >> "${GITHUB_OUTPUT}"
+          echo "Qt Creator CMake prefix: ${QTC_ROOT}"
+
+      - name: Build with coverage flags
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}" \
+            -DQtCreator='${{ steps.qtc.outputs.root }}' \
+            -DWITH_TESTS=ON \
+            -DCMAKE_CXX_FLAGS="--coverage" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -G Ninja
+          cmake --build build --parallel
+
+      - name: Run tests to collect coverage data
+        run: |
+          export QT_QPA_PLATFORM=offscreen
+          QTC_ROOT="${{ steps.qtc.outputs.root }}"
+          # 运行时需要找到 Qt Creator 的共享库（Linux 无 .app bundle，需显式设置）
+          export LD_LIBRARY_PATH="${QTC_ROOT}/lib/qtcreator/plugins:${QTC_ROOT}/lib/qtcreator:${QT_ROOT_DIR}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+
+          TESTS=(
+            build/test/usbmonitortest/usbmonitortest
+            build/test/hdcsocketclienttest/hdcsocketclienttest
+            build/test/ohprocreatetest/ohprocreatetest
+            build/test/harmonypluginlogictest/harmonypluginlogictest
+          )
+          for t in "${TESTS[@]}"; do
+            if [ -x "${t}" ]; then
+              echo "Running: ${t}"
+              "${t}" || echo "[warning] exit code $? (non-blocking, coverage data still written)"
+            else
+              echo "[skip] not found: ${t}"
+            fi
+          done
+
+      - name: Generate coverage.xml (gcovr sonarqube format)
+        run: |
+          cd build
+          gcovr \
+            --root "${GITHUB_WORKSPACE}" \
+            --filter "${GITHUB_WORKSPACE}/src/" \
+            --filter "${GITHUB_WORKSPACE}/lib/" \
+            --exclude ".*_test\.cpp" \
+            --exclude ".*/3rdparty/.*" \
+            --exclude ".*/moc_.*" \
+            --exclude ".*/arktsdebugbridge\.cpp$" \
+            --exclude ".*/harmonymainrunsockettask\.cpp$" \
+            --exclude ".*/harmonydebugsupport\.cpp$" \
+            --exclude ".*/harmonyrunner\.cpp$" \
+            --exclude ".*/harmonydeployqtstep\.cpp$" \
+            --exclude ".*/harmonysdkdownloader\.cpp$" \
+            --exclude ".*/harmonyqttreleasesdownloader\.cpp$" \
+            --exclude ".*/harmonysdkmanagerdialog\.cpp$" \
+            --exclude ".*/harmonyqttsdkmanagerdialog\.cpp$" \
+            --sonarqube "${GITHUB_WORKSPACE}/coverage.xml"
+
+          # 移除无子元素的空 <file/> 标签——新版 SonarScanner 解析时会报错
+          python3 - "${GITHUB_WORKSPACE}/coverage.xml" << 'PYEOF'
+          import sys, xml.etree.ElementTree as ET
+          path = sys.argv[1]
+          tree = ET.parse(path)
+          root = tree.getroot()
+          for child in [c for c in root if c.tag == 'file' and len(c) == 0]:
+              root.remove(child)
+          try:
+              ET.indent(root, space='  ')
+          except AttributeError:
+              pass
+          with open(path, 'w', encoding='utf-8') as f:
+              f.write('<?xml version="1.0" encoding="utf-8"?>\n')
+              f.write(ET.tostring(root, encoding='unicode'))
+              f.write('\n')
+          PYEOF
+
+          echo "coverage.xml generated: ${GITHUB_WORKSPACE}/coverage.xml"
+
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v4.2.1
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >
+            -Dsonar.cfamily.compile-commands=build/compile_commands.json
+            -Dsonar.coverageReportPaths=coverage.xml
 
