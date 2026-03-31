@@ -99,6 +99,17 @@ if [[ -z "${QTC_BIN}" ]]; then
 fi
 echo "== Qt Creator     : ${QTC_BIN}"
 
+# 推导 -DQtCreator 的 CMake 路径：
+#   - .app bundle → 传 .app 根（CMakeLists 会补 Contents/Resources/）
+#   - 普通安装  → 传二进制上两级目录
+if [[ "${QTC_BIN}" == *".app/Contents/MacOS/"* ]]; then
+    _tmp="${QTC_BIN%.app/Contents/MacOS/*}"
+    QTC_CMAKE_PREFIX="${_tmp}.app"
+else
+    QTC_CMAKE_PREFIX="$(dirname "$(dirname "${QTC_BIN}")")"
+fi
+echo "== QtCreator CMake: ${QTC_CMAKE_PREFIX}"
+
 # ── Step 1：CMake 配置（clang --coverage + 导出编译数据库）────────────────────
 
 echo ""
@@ -106,7 +117,7 @@ echo "[1/3] CMake 配置（-DWITH_TESTS=ON --coverage）"
 cmake -S "${REPO_ROOT}" -B "${BUILD_DIR}" \
     -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_PREFIX_PATH="${QT_DIR}" \
-    -DQtCreator="${QTC_ROOT}" \
+    -DQtCreator="${QTC_CMAKE_PREFIX}" \
     -DWITH_TESTS=ON \
     -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage" \
     -DCMAKE_C_FLAGS="--coverage -fprofile-arcs -ftest-coverage" \
@@ -123,15 +134,46 @@ cmake --build "${BUILD_DIR}" --parallel
 # ── Step 3：运行测试（收集 .gcda 数据）───────────────────────────────────────
 
 echo ""
-echo "[3/3] 运行测试（Qt Creator -test Harmony）"
-PLUGIN_PATH="${BUILD_DIR}/lib/qtcreator/plugins"
+echo "[3/3] 运行测试"
+
 export QT_QPA_PLATFORM=offscreen
 
-# 测试失败不阻断覆盖率收集
+# 3a：独立单元测试可执行文件（直接在进程内写 .gcda，最可靠）
+echo "  [3a] 独立测试可执行文件"
+_STANDALONE_TESTS=(
+    "${BUILD_DIR}/test/usbmonitortest/usbmonitortest"
+    "${BUILD_DIR}/test/hdcsocketclienttest/hdcsocketclienttest"
+    "${BUILD_DIR}/test/ohprocreatetest/ohprocreatetest"
+    "${BUILD_DIR}/test/harmonypluginlogictest/harmonypluginlogictest"
+)
+for _t in "${_STANDALONE_TESTS[@]}"; do
+    if [[ -x "${_t}" ]]; then
+        echo "    运行：${_t}"
+        # harmonypluginlogictest 链接了 Qt Creator 的 Utils/ProjectExplorer（内置 Qt 6.10.2）。
+        # 用 DYLD_FRAMEWORK_PATH 让 Qt Creator 的 Qt 优先，避免与构建用 Qt 的 ABI 冲突。
+        if [[ "${_t}" == *harmonypluginlogictest* ]]; then
+            DYLD_FRAMEWORK_PATH="${QTC_BIN%/Contents/MacOS/*}/Contents/Frameworks" \
+                "${_t}" || echo "    [警告] 退出码 $?（不阻断覆盖率收集）"
+        else
+            "${_t}" || echo "    [警告] 退出码 $?（不阻断覆盖率收集）"
+        fi
+    else
+        echo "    [跳过] 未找到：${_t}"
+    fi
+done
+
+# 3b：Qt Creator 插件测试（覆盖插件主逻辑；退出不正常则 .gcda 可能丢失）
+echo "  [3b] Qt Creator 插件测试（-test Harmony）"
+# 插件输出路径：macOS 构建产物在 .app bundle 内
+PLUGIN_PATH="${BUILD_DIR}/Qt Creator.app/Contents/PlugIns/qtcreator"
+if [[ ! -d "${PLUGIN_PATH}" ]]; then
+    # 备用：非 bundle 布局
+    PLUGIN_PATH="${BUILD_DIR}/lib/qtcreator/plugins"
+fi
 "${QTC_BIN}" \
     -pluginpath "${PLUGIN_PATH}" \
     -test Harmony \
-    || echo "测试退出码：$?（非零不中断覆盖率收集）"
+    || echo "  [警告] Qt Creator 退出码：$?（不阻断覆盖率收集）"
 
 # ── Step 4：gcovr → coverage.xml ────────────────────────────────────────────
 
@@ -146,8 +188,43 @@ gcovr \
     --exclude ".*_test\.cpp" \
     --exclude ".*/3rdparty/.*" \
     --exclude ".*/moc_.*" \
-    --sonarqube \
-    --output "${COVERAGE_OUT}"
+    \
+    `# ── 需要真实设备 / 物理硬件 ──────────────────────────────────────` \
+    --exclude ".*/arktsdebugbridge\.cpp$" \
+    --exclude ".*/harmonymainrunsockettask\.cpp$" \
+    --exclude ".*/harmonydebugsupport\.cpp$" \
+    --exclude ".*/harmonyrunner\.cpp$" \
+    --exclude ".*/harmonydeployqtstep\.cpp$" \
+    \
+    `# ── 需要外部网络服务（GitCode / GitHub / SDK CDN）──────────────` \
+    --exclude ".*/harmonysdkdownloader\.cpp$" \
+    --exclude ".*/harmonyqttreleasesdownloader\.cpp$" \
+    \
+    `# ── 纯 UI 对话框，需人工交互──────────────────────────────────────` \
+    --exclude ".*/harmonysdkmanagerdialog\.cpp$" \
+    --exclude ".*/harmonyqttsdkmanagerdialog\.cpp$" \
+    \
+    --sonarqube "${COVERAGE_OUT}"
+
+# gcovr --sonarqube 不支持 --xml-pretty，用 xmllint 或 python3 格式化
+if command -v xmllint &>/dev/null; then
+    xmllint --format --output "${COVERAGE_OUT}" "${COVERAGE_OUT}"
+else
+    python3 - "${COVERAGE_OUT}" <<'PYEOF'
+import sys, xml.dom.minidom
+path = sys.argv[1]
+with open(path, 'r', encoding='utf-8') as f:
+    content = f.read()
+dom = xml.dom.minidom.parseString(content)
+pretty = dom.toprettyxml(indent='  ', encoding='utf-8').decode('utf-8')
+# toprettyxml 会补一行 <?xml?> 声明，去掉重复的
+lines = pretty.splitlines()
+if lines and lines[0].startswith("<?xml") and content.lstrip().startswith("<?xml"):
+    pretty = '\n'.join(lines[1:])
+with open(path, 'w', encoding='utf-8') as f:
+    f.write(pretty)
+PYEOF
+fi
 
 echo "覆盖率报告已写入：${COVERAGE_OUT}"
 

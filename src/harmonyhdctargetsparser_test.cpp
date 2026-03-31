@@ -258,10 +258,10 @@ void HarmonyHdcTargetsParserTest::parseDeviceRow_chineseState()
 
 void HarmonyHdcTargetsParserTest::parseDeviceRow_extraColumnsIgnored()
 {
-    // 多余的列不影响前三列的解析
-    const auto r = parseHdcListTargetsLine(QStringLiteral("SN\tUSB\tConnected\tExtra1\tExtra2"));
+    // 多余的列不影响前三列的解析；注意不能用 "SN" 作序列号，它是 header 关键词
+    const auto r = parseHdcListTargetsLine(QStringLiteral("ABCD1234\tUSB\tConnected\tExtra1\tExtra2"));
     QCOMPARE(int(r.kind), int(HdcListTargetsLineKind::DeviceDataRow));
-    QCOMPARE(r.device.serial, QStringLiteral("SN"));
+    QCOMPARE(r.device.serial, QStringLiteral("ABCD1234"));
     QCOMPARE(r.device.connectionType, QStringLiteral("USB"));
     QCOMPARE(r.device.stateRaw, QStringLiteral("Connected"));
 }
