@@ -24,7 +24,6 @@ static constexpr int kL2RetryMs       = 300;
 static constexpr int kSignalPollMs    = 100;
 static constexpr int kSignalTimeoutMs = 120'000;
 static constexpr int kAddInstanceWaitMs = 30'000;
-static constexpr int kRunWindowMs     = 180'000;
 static constexpr int kCdtIntervalMs   = 100;
 
 /*
@@ -331,12 +330,7 @@ void ArkTSDebugBridge::onL2Connected()
 
     m_state = State::Running;
     sendCDTMessages();
-
-    /* ** 运行 180s 窗口 */
-    m_runTimer = new QTimer(this);
-    m_runTimer->setSingleShot(true);
-    connect(m_runTimer, &QTimer::timeout, this, &ArkTSDebugBridge::onRunTimeout);
-    m_runTimer->start(kRunWindowMs);
+    log(QStringLiteral("[BRIDGE] Running — will stay alive until session ends or connection drops"));
 }
 
 void ArkTSDebugBridge::sendCDTMessages()
@@ -374,7 +368,7 @@ void ArkTSDebugBridge::sendCDTMessages()
         delayMs += kCdtIntervalMs;
     }
 
-    log(QStringLiteral("[BRIDGE] Listening for Panda CDT events (180s)..."));
+    log(QStringLiteral("[BRIDGE] Listening for Panda CDT events..."));
 }
 
 void ArkTSDebugBridge::onL2TextMessageReceived(const QString &message)
@@ -442,12 +436,6 @@ void ArkTSDebugBridge::onL2Error()
     }
 }
 
-void ArkTSDebugBridge::onRunTimeout()
-{
-    log(QStringLiteral("[BRIDGE] 180 s window elapsed; shutting down"));
-    cleanup(true);
-}
-
 /*
 ** 辅助函数
 */
@@ -480,7 +468,6 @@ void ArkTSDebugBridge::cleanup(bool emitFinished)
     stopAndDelete(m_retryTimer);
     stopAndDelete(m_signalTimer);
     stopAndDelete(m_deadlineTimer);
-    stopAndDelete(m_runTimer);
 
     /* ** 清理 L2：先发 Debugger.disable 再优雅关闭，
     ** 确保设备侧 ArkTS 调试端口被正确释放。 */

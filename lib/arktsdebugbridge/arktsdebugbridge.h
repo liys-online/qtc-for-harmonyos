@@ -77,7 +77,7 @@ signals:
     void addInstanceReceived(const QString &instanceId);
 
     /*
-    ** bridge 已停止（180 秒超时、stop() 调用或错误均可触发）。
+    ** bridge 已停止（stop() 调用、连接断开或错误均可触发）。
     */
     void finished();
 
@@ -117,7 +117,6 @@ private:
     void onL2Error();
 
     void sendCDTMessages();
-    void onRunTimeout();
 
     /*
     ** 辅助工具
@@ -140,7 +139,6 @@ private:
     QTimer *m_retryTimer    = nullptr; /* ** L1 / L2 重试时钟 */
     QTimer *m_signalTimer   = nullptr; /* ** 100ms 信号文件轮询定时器 */
     QTimer *m_deadlineTimer = nullptr; /* ** 分阶段超时看门狗 */
-    QTimer *m_runTimer      = nullptr; /* ** 180s 整体运行窗口定时器 */
 
     int m_l1Attempts = 0; /* ** 最多 60 次，间隔 500ms */
     int m_l2Attempts = 0; /* ** 最多 20 次，间隔 300ms */
