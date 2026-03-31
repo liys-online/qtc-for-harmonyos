@@ -56,6 +56,9 @@ set(SRC_DIR "${REPO_ROOT}/src")
 
 add_executable(harmonypluginlogictest
     harmonypluginlogictest.cpp
+    harmonyhdctargetsparser_test.h
+    harmonydeviceinfo_test.h
+    harmonyhvigoroutputparser_test.h
     # 被测源文件：与插件共用同一份代码（通过 harmonypluginlogictest.cpp 中的 #include 引入）
     ${SRC_DIR}/harmonyhdctargetsparser.cpp
 )
