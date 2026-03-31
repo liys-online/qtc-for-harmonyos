@@ -24,7 +24,7 @@ class HarmonyDeviceWidget : public IDeviceWidget
 public:
     explicit HarmonyDeviceWidget(const IDevice::Ptr &device);
 
-    void updateDeviceFromUi() final { return }
+    void updateDeviceFromUi() final { return; }
 };
 
 HarmonyDeviceWidget::HarmonyDeviceWidget(const IDevice::Ptr &device)
