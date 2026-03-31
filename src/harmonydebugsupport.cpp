@@ -122,7 +122,9 @@ static HdcResult hdcShell(const QString &serial, const QString &shellLine, int t
     return {r.isOk(), r.standardOutput, r.errorMessage};
 }
 
-/* ** 使用 "hdc file send" 将本地文件推送到设备。 */
+/*
+** 使用 "hdc file send" 将本地文件推送到设备。
+*/
 static HdcResult hdcFileSend(const QString &serial,
                               const FilePath &local,
                               const QString &remote,
@@ -153,7 +155,9 @@ static void fireHdcShell(RunControl *runControl,
                           const QString &shellCmd)
 {
     auto *client = new HdcSocketClient(runControl);
-    /* ** 调试结束时关闭连接，设备侧命令随之收到 SIGHUP */
+    /*
+    ** 调试结束时关闭连接，设备侧命令随之收到 SIGHUP
+    */
     QObject::connect(runControl, &RunControl::stopped, client, &HdcSocketClient::stop);
     QObject::connect(client, &HdcSocketClient::finished, client, &QObject::deleteLater);
     client->start(serial, QStringLiteral("shell ") + shellCmd);
@@ -167,7 +171,9 @@ static qint64 pollAppPid(const QString &serial, const QString &bundle, int maxAt
 {
     for (int i = 0; i < maxAttempts; ++i) {
         if (i > 0) {
-            /* ** 用嵌套 QEventLoop 代替 QThread::msleep，保持 Qt 主线程事件循环可用 */
+            /*
+            ** 用嵌套 QEventLoop 代替 QThread::msleep，保持 Qt 主线程事件循环可用
+            */
             QEventLoop loop;
             QTimer::singleShot(500, &loop, &QEventLoop::quit);
             loop.exec();
@@ -179,7 +185,9 @@ static qint64 pollAppPid(const QString &serial, const QString &bundle, int maxAt
             line.remove(u'\r');
             if (!line.contains(bundle))
                 continue;
-            /* ** ps -ef 列顺序：UID PID PPID C STIME TTY TIME CMD ... */
+            /*
+            ** ps -ef 列顺序：UID PID PPID C STIME TTY TIME CMD ...
+            */
             const QStringList fields = line.split(u' ', Qt::SkipEmptyParts);
             if (fields.size() < 2)
                 continue;
@@ -192,7 +200,9 @@ static qint64 pollAppPid(const QString &serial, const QString &bundle, int maxAt
     return 0;
 }
 
-/* ** 在本地绑定端口 0 并立即释放，返回空闲端口号。 */
+/*
+** 在本地绑定端口 0 并立即释放，返回空闲端口号。
+*/
 static quint16 findFreePort()
 {
     QTcpServer s;
@@ -224,8 +234,14 @@ public:
             /* ** startup-break 模式共享状态 */
             auto wsSignalFileHolder = std::make_shared<QString>();
             auto localWsPortHolder  = std::make_shared<quint16>(0);
+            auto localPandaPortHolder = std::make_shared<quint16>(0);
+            auto bridgePidHolder    = std::make_shared<qint64>(0);
+            auto serialHolder       = std::make_shared<QString>();
+            auto tmpDirHolder       = std::make_shared<QString>();
 
-            /* ** 基础调试参数（与设备无关） */
+            /*
+            ** 基础调试参数（与设备无关）
+            */
             DebuggerRunParameters rp = DebuggerRunParameters::fromRunControl(runControl);
             rp.setStartMode(AttachToRemoteServer);
             rp.setSkipDebugServer(true);
@@ -246,19 +262,23 @@ public:
                 if (BuildConfiguration *bc = runControl->buildConfiguration()) {
                     const FilePath bd = buildDirectory(bc);
                     if (!bd.isEmpty()) {
-                        /* ** 优先添加 hvigor cmake 构建目录（与设备上运行的 so build-id 匹配）。
+                        /*
+                        ** 优先添加 hvigor cmake 构建目录（与设备上运行的 so build-id 匹配）。
                         ** Qt Creator 独立 cmake 构建产生的 so 与 hvigor 打包进 HAP 的 so
                         ** build-id 不同；若 LLDB 先加载到独立构建的 so，符号地址会有偏移，
                         ** 导致断点落在错误位置、行号与源码不符。
-                        ** hvigor cmake obj 目录先加入，确保 LLDB UUID 匹配到正确 binary。 */
+                        ** hvigor cmake obj 目录先加入，确保 LLDB UUID 匹配到正确 binary。
+                        */
                         const FilePath cmakeObj = bd / "ohpro/entry/build/default/intermediates/cmake/default/obj/arm64-v8a";
                         if (cmakeObj.isReadableDir())
                             solibPaths.append(cmakeObj);
                         const FilePath cmakeLibs = bd / "ohpro/entry/build/default/intermediates/libs/default/arm64-v8a";
                         if (cmakeLibs.isReadableDir())
                             solibPaths.append(cmakeLibs);
-                        /* ** 再追加构建根目录（包含 Qt for OH 的运行时 so，以及
-                        ** 独立 cmake 构建产物——当 hvigor 目录不存在时的后备）。 */
+                        /*
+                        ** 再追加构建根目录（包含 Qt for OH 的运行时 so，以及
+                        ** 独立 cmake 构建产物——当 hvigor 目录不存在时的后备）。
+                        */
                         solibPaths.append(bd);
                     }
                     if (const RunConfiguration *rc = bc->activeRunConfiguration()) {
@@ -272,13 +292,17 @@ public:
                     rp.setSolibSearchPath(solibPaths);
             }
 
-            /* ** 预启动任务（在 RunControl::start() 之后运行 → 面板已打开） */
+            /*
+            ** 预启动任务（在 RunControl::start() 之后运行 → 面板已打开）
+            */
             const auto preLaunch = QSyncTask([=]() -> DoneResult {
                 runControl->postMessage(
                     Tr::tr("Harmony DAP debug: preparing…"),
                     NormalMessageFormat);
 
-                /* ** 验证先决条件 */
+                /*
+                ** 验证先决条件
+                */
                 BuildConfiguration *bc = runControl->buildConfiguration();
                 if (!bc) {
                     runControl->postMessage(
@@ -302,6 +326,7 @@ public:
                         ErrorMessageFormat);
                     return DoneResult::Error;
                 }
+                *serialHolder = serial;
 
                 const QString bundle = packageName(bc);
                 if (bundle.isEmpty()) {
@@ -325,7 +350,9 @@ public:
                 else if (preferredAbi.contains(QLatin1String("x86_64")))
                     ohosTriple = QStringLiteral("x86_64-linux-ohos");
                 else {
-                    /* ** 无法确定 ABI —— 回退到 arm64（实体设备几乎总是 ARM64） */
+                    /*
+                    ** 无法确定 ABI —— 回退到 arm64（实体设备几乎总是 ARM64）
+                    */
                     runControl->postMessage(
                         Tr::tr("Harmony DAP debug: unknown ABI '%1', defaulting to aarch64-linux-ohos.")
                             .arg(preferredAbi),
@@ -343,7 +370,9 @@ public:
                     return DoneResult::Error;
                 }
 
-                /* ** 计算设备路径常量 */
+                /*
+                ** 计算设备路径常量
+                */
                 const QString ability = defaultHarmonyAbilityName(bc);
                 const QString remoteRoot = QStringLiteral("/data/local/tmp/debugserver/") + bundle;
                 const QString remoteLldbServer = remoteRoot + QStringLiteral("/lldb-server"); /* ** 目标文件名必须为 lldb-server（SELinux 强制要求）*/
@@ -364,9 +393,11 @@ public:
                 */
                 *socketUrlHolder = ohosAbstractSocketConnectUrl(serial, socketDir, socketName);
 
-                /* ** 读取 startup-break 选项（默认 true：启动断点模式）。
+                /*
+                ** 读取 startup-break 选项（默认 true：启动断点模式）。
                 ** BoolAspect 默认值为 true，saveToMap 对等于默认值的项不写入 Store，
-                ** 因此 Store 中无 key == 用户未修改 == 使用默认值 true。 */
+                ** 因此 Store 中无 key == 用户未修改 == 使用默认值 true。
+                */
                 bool startupBreak = true; /* ** 与 BoolAspect::setDefaultValue(true) 一致 */
                 {
                     const Store sd = runControl->settingsData(Id(Constants::HARMONY_DEBUG_STARTUP_BREAK));
@@ -378,12 +409,36 @@ public:
                     }
                 }
 
-                /* ** 步骤 1：强制停止残留实例 */
+                /*
+                ** 步骤 1：强制停止残留实例
+                */
                 runControl->postMessage(Tr::tr("Harmony DAP debug: step 1 — force stop"), NormalMessageFormat);
                 hdcShell(serial, QStringLiteral("aa force-stop '") + bundle + u'\'', 10000);
                 { QEventLoop l; QTimer::singleShot(400, &l, &QEventLoop::quit); l.exec(); }
 
-                /* ** 步骤 2：创建远程调试目录 */
+                /*
+                ** 终止上次会话残留的 bridge 进程。
+                ** bridge 内置 180s 超时，若上次调试在此窗口内失败，残留进程可能仍持有
+                ** ArkTS ConnectServer 的 WebSocket 连接，阻碍新会话建立第一级连接。
+                */
+                {
+                    Process killStaleBridge;
+#ifdef Q_OS_WIN
+                    killStaleBridge.setCommand(CommandLine{
+                        FilePath::fromString("taskkill"),
+                        {"/F", "/IM", "arktsdebugbridge.exe"}});
+#else
+                    killStaleBridge.setCommand(CommandLine{
+                        FilePath::fromString("pkill"),
+                        {"-9", "arktsdebugbridge"}});
+#endif
+                    killStaleBridge.start();
+                    killStaleBridge.waitForFinished(3s);
+                }
+
+                /*
+                ** 步骤 2：创建远程调试目录
+                */
                 runControl->postMessage(Tr::tr("Harmony DAP debug: step 2 — prepare remote dir"), NormalMessageFormat);
                 const HdcResult mkRes = hdcShell(
                     serial,
@@ -395,9 +450,11 @@ public:
                     return DoneResult::Error;
                 }
 
-                /* ** 步骤 3：杀死残留 lldb-server 实例后直接推送（不使用 mv）。
+                /*
+                ** 步骤 3：杀死残留 lldb-server 实例后直接推送（不使用 mv）。
                 ** mv 在 OHOS 上因 SELinux 标签限制无效（hdc file send 设置了安全标签）。
-                ** 先按 PID 强制终止残留进程（文件锁），再直接覆盖目标文件名。 */
+                ** 先按 PID 强制终止残留进程（文件锁），再直接覆盖目标文件名。
+                */
                 runControl->postMessage(Tr::tr("Harmony DAP debug: step 3 — push lldb-server"), NormalMessageFormat);
                 hdcShell(serial,
                     QStringLiteral("for p in $(ps -ef | grep lldb-server | grep -v grep | awk '{print $2}');"
@@ -439,7 +496,9 @@ public:
                 }
                 { QEventLoop l; QTimer::singleShot(500, &l, &QEventLoop::quit); l.exec(); }
 
-                /* ** 步骤 5：轮询 PID */
+                /*
+                ** 步骤 5：轮询 PID
+                */
                 runControl->postMessage(Tr::tr("Harmony DAP debug: step 5 — poll app PID"), NormalMessageFormat);
                 const qint64 pid = pollAppPid(serial, bundle, 20);
                 if (pid == 0) {
@@ -452,7 +511,9 @@ public:
                     Tr::tr("Harmony DAP debug: app PID %1.").arg(pid),
                     NormalMessageFormat);
 
-                /* ** 步骤 5b：ArkTS 端口转发 + 启动 WebSocket 桥接进程（仅 startup-break 模式） */
+                /*
+                ** 步骤 5b：ArkTS 端口转发 + 启动 WebSocket 桥接进程（仅 startup-break 模式）
+                */
                 QString wsSignalFile;
                 if (startupBreak) {
                     runControl->postMessage(
@@ -462,6 +523,7 @@ public:
                     const quint16 localWsPort    = findFreePort();
                     const quint16 localPandaPort = findFreePort();
                     *localWsPortHolder = localWsPort;
+                    *localPandaPortHolder = localPandaPort;
 
                     const FilePath hdc2 = HarmonyConfig::hdcToolPath();
                     QStringList fportArgs1 = hdcSelector(serial);
@@ -490,16 +552,21 @@ public:
                             .arg(localPandaPort).arg(pid).arg(fport2.allOutput().trimmed()),
                         NormalMessageFormat);
 
-                    /* ** 创建临时目录存放信号文件 */
+                    /*
+                    ** 创建临时目录存放信号文件
+                    */
                     const QString tmpDir = QDir::tempPath()
                         + QStringLiteral("/harmony_debug_%1").arg(QDateTime::currentMSecsSinceEpoch());
                     QDir().mkpath(tmpDir);
+                    *tmpDirHolder = tmpDir;
                     wsSignalFile = tmpDir + QStringLiteral("/signal");
                     *wsSignalFileHolder = wsSignalFile;
 
-                    /* ** 通过 QProcess::startDetached 在独立子进程中启动 ArkTSDebugBridge。
+                    /*
+                    ** 通过 QProcess::startDetached 在独立子进程中启动 ArkTSDebugBridge。
                     ** 二进制安装在 libexec 目录下（与 perfparser、iostool 等同级），
-                    ** 使用 ICore::libexecPath() 定位，兼容所有平台和沙盒构建。 */
+                    ** 使用 ICore::libexecPath() 定位，兼容所有平台和沙盒构建。
+                    */
                     const QString bridgeBin = Core::ICore::libexecPath(
                         QStringLiteral("arktsdebugbridge")).toUrlishString();
                     qint64 bridgePid = 0;
@@ -510,6 +577,8 @@ public:
                          wsSignalFile},
                         QString(),
                         &bridgePid);
+                    if (bridgeStarted)
+                        *bridgePidHolder = bridgePid;
                     if (bridgeStarted) {
                         runControl->postMessage(
                             Tr::tr("Harmony DAP debug: bridge started (PID %1), connecting to ws://127.0.0.1:%2…")
@@ -525,7 +594,9 @@ public:
                     }
                 }
 
-                /* ** 步骤 6：注入 lldb-server（aa process -D） */
+                /*
+                ** 步骤 6：注入 lldb-server（aa process -D）
+                */
                 runControl->postMessage(Tr::tr("Harmony DAP debug: step 6 — inject lldb-server"), NormalMessageFormat);
                 const QString lldbListenUrl = QStringLiteral("unix-abstract://") + socketDir + u'/' + socketName;
                 const QString aaProcessCmd = ability.isEmpty()
@@ -543,7 +614,9 @@ public:
                         NormalMessageFormat); /* ** 非致命：某些设备在调度前已启动 */
                 }
 
-                /* ** 轮询 lldb-server 进程稳定（最多 8 秒） */
+                /*
+                ** 轮询 lldb-server 进程稳定（最多 8 秒）
+                */
                 const QString lldbPsCmd = QStringLiteral(
                     "ps -ef 2>/dev/null | grep lldb-server | grep '%1' | grep -v grep")
                     .arg(socketName);
@@ -580,13 +653,32 @@ public:
             });
 
             /*
+            ** 会话结束时清理 bridge 进程和临时文件
+            */
+            QObject::connect(runControl, &RunControl::stopped, runControl,
+                [bridgePidHolder, tmpDirHolder] {
+                    if (*bridgePidHolder > 0) {
+                        Process killBridge;
+#ifdef Q_OS_WIN
+                        killBridge.setCommand(CommandLine{
+                            FilePath::fromString("taskkill"),
+                            {"/F", "/PID", QString::number(*bridgePidHolder)}});
+#else
+                        killBridge.setCommand(CommandLine{
+                            FilePath::fromString("kill"),
+                            {QString::number(*bridgePidHolder)}});
+#endif
+                        killBridge.start();
+                        killBridge.waitForFinished(3s);
+                    }
+                    if (!tmpDirHolder->isEmpty())
+                        QDir(*tmpDirHolder).removeRecursively();
+                });
+
+            /*
             ** 任务树：先运行预启动任务，再启动调试器。
             ** 修改器在调试器引擎启动前被调用；socketUrlHolder、pidHolder、
             ** wsSignalFileHolder 均由 preLaunch 任务赋值。
-            ** commandsAfterConnect：LLDB attach 之后、用户可操作之前执行的命令：
-            **   - SIGILL/SIGRTMIN+1/SIGPIPE 信号处理（与 CLI 脚本一致）
-            **   - startup-break 模式：创建信号文件（触发 ArkTS 解锁链），
-            **     消息写入内核缓冲区，等待 process continue 后由 ArkTS 读取。
             */
             return Group{
                 preLaunch,
@@ -595,10 +687,12 @@ public:
                         params.setRemoteChannel(*socketUrlHolder);
                         params.setAttachPid(ProcessHandle(static_cast<qint64>(*pidHolder)));
 
-                        /* ** 将信号文件路径通过 workingDirectory 字段传递给 lldbbridge.py。
+                        /*
+                        ** 将信号文件路径通过 workingDirectory 字段传递给 lldbbridge.py。
                         ** LLDB attach 模式下 workingDirectory 不用于启动进程，可安全复用。
                         ** lldbbridge.py 的 OHOS runEngine 块将在 attach 成功后读取此路径并创建文件，
-                        ** 触发 Bridge → ArkTS → Runtime.runIfWaitingForDebugger 解锁链。 */
+                        ** 触发 Bridge → ArkTS → Runtime.runIfWaitingForDebugger 解锁链。
+                        */
                         if (!wsSignalFileHolder->isEmpty()) {
                             auto inferior = params.inferior();
                             inferior.workingDirectory = Utils::FilePath::fromString(*wsSignalFileHolder);
