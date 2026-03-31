@@ -1,6 +1,8 @@
 #include <QtCore/QCoreApplication>
 #include <QtCore/qglobal.h>
 #include <QTimer>
+#include <QDebug>
+
 #include "usbmonitor/usbmonitor.h"
 int main(int argc, char *argv[])
 {
