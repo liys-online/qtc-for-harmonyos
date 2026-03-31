@@ -119,6 +119,11 @@ public:
         setupHarmonyRunConfiguration();
         setupHarmonyRunWorker();
         setupHarmonyDebugWorker();
+#ifdef WITH_TESTS
+        addTestCreator([] { return new Ohos::Internal::HarmonyHdcTargetsParserTest; });
+        addTestCreator([] { return new Ohos::Internal::HarmonyDeviceInfoTest; });
+        addTestCreator([] { return new Ohos::Internal::HarmonyHvigorOutputParserTest; });
+#endif
         connect(KitManager::instance(), &KitManager::kitsLoaded, this, &OhosPlugin::kitsRestored,
                 Qt::SingleShotConnection);
         connect(ProjectManager::instance(), &ProjectManager::activeBuildConfigurationChanged,

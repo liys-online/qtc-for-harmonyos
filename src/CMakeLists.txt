@@ -111,6 +111,13 @@ add_qtc_plugin(Harmony
     ohostr.h
     harmonyqtcdefs.h
     ${HARMONY_QTC_EXTRA_SOURCES}
+  TEST_SOURCES
+    ../test/harmonypluginlogictest/harmonyhdctargetsparser_test.h
+    ../test/harmonypluginlogictest/harmonyhdctargetsparser_test.cpp
+    ../test/harmonypluginlogictest/harmonydeviceinfo_test.h
+    ../test/harmonypluginlogictest/harmonydeviceinfo_test.cpp
+    ../test/harmonypluginlogictest/harmonyhvigoroutputparser_test.h
+    ../test/harmonypluginlogictest/harmonyhvigoroutputparser_test.cpp
 )
 
 get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)

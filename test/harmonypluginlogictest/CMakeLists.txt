@@ -54,22 +54,18 @@ endif()
 get_filename_component(REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 set(SRC_DIR "${REPO_ROOT}/src")
 
-# 决定哪些被测源文件可以编译（取决于 Qt Creator 目标是否可用）
-set(_TESTED_SOURCES
-    ${SRC_DIR}/harmonyhdctargetsparser.cpp   # 仅 Qt Core
+add_executable(harmonypluginlogictest
+    harmonypluginlogictest.cpp
+    # 被测源文件：与插件共用同一份代码（通过 harmonypluginlogictest.cpp 中的 #include 引入）
+    ${SRC_DIR}/harmonyhdctargetsparser.cpp
 )
 
 if(_QTC_AVAILABLE)
-    list(APPEND _TESTED_SOURCES
-        ${SRC_DIR}/harmonydeviceinfo.cpp         # 依赖 IDevice
-        ${SRC_DIR}/harmonyhvigoroutputparser.cpp  # 依赖 OutputTaskParser / Task
+    target_sources(harmonypluginlogictest PRIVATE
+        ${SRC_DIR}/harmonydeviceinfo.cpp
+        ${SRC_DIR}/harmonyhvigoroutputparser.cpp
     )
 endif()
-
-add_executable(harmonypluginlogictest
-    harmonypluginlogictest.cpp
-    ${_TESTED_SOURCES}
-)
 
 target_include_directories(harmonypluginlogictest PRIVATE "${SRC_DIR}")
 
@@ -80,7 +76,9 @@ target_link_libraries(harmonypluginlogictest
     ${_QTC_LIBS}
 )
 
-# 让测试文件知道 Qt Creator 库是否可用
+# WITH_TESTS 让 *_test.cpp 中的 #ifdef WITH_TESTS 代码生效
+# HAVE_QTCREATOR_LIBS 让 main() 决定是否运行 QTC-dependent 测试类
+target_compile_definitions(harmonypluginlogictest PRIVATE WITH_TESTS)
 if(_QTC_AVAILABLE)
     target_compile_definitions(harmonypluginlogictest PRIVATE HAVE_QTCREATOR_LIBS)
 endif()
