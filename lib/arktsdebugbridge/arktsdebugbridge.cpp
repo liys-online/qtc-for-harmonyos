@@ -179,6 +179,13 @@ void ArkTSDebugBridge::onL1Disconnected()
         return;
     }
 
+    /* ** WaitingSignal / WaitingAddInstance 状态下 L1 断开 → 致命错误 */
+    if (m_state == State::WaitingSignal || m_state == State::WaitingAddInstance) {
+        fatalError(QStringLiteral("[BRIDGE] ERROR: L1 WebSocket disconnected while in state %1")
+                       .arg(int(m_state)));
+        return;
+    }
+
     /* ** 非预期状态下的断开连接 */
     if (m_state != State::Idle) {
         qCWarning(arkLog) << "L1 WebSocket disconnected unexpectedly in state" << int(m_state);
@@ -415,7 +422,8 @@ void ArkTSDebugBridge::onL2Disconnected()
     }
 
     if (m_state == State::Running) {
-        qCWarning(arkLog) << "Panda CDT WebSocket disconnected unexpectedly";
+        log(QStringLiteral("[BRIDGE] Panda CDT disconnected in Running state; shutting down"));
+        cleanup(true);
     }
 }
 
@@ -452,13 +460,14 @@ void ArkTSDebugBridge::log(const QString &msg)
 
 void ArkTSDebugBridge::fatalError(const QString &msg)
 {
-    log(msg);
+    qCWarning(arkLog) << msg;
     emit errorOccurred(msg);
     cleanup(true);
 }
 
 void ArkTSDebugBridge::cleanup(bool emitFinished)
 {
+    const State prev = m_state;
     m_state = State::Idle;
 
     auto stopAndDelete = [](QTimer *&t) {
@@ -473,17 +482,30 @@ void ArkTSDebugBridge::cleanup(bool emitFinished)
     stopAndDelete(m_deadlineTimer);
     stopAndDelete(m_runTimer);
 
-    if (m_l1Socket) {
-        m_l1Socket->disconnect(this);
-        m_l1Socket->abort();
-        m_l1Socket->deleteLater();
-        m_l1Socket = nullptr;
-    }
+    /* ** 清理 L2：先发 Debugger.disable 再优雅关闭，
+    ** 确保设备侧 ArkTS 调试端口被正确释放。 */
     if (m_l2Socket) {
+        if (prev == State::Running
+            && m_l2Socket->state() == QAbstractSocket::ConnectedState) {
+            ++m_cdtMsgId;
+            m_l2Socket->sendTextMessage(
+                QStringLiteral("{\"id\":%1,\"method\":\"Debugger.disable\",\"params\":{}}").arg(m_cdtMsgId));
+            m_l2Socket->close();
+        } else {
+            m_l2Socket->abort();
+        }
         m_l2Socket->disconnect(this);
-        m_l2Socket->abort();
         m_l2Socket->deleteLater();
         m_l2Socket = nullptr;
+    }
+    if (m_l1Socket) {
+        m_l1Socket->disconnect(this);
+        if (m_l1Socket->state() == QAbstractSocket::ConnectedState)
+            m_l1Socket->close();
+        else
+            m_l1Socket->abort();
+        m_l1Socket->deleteLater();
+        m_l1Socket = nullptr;
     }
 
     if (emitFinished)
