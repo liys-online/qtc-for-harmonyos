@@ -170,6 +170,4 @@ void HarmonyDeviceInfoTest::debugStream_doesNotCrash()
 
 } // namespace Ohos::Internal
 
-#include "harmonydeviceinfo_test.moc"
-
 #endif // WITH_TESTS

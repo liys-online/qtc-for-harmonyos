@@ -242,6 +242,4 @@ void HarmonyHdcTargetsParserTest::stateMapping_unknownFallsToDisconnected()
 
 } // namespace Ohos::Internal
 
-#include "harmonyhdctargetsparser_test.moc"
-
 #endif // WITH_TESTS

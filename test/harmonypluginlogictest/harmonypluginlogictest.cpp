@@ -9,7 +9,9 @@
 // #include of .cpp files below is intentional: lets the same code serve both
 // the standalone executable and libHarmony.so as separate CMake targets.
 
+#ifndef WITH_TESTS
 #define WITH_TESTS  // standalone always enables all tests
+#endif
 #include "harmonyhdctargetsparser_test.cpp"
 #ifdef HAVE_QTCREATOR_LIBS
 #  include "harmonydeviceinfo_test.cpp"

@@ -151,6 +151,4 @@ void HarmonyHvigorOutputParserTest::handleLine_headerLine_notHandled()
 
 } // namespace Ohos::Internal
 
-#include "harmonyhvigoroutputparser_test.moc"
-
 #endif // WITH_TESTS
