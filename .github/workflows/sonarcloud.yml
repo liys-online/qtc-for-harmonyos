@@ -105,6 +105,34 @@ jobs:
             fi
           done
 
+      - name: Run Qt Creator plugin tests (Harmony -test)
+        # 通过 Qt Creator 二进制直接加载 Harmony 插件并运行其注册的测试用例。
+        # 这是覆盖 src/ 中依赖 Qt Creator 框架（PluginManager / DeviceManager 等）代码的唯一途径。
+        # 退出码非零时仅警告，不阻断流水线。
+        run: |
+          set -eu
+          QTC_ROOT="${{ steps.qtc.outputs.root }}"
+          QTC_BIN="${QTC_ROOT}/bin/qtcreator"
+          PLUGIN_PATH="${GITHUB_WORKSPACE}/build/lib/qtcreator/plugins"
+
+          if [ ! -x "${QTC_BIN}" ]; then
+            echo "[skip] Qt Creator binary not found at ${QTC_BIN}"
+            exit 0
+          fi
+          if [ ! -d "${PLUGIN_PATH}" ]; then
+            echo "[skip] Plugin output path not found: ${PLUGIN_PATH}"
+            exit 0
+          fi
+
+          export QT_QPA_PLATFORM=offscreen
+          export LD_LIBRARY_PATH="${QTC_ROOT}/lib/qtcreator/plugins:${QTC_ROOT}/lib/qtcreator:${QT_ROOT_DIR}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+
+          echo "Running: ${QTC_BIN} -pluginpath ${PLUGIN_PATH} -test Harmony"
+          "${QTC_BIN}" \
+            -pluginpath "${PLUGIN_PATH}" \
+            -test Harmony -- -v2 \
+            || echo "[warning] Qt Creator -test Harmony exit code $? (non-blocking)"
+
       - name: Generate coverage.xml (gcovr sonarqube format)
         run: |
           cd build
