@@ -25,7 +25,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build p7zip-full libudev-dev
+          sudo apt-get install -y ninja-build p7zip-full libudev-dev libsecret-1-0
           pip install gcovr
 
       - name: Install Qt
