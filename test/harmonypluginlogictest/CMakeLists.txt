@@ -43,12 +43,12 @@ if(NOT TARGET QtCreator::Utils)
 endif()
 
 # 决定哪些 Qt Creator 目标可用
+set(_QTC_AVAILABLE FALSE)
 set(_QTC_LIBS "")
-foreach(_target QtCreator::Utils QtCreator::ProjectExplorer)
-    if(TARGET ${_target})
-        list(APPEND _QTC_LIBS ${_target})
-    endif()
-endforeach()
+if(TARGET QtCreator::Utils AND TARGET QtCreator::ProjectExplorer)
+    set(_QTC_AVAILABLE TRUE)
+    set(_QTC_LIBS QtCreator::Utils QtCreator::ProjectExplorer)
+endif()
 
 # 被测源文件（纯逻辑，无额外 I/O 依赖）
 get_filename_component(REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
@@ -59,14 +59,9 @@ set(_TESTED_SOURCES
     ${SRC_DIR}/harmonyhdctargetsparser.cpp   # 仅 Qt Core
 )
 
-if(TARGET QtCreator::ProjectExplorer)
+if(_QTC_AVAILABLE)
     list(APPEND _TESTED_SOURCES
         ${SRC_DIR}/harmonydeviceinfo.cpp         # 依赖 IDevice
-    )
-endif()
-
-if(TARGET QtCreator::Utils AND TARGET QtCreator::ProjectExplorer)
-    list(APPEND _TESTED_SOURCES
         ${SRC_DIR}/harmonyhvigoroutputparser.cpp  # 依赖 OutputTaskParser / Task
     )
 endif()
@@ -86,7 +81,7 @@ target_link_libraries(harmonypluginlogictest
 )
 
 # 让测试文件知道 Qt Creator 库是否可用
-if(TARGET QtCreator::Utils AND TARGET QtCreator::ProjectExplorer)
+if(_QTC_AVAILABLE)
     target_compile_definitions(harmonypluginlogictest PRIVATE HAVE_QTCREATOR_LIBS)
 endif()
 
