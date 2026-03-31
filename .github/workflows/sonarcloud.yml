@@ -128,7 +128,11 @@ jobs:
           export LD_LIBRARY_PATH="${QTC_ROOT}/lib/qtcreator/plugins:${QTC_ROOT}/lib/qtcreator:${QT_ROOT_DIR}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
           echo "Running: ${QTC_BIN} -pluginpath ${PLUGIN_PATH} -test Harmony"
-          "${QTC_BIN}" \
+          # timeout 发送 SIGINT（不用默认的 SIGTERM）。
+          # Qt 内置 SIGINT 处理器 → QCoreApplication::quit() → atexit() → gcov 写 .gcda。
+          # SIGTERM/SIGKILL 不经过 atexit()，.gcda 数据会丢失。
+          timeout --signal=SIGINT 120 \
+            "${QTC_BIN}" \
             -pluginpath "${PLUGIN_PATH}" \
             -test Harmony -- -v2 \
             || echo "[warning] Qt Creator -test Harmony exit code $? (non-blocking)"
