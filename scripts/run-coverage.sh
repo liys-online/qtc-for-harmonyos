@@ -206,25 +206,36 @@ gcovr \
     \
     --sonarqube "${COVERAGE_OUT}"
 
-# gcovr --sonarqube 不支持 --xml-pretty，用 xmllint 或 python3 格式化
-if command -v xmllint &>/dev/null; then
-    xmllint --format --output "${COVERAGE_OUT}" "${COVERAGE_OUT}"
-else
-    python3 - "${COVERAGE_OUT}" <<'PYEOF'
-import sys, xml.dom.minidom
+# gcovr --sonarqube 不支持 --xml-pretty，用 python3 格式化并清理空 <file/> 元素
+# （无 <lineToCover> 子元素的 header 文件在新版 SonarCloud scanner 中会导致解析错误）
+python3 - "${COVERAGE_OUT}" <<'PYEOF'
+import sys, xml.etree.ElementTree as ET
+
 path = sys.argv[1]
-with open(path, 'r', encoding='utf-8') as f:
-    content = f.read()
-dom = xml.dom.minidom.parseString(content)
-pretty = dom.toprettyxml(indent='  ', encoding='utf-8').decode('utf-8')
-# toprettyxml 会补一行 <?xml?> 声明，去掉重复的
-lines = pretty.splitlines()
-if lines and lines[0].startswith("<?xml") and content.lstrip().startswith("<?xml"):
-    pretty = '\n'.join(lines[1:])
+ET.register_namespace('', '')
+tree = ET.parse(path)
+root = tree.getroot()
+
+# 移除没有任何 <lineToCover> 子元素的 <file> 节点
+to_remove = [child for child in root if child.tag == 'file' and len(child) == 0]
+for child in to_remove:
+    root.remove(child)
+
+# 写回，手动补 XML 声明（ET 默认不加）
+xml_str = ET.tostring(root, encoding='unicode', xml_declaration=False)
+
+# 格式化缩进（Python 3.9+）
+try:
+    ET.indent(root, space='  ')
+    xml_str = ET.tostring(root, encoding='unicode', xml_declaration=False)
+except AttributeError:
+    pass  # Python < 3.9，跳过格式化
+
 with open(path, 'w', encoding='utf-8') as f:
-    f.write(pretty)
+    f.write('<?xml version="1.0" encoding="utf-8"?>\n')
+    f.write(xml_str)
+    f.write('\n')
 PYEOF
-fi
 
 echo "覆盖率报告已写入：${COVERAGE_OUT}"
 
