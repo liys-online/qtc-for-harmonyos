@@ -108,6 +108,11 @@ phony.c
 *.jsc
 *.qmlc
 
+# SonarCloud analysis artifacts - 由本地脚本生成并手动提交，CI 直接读取
+# 生成方法：scripts/run-coverage.ps1
+!coverage.xml
+!compile_commands.json
+
 # Squish generated files
 /tests/system/suite_*/config.xml
 

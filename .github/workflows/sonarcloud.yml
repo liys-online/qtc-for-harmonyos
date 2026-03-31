@@ -1,0 +1,28 @@
+name: SonarCloud Analysis
+
+# 本流水线只负责将已提交到仓库的分析制品上传至 SonarCloud。
+# 覆盖率报告（coverage.xml）和编译数据库（compile_commands.json）
+# 需在本地生成后 git commit 并推送，流水线不再重复构建或运行测试。
+# 本地生成方法参见 scripts/run-coverage.ps1。
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  sonarcloud:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # SonarCloud 需要完整历史以进行 blame / new-code 分析
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+

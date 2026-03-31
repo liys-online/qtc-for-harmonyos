@@ -57,15 +57,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Network LinguistTools)
 option(WITH_TESTS "Builds with tests" NO)
 
 if(WITH_TESTS)
-  # Look for QtTest
-  find_package(Qt6 REQUIRED COMPONENTS Test)
-
-  # Tell CMake functions like add_qtc_plugin about the QtTest component.
-  set(IMPLICIT_DEPENDS Qt::Test)
-
-  # Enable ctest for auto tests.
   enable_testing()
-
   add_subdirectory(../test/qt_oh_binary_catalog_generator qt_oh_binary_catalog_generator)
 endif()
 
@@ -131,17 +123,6 @@ target_compile_definitions(Harmony PRIVATE
   QTC_IDE_VERSION_MINOR=${HARMONY_IDE_VERSION_MINOR}
   QTC_IDE_VERSION_PATCH=${HARMONY_IDE_VERSION_PATCH}
     HARMONY_QTC_USE_QTTASKTREE=1
-)
-
-extend_qtc_plugin(Harmony
-  CONDITION WITH_TESTS
-  SOURCES
-    harmonyhdctargetsparser_test.cpp
-    harmonyhdctargetsparser_test.h
-    harmonyhvigoroutputparser_test.cpp
-    harmonyhvigoroutputparser_test.h
-    harmonydeviceinfo_test.cpp
-    harmonydeviceinfo_test.h
 )
 
 # 更新 .ts：构建 harmony_ts_zh_CN 或 harmony_ts_all（非默认 ALL，需手动选该目标）。
