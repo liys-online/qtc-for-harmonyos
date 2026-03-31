@@ -111,14 +111,22 @@ add_qtc_plugin(Harmony
     ohostr.h
     harmonyqtcdefs.h
     ${HARMONY_QTC_EXTRA_SOURCES}
-  TEST_SOURCES
-    ../test/harmonypluginlogictest/harmonyhdctargetsparser_test.h
-    ../test/harmonypluginlogictest/harmonyhdctargetsparser_test.cpp
-    ../test/harmonypluginlogictest/harmonydeviceinfo_test.h
-    ../test/harmonypluginlogictest/harmonydeviceinfo_test.cpp
-    ../test/harmonypluginlogictest/harmonyhvigoroutputparser_test.h
-    ../test/harmonypluginlogictest/harmonyhvigoroutputparser_test.cpp
 )
+
+if(WITH_TESTS)
+  extend_qtc_plugin(Harmony
+    DEFINES WITH_TESTS
+    SOURCES
+      ../test/harmonypluginlogictest/harmonyhdctargetsparser_test.h
+      ../test/harmonypluginlogictest/harmonyhdctargetsparser_test.cpp
+      ../test/harmonypluginlogictest/harmonydeviceinfo_test.h
+      ../test/harmonypluginlogictest/harmonydeviceinfo_test.cpp
+      ../test/harmonypluginlogictest/harmonyhvigoroutputparser_test.h
+      ../test/harmonypluginlogictest/harmonyhvigoroutputparser_test.cpp
+  )
+  find_package(Qt6 REQUIRED COMPONENTS Test)
+  target_link_libraries(Harmony PRIVATE Qt6::Test)
+endif()
 
 get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
 target_include_directories(Harmony PRIVATE ${PARENT_DIR}/lib)
