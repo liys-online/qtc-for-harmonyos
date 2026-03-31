@@ -21,6 +21,21 @@
 #include <QCoreApplication>
 #include <QTest>
 
+// ── 崩溃时强制写 .gcda（GCC --coverage 场景）──────────────────────────────────
+// 若 libProjectExplorer / libUtils 静态初始化器在 Linux CI 上崩溃，atexit() 不会
+// 被调用，导致覆盖率数据丢失。安装信号处理器，在进程终止前 flush gcov 数据。
+#if defined(__GNUC__) && !defined(__clang__)
+#  include <csignal>
+extern "C" void __gcov_dump() __attribute__((weak));
+static void flushCoverageAndRethrow(int sig)
+{
+    if (&__gcov_dump)
+        __gcov_dump();
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+#endif
+
 namespace Ohos::Internal {
 
 class HarmonyHdcTargetsParserTest : public QObject
@@ -704,6 +719,14 @@ void HarmonyHvigorOutputParserTest::handleLine_headerLine_notHandled()
 // ── 自定义 main：依次运行所有测试对象，汇总退出码 ───────────────────────────────
 int main(int argc, char *argv[])
 {
+#if defined(__GNUC__) && !defined(__clang__)
+    // 在 QCoreApplication 构造之前装好处理器，覆盖 QTC 静态初始化期间可能的崩溃。
+    if (&__gcov_dump) {
+        signal(SIGSEGV, flushCoverageAndRethrow);
+        signal(SIGABRT, flushCoverageAndRethrow);
+        signal(SIGBUS,  flushCoverageAndRethrow);
+    }
+#endif
     QCoreApplication app(argc, argv);
     int status = 0;
 

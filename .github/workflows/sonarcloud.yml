@@ -92,6 +92,12 @@ jobs:
           )
           for t in "${TESTS[@]}"; do
             if [ -x "${t}" ]; then
+              # 打印缺失的动态库，便于排查加载崩溃问题
+              missing=$(ldd "${t}" 2>/dev/null | grep "not found" || true)
+              if [ -n "${missing}" ]; then
+                echo "[ldd] missing libraries for ${t}:"
+                echo "${missing}"
+              fi
               echo "Running: ${t}"
               "${t}" || echo "[warning] exit code $? (non-blocking, coverage data still written)"
             else
@@ -139,6 +145,18 @@ jobs:
           PYEOF
 
           echo "coverage.xml generated: ${GITHUB_WORKSPACE}/coverage.xml"
+
+      - name: Reset stale CFamily AutoScan properties
+        # 清除服务端遗留的 customTargetSystem=windows 等 AutoScan 属性。
+        # 这些属性由旧的 Automatic Analysis 写入，在 Compile-Commands 模式下会导致冲突。
+        # 忽略非 2xx 响应（token 无 Administer 权限时跳过，不影响主流程）。
+        run: |
+          http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "https://sonarcloud.io/api/settings/reset" \
+            -H "Authorization: Bearer ${{ secrets.SONAR_TOKEN }}" \
+            --data-urlencode "component=liys-online_qtc-for-harmonyos" \
+            --data-urlencode "keys=sonar.cfamily.customTargetSystem,sonar.cfamily.customTargetArch,sonar.cfamily.customTargetVendor,sonar.cfamily.customTargetEnv")
+          echo "settings/reset HTTP status: ${http_code}"
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v7
