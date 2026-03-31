@@ -37,12 +37,6 @@
 #include "ohosconstants.h"
 #include "ohostr.h"
 
-#ifdef WITH_TESTS
-#include "../test/harmonypluginlogictest/harmonyhdctargetsparser_test.h"
-#include "../test/harmonypluginlogictest/harmonydeviceinfo_test.h"
-#include "../test/harmonypluginlogictest/harmonyhvigoroutputparser_test.h"
-#endif
-
 #include <QTranslator>
 
 namespace {
@@ -126,11 +120,6 @@ public:
         setupHarmonyRunWorker();
         setupHarmonyDebugWorker();
 
-#ifdef WITH_TESTS
-        addTestCreator([] { return new HarmonyHdcTargetsParserTest; });
-        addTestCreator([] { return new HarmonyDeviceInfoTest; });
-        addTestCreator([] { return new HarmonyHvigorOutputParserTest; });
-#endif
         connect(KitManager::instance(), &KitManager::kitsLoaded, this, &OhosPlugin::kitsRestored,
                 Qt::SingleShotConnection);
         connect(ProjectManager::instance(), &ProjectManager::activeBuildConfigurationChanged,

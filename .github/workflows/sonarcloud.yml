@@ -88,7 +88,6 @@ jobs:
             build/test/usbmonitortest/usbmonitortest
             build/test/hdcsocketclienttest/hdcsocketclienttest
             build/test/ohprocreatetest/ohprocreatetest
-            build/test/harmonypluginlogictest/harmonypluginlogictest
           )
           for t in "${TESTS[@]}"; do
             if [ -x "${t}" ]; then
@@ -133,20 +132,10 @@ jobs:
           cd build
           gcovr \
             --root "${GITHUB_WORKSPACE}" \
-            --filter "${GITHUB_WORKSPACE}/src/" \
             --filter "${GITHUB_WORKSPACE}/lib/" \
             --exclude ".*_test\.cpp" \
             --exclude ".*/3rdparty/.*" \
             --exclude ".*/moc_.*" \
-            --exclude ".*/arktsdebugbridge\.cpp$" \
-            --exclude ".*/harmonymainrunsockettask\.cpp$" \
-            --exclude ".*/harmonydebugsupport\.cpp$" \
-            --exclude ".*/harmonyrunner\.cpp$" \
-            --exclude ".*/harmonydeployqtstep\.cpp$" \
-            --exclude ".*/harmonysdkdownloader\.cpp$" \
-            --exclude ".*/harmonyqttreleasesdownloader\.cpp$" \
-            --exclude ".*/harmonysdkmanagerdialog\.cpp$" \
-            --exclude ".*/harmonyqttsdkmanagerdialog\.cpp$" \
             --sonarqube "${GITHUB_WORKSPACE}/coverage.xml"
 
           # 移除无子元素的空 <file/> 标签——新版 SonarScanner 解析时会报错

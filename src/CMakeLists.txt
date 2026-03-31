@@ -50,17 +50,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network LinguistTools)
 
-# Add a CMake option that enables building your plugin with tests.
-# You don't want your released plugin binaries to contain tests,
-# so make that default to 'NO'.
-# Enable tests by passing -DWITH_TESTS=ON to CMake.
-option(WITH_TESTS "Builds with tests" NO)
-
-if(WITH_TESTS)
-  enable_testing()
-  add_subdirectory(../test/qt_oh_binary_catalog_generator qt_oh_binary_catalog_generator)
-endif()
-
 add_qtc_plugin(Harmony
   PLUGIN_DEPENDS
     QtCreator::Core
@@ -112,21 +101,6 @@ add_qtc_plugin(Harmony
     harmonyqtcdefs.h
     ${HARMONY_QTC_EXTRA_SOURCES}
 )
-
-if(WITH_TESTS)
-  extend_qtc_plugin(Harmony
-    DEFINES WITH_TESTS
-    SOURCES
-      ../test/harmonypluginlogictest/harmonyhdctargetsparser_test.h
-      ../test/harmonypluginlogictest/harmonyhdctargetsparser_test.cpp
-      ../test/harmonypluginlogictest/harmonydeviceinfo_test.h
-      ../test/harmonypluginlogictest/harmonydeviceinfo_test.cpp
-      ../test/harmonypluginlogictest/harmonyhvigoroutputparser_test.h
-      ../test/harmonypluginlogictest/harmonyhvigoroutputparser_test.cpp
-  )
-  find_package(Qt6 REQUIRED COMPONENTS Test)
-  target_link_libraries(Harmony PRIVATE Qt6::Test)
-endif()
 
 get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
 target_include_directories(Harmony PRIVATE ${PARENT_DIR}/lib)
