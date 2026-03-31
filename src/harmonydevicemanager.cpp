@@ -41,9 +41,49 @@ HarmonyDeviceManager::~HarmonyDeviceManager()
     UsbMonitor::destroy();
 
 }
+static void registerHarmonyDevice(DeviceManager *devMgr, const Id &id, const QString &dirtySerial) // NOSONAR (cpp:S3578) - non-const DeviceManager methods called
+{
+    QString deviceName = HarmonyConfig::getDeviceName(dirtySerial);
+    const IDevice::DeviceState state = deviceName.isEmpty()
+                                           ? IDevice::DeviceDisconnected
+                                           : IDevice::DeviceReadyToUse;
+
+    if (ipRegex.match(dirtySerial).hasMatch())
+        deviceName += QLatin1String(" (WiFi)");
+
+    qCDebug(harmonyDeviceLog) << "Detected device:" << deviceName;
+    const bool isEmulator = deviceName.startsWith(QStringLiteral("emulator"), Qt::CaseInsensitive)
+                            || dirtySerial.contains(QStringLiteral("emulator"), Qt::CaseInsensitive);
+    const QString displayName = QString("%1[%2]").arg(deviceName, dirtySerial);
+    if (isEmulator) {
+        /* ** TODO: 实现模拟器支持 */ // NOSONAR (cpp:S1135)
+        qCWarning(harmonyDeviceLog) << QString("The simulator is not yet supported \"%1\".")
+                                         .arg(dirtySerial);
+        return;
+    }
+    if (IDevice::ConstPtr dev = devMgr->find(id)) { // NOSONAR (cpp:S5296) - find() is non-static
+        devMgr->setDeviceState(id, state); // NOSONAR (cpp:S5296)
+    } else {
+        IDevice::Ptr newDev = std::make_shared<HarmonyDevice>();
+        newDev->setupId(IDevice::AutoDetected, id);
+        newDev->setDisplayName(displayName);
+        newDev->setMachineType(IDevice::Hardware);
+        newDev->setDeviceState(state);
+        newDev->setExtraData(Constants::HarmonySerialNumber, dirtySerial);
+        const QString abiRaw = HarmonyConfig::getAbis(dirtySerial);
+        QStringList abis = abiRaw.split(QRegularExpression(QStringLiteral("[,\\s]+")),
+                                        Qt::SkipEmptyParts);
+        for (QString &a : abis)
+            a = a.trimmed();
+        newDev->setExtraData(Constants::HarmonyCpuAbi, abis);
+        newDev->setExtraData(Constants::HarmonySdk, HarmonyConfig::getSDKVersion(dirtySerial));
+        qCDebug(harmonyDeviceLog, "Registering new Harmony device id \"%s\".", newDev->id().name().data());
+        devMgr->addDevice(newDev); // NOSONAR (cpp:S5296)
+    }
+}
 static void handleDevicesListChange(const QString &serialNumber)
 {
-    DeviceManager *const devMgr = DeviceManager::instance();
+    DeviceManager *const devMgr = DeviceManager::instance(); // NOSONAR (cpp:S3578) - non-const methods are called on devMgr
     const HdcListTargetsParseResult parsed = parseHdcListTargetsLine(serialNumber);
     if (parsed.kind != HdcListTargetsLineKind::DeviceDataRow)
         return;
@@ -52,61 +92,15 @@ static void handleDevicesListChange(const QString &serialNumber)
     const QString &dirtySerial = parsed.device.serial;
 
     const Id id = Id(Constants::HARMONY_DEVICE_ID).withSuffix(":").withSuffix(dirtySerial);
-    if (IDevice::ConstPtr dev = devMgr->find(id)) {
-        devMgr->setDeviceState(id, state);
+    if (IDevice::ConstPtr dev = devMgr->find(id)) { // NOSONAR (cpp:S5296)
+        devMgr->setDeviceState(id, state); // NOSONAR (cpp:S5296)
     }
 
-
-    auto registerDevice = [devMgr, id, dirtySerial]() {
-        QString deviceName = HarmonyConfig::getDeviceName(dirtySerial);
-        IDevice::DeviceState state;
-        if (!deviceName.isEmpty()) {
-            state = IDevice::DeviceReadyToUse;
-        } else {
-            state = IDevice::DeviceDisconnected;
-        }
-
-        if (ipRegex.match(dirtySerial).hasMatch()) {
-            deviceName += QLatin1String(" (WiFi)");
-        }
-
-        qCDebug(harmonyDeviceLog) << "Detected device:" << deviceName;
-        const bool isEmulator = deviceName.startsWith(QStringLiteral("emulator"), Qt::CaseInsensitive)
-                                || dirtySerial.contains(QStringLiteral("emulator"), Qt::CaseInsensitive);
-        QString displayName = QString("%1[%2]").arg(deviceName, dirtySerial);
-        if (isEmulator) {
-            /* ** TODO: 实现模拟器支持 */
-            qCWarning(harmonyDeviceLog) << QString("The simulator is not yet supported \"%1\".")
-                                             .arg(dirtySerial);
-        }
-        else{
-            if (IDevice::ConstPtr dev = devMgr->find(id)) {
-                devMgr->setDeviceState(id, state);
-            } else {
-                HarmonyDevice *newDev = new HarmonyDevice();
-                newDev->setupId(IDevice::AutoDetected, id);
-                newDev->setDisplayName(displayName);
-                newDev->setMachineType(IDevice::Hardware);
-                newDev->setDeviceState(state);
-
-                newDev->setExtraData(Constants::HarmonySerialNumber, dirtySerial);
-                {
-                    const QString abiRaw = HarmonyConfig::getAbis(dirtySerial);
-                    QStringList abis = abiRaw.split(QRegularExpression(QStringLiteral("[,\\s]+")),
-                                                    Qt::SkipEmptyParts);
-                    for (QString &a : abis)
-                        a = a.trimmed();
-                    newDev->setExtraData(Constants::HarmonyCpuAbi, abis);
-                }
-                newDev->setExtraData(Constants::HarmonySdk, HarmonyConfig::getSDKVersion(dirtySerial));
-                qCDebug(harmonyDeviceLog, "Registering new Harmony device id \"%s\".", newDev->id().name().data());
-                devMgr->addDevice(IDevice::Ptr(newDev));
-            }
-        }
-    };
-    QTimer::singleShot(5000, registerDevice);
+    QTimer::singleShot(5000, [devMgr, id, dirtySerial]() {
+        registerHarmonyDevice(devMgr, id, dirtySerial);
+    });
 }
-void HarmonyDeviceManager::queryDevice()
+void HarmonyDeviceManager::queryDevice() const
 {
     qCDebug(harmonyDeviceLog) << "Querying HarmonyOS devices...";
 
@@ -135,7 +129,7 @@ void HarmonyDeviceManager::queryDevice()
     }
 }
 
-void HarmonyDeviceManager::setupDevicesWatcher()
+void HarmonyDeviceManager::setupDevicesWatcher() const
 {
     qCDebug(harmonyDeviceLog) << "Setting up HDC device watcher.";
     if (!HarmonyConfig::hdcToolPath().isExecutableFile() && harmonyHdcShellPreferCli()) {

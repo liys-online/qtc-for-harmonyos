@@ -10,17 +10,17 @@ class HarmonyDeviceManager : public QObject
     Q_OBJECT
 public:
     explicit HarmonyDeviceManager(QObject *parent = nullptr);
-    ~HarmonyDeviceManager();
+    ~HarmonyDeviceManager() override;
     /**
      * @brief queryDevice
      * 查询设备
      */
-    void queryDevice();
+    void queryDevice() const;
     /**
      * @brief setupDevicesWatcher
      * 设置设备监视器
      */
-    void setupDevicesWatcher();
+    void setupDevicesWatcher() const;
 private:
     Q_DISABLE_COPY(HarmonyDeviceManager)
 };

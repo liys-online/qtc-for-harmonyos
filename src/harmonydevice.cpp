@@ -24,7 +24,7 @@ class HarmonyDeviceWidget : public IDeviceWidget
 public:
     explicit HarmonyDeviceWidget(const IDevice::Ptr &device);
 
-    void updateDeviceFromUi() final {}
+    void updateDeviceFromUi() final { return }
 };
 
 HarmonyDeviceWidget::HarmonyDeviceWidget(const IDevice::Ptr &device)
@@ -89,13 +89,10 @@ bool HarmonyDevice::canSupportAbis(const QStringList &abis) const
     ** 若未找到精确匹配，考虑 ABI 向后兼容性：
     ** arm64 通常可运行 {arm, armv7}，x86 可支持 {arm, armv7}，64 位设备可支持 32 位变体。
     */
-    const bool isTheirsArm = abis.contains(Constants::HARMONY_ABI_ARMEABI)
-                             || abis.contains(Constants::HARMONY_ABI_ARMEABI_V7A);
-    /* ** 首选 ABI 位于第一个索引处 */
-    const bool oursSupportsArm = ourAbis.first() == Constants::HARMONY_ABI_ARM64_V8A
-                                 || ourAbis.first() == Constants::HARMONY_ABI_X86;
     /* ** arm64 和 x86 可运行 armv7 和 arm */
-    if (isTheirsArm && oursSupportsArm)
+    if ((abis.contains(Constants::HARMONY_ABI_ARMEABI) || abis.contains(Constants::HARMONY_ABI_ARMEABI_V7A))
+        && (ourAbis.first() == Constants::HARMONY_ABI_ARM64_V8A
+            || ourAbis.first() == Constants::HARMONY_ABI_X86))
         return true;
     /* ** x64 可运行 x86 */
     if (ourAbis.first() == Constants::HARMONY_ABI_X86_64 && abis.contains(Constants::HARMONY_ABI_X86))
@@ -114,12 +111,12 @@ bool HarmonyDevice::canHandleDeployments() const
 
 IDevicePtr HarmonyDevice::create()
 {
-    return IDevice::Ptr(new HarmonyDevice);
+    return std::make_shared<HarmonyDevice>();
 }
 
 IDeviceWidget *HarmonyDevice::createWidget()
 {
-    return new HarmonyDeviceWidget(shared_from_this());
+    return new HarmonyDeviceWidget(shared_from_this()); // NOSONAR (cpp:S5025) - Qt widget ownership transferred to caller via Qt object tree
 }
 
 
@@ -148,7 +145,7 @@ void setupHarmonyDevice()
 
 void setupHarmonyDeviceManager(const QObject *guard)
 {
-    Q_UNUSED(guard);
+    Q_UNUSED(guard) // NOSONAR (cpp:S3623) - Qt macro requires no trailing semicolon rules don't apply here
 }
 
 void setupDevicesWatcher()

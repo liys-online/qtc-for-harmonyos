@@ -61,7 +61,7 @@ static FilePath unixHostMakeProgramForCMake()
         if (!found.isEmpty())
             return found;
     }
-    const FilePath fallbacks[] = {
+    const std::array fallbacks = {
         FilePath::fromString("/usr/bin/make"),
         FilePath::fromString("/bin/make"),
     };
@@ -75,11 +75,9 @@ static FilePath unixHostMakeProgramForCMake()
 static bool harmonySdkListContainsNormalized(const QStringList &list, const FilePath &sdkDir)
 {
     const FilePath normalized = sdkDir.cleanPath();
-    for (const QString &entry : list) {
-        if (FilePath::fromUserInput(entry).cleanPath() == normalized)
-            return true;
-    }
-    return false;
+    return std::any_of(list.cbegin(), list.cend(), [&normalized](const QString &entry) {
+        return FilePath::fromUserInput(entry).cleanPath() == normalized;
+    });
 }
 
 const Key changeTimeStamp("ChangeTimeStamp");
@@ -113,7 +111,7 @@ static QByteArray abiToOhosNdkArchString(const Abi &abi)
 static QByteArray normalizeOhosArchForSdkToolchain(QByteArray arch)
 {
     arch = arch.trimmed();
-    static const QList<QByteArray> allowed{
+    static const QList allowed{ // NOSONAR (cpp:S5041) - static const cannot use if-init-statement
         QByteArray(Constants::HARMONY_ABI_ARM64_V8A),
         QByteArray(Constants::HARMONY_ABI_ARMEABI_V7A),
         QByteArray(Constants::HARMONY_ABI_X86_64),
@@ -130,8 +128,6 @@ static QByteArray normalizeOhosArchForSdkToolchain(QByteArray arch)
         return QByteArray(Constants::HARMONY_ABI_X86_64);
     if (lower == QByteArrayLiteral("i686") || lower == QByteArrayLiteral("x86"))
         return QByteArray(Constants::HARMONY_ABI_X86_64);
-    if (lower == QByteArrayLiteral("unknown") || arch.isEmpty())
-        return QByteArray(Constants::HARMONY_ABI_ARM64_V8A);
     return QByteArray(Constants::HARMONY_ABI_ARM64_V8A);
 }
 
@@ -283,25 +279,13 @@ void HarmonyConfigData::load(const QtcSettings &settings)
         m_ohModuleDeviceTypes = settings.value(Constants::OhModuleDeviceTypesKey).toStringList();
     else
         m_ohModuleDeviceTypes.clear();
-    // PersistentSettingsReader reader;
-
-    // if (reader.load(sdkSettingsFileName())
-    //     && settings.value(changeTimeStamp).toInt() != sdkSettingsFileName().lastModified().toMSecsSinceEpoch() / 1000)
-    // {
-    //     m_makeLocation = FilePath::fromString(reader.restoreValue(Constants::MakeLocationKey).toString());
-    //     m_sdkLocation = FilePath::fromString(reader.restoreValue(Constants::SDKLocationKey).toString());
-    //     m_devecoStudioPath = FilePath::fromString(reader.restoreValue(Constants::DevecoStudioLocationKey).toString());
-    // }
     m_qmakeList.removeAll("");
     m_sdkList.removeAll("");
-
-
 }
 
 void HarmonyConfigData::save(QtcSettings &settings) const
 {
-    const FilePath sdkSettingsFile = sdkSettingsFileName();
-    if (sdkSettingsFile.exists())
+    if (const FilePath sdkSettingsFile = sdkSettingsFileName(); sdkSettingsFile.exists())
         settings.setValue(changeTimeStamp, sdkSettingsFile.lastModified().toMSecsSinceEpoch() / 1000);
 
     settings.setValue(Constants::MakeLocationKey, m_makeLocation.toFSPathString());
@@ -417,9 +401,9 @@ bool tryAutoDetectDevecoStudio()
     if (!devecoStudioLocation().isEmpty())
         return false;
 
-    const QString fromEnv
-        = qtcEnvironmentVariable(QString::fromLatin1(Constants::DEVECO_STUDIO_HOME_ENV_VAR));
-    if (!fromEnv.isEmpty()) {
+    if (const QString fromEnv
+            = qtcEnvironmentVariable(QString::fromLatin1(Constants::DEVECO_STUDIO_HOME_ENV_VAR));
+        !fromEnv.isEmpty()) {
         const FilePath fp = FilePath::fromUserInput(fromEnv).cleanPath();
         if (isValidDevecoStudioRoot(fp)) {
             setDevecoStudioLocation(fp);
@@ -556,8 +540,7 @@ static void appendHarmonyHdcToolchainBases(QVector<FilePath> &out, const FilePat
     for (const FilePath &ch : children) {
         if (ch.fileName() == QStringLiteral(".temp"))
             continue;
-        const QString n = ch.fileName();
-        if (!n.isEmpty() && n.at(0) == QLatin1Char('.'))
+        if (const QString n = ch.fileName(); !n.isEmpty() && n.at(0) == QLatin1Char('.'))
             continue;
         appendPair(ch);
     }
@@ -664,7 +647,7 @@ FilePath releaseFile(const Utils::FilePath &ndkLocation)
 FilePath ndkLocation(const Utils::FilePath &sdkLocation)
 {
     const FilePath root = sdkLocation.cleanPath();
-    const QVector<FilePath> candidatePaths = {
+    const QVector candidatePaths = {
         root / "native",
         root / "default" / "openharmony" / "native",
         /* ** 部分 DevEco / 华为侧 SDK 布局：版本目录下直接为 openharmony/native */
@@ -732,8 +715,7 @@ FilePath defaultOhosSdkPath()
 
 FilePath effectiveOhosSdkRoot()
 {
-    const FilePath stored = ohosSdkRoot().cleanPath();
-    if (!stored.isEmpty())
+    if (const FilePath stored = ohosSdkRoot().cleanPath(); !stored.isEmpty())
         return stored;
     return defaultOhosSdkPath().cleanPath();
 }
@@ -745,7 +727,7 @@ int registerDownloadedSdksUnder(const FilePath &sdkRoot)
         return 0;
 
     int added = 0;
-    QStringList &list = getSdkList();
+    const QStringList &list = getSdkList();
 
     if (isValidSdk(root) && !harmonySdkListContainsNormalized(list, root)) {
         addSdk(root.toUserOutput());
@@ -756,8 +738,7 @@ int registerDownloadedSdksUnder(const FilePath &sdkRoot)
     for (const FilePath &child : children) {
         if (child.fileName() == QStringLiteral(".temp"))
             continue;
-        const QString name = child.fileName();
-        if (!name.isEmpty() && name.at(0) == QLatin1Char('.'))
+        if (const QString name = child.fileName(); !name.isEmpty() && name.at(0) == QLatin1Char('.'))
             continue;
         const FilePath cleaned = child.cleanPath();
         if (!isValidSdk(cleaned))
@@ -816,7 +797,7 @@ FilePath harmonyBundledNodeUnderTools(const FilePath &toolsDir)
 {
     if (toolsDir.isEmpty() || !toolsDir.isReadableDir())
         return {};
-    const FilePath candidates[] = {
+    const std::array candidates = {
         /* ** 旧布局（部分 DevEco / Windows） */
         toolsDir / "node" / "node",
         /* ** 常见：macOS / 新版 DevEco 为 tools/node/bin/node */
@@ -834,13 +815,11 @@ FilePath harmonyBundledNodeUnderTools(const FilePath &toolsDir)
 FilePath nodeLocation()
 {
     const FilePath tools = devecoToolsLocation();
-    const FilePath bundled = harmonyBundledNodeUnderTools(tools);
-    if (!bundled.isEmpty())
+    if (const FilePath bundled = harmonyBundledNodeUnderTools(tools); !bundled.isEmpty())
         return bundled;
 
     /* ** 未随 DevEco 安装或路径变更时，使用系统 PATH 中的 node（brew / 官网安装均可跑 hvigor） */
-    const FilePath fromPath = Environment::systemEnvironment().searchInPath("node");
-    if (fromPath.isExecutableFile())
+    if (const FilePath fromPath = Environment::systemEnvironment().searchInPath("node"); fromPath.isExecutableFile())
         return fromPath;
 
     /* ** 供诊断：仍返回旧版默认路径（可能不存在） */
@@ -1001,7 +980,7 @@ QString apiLevelNameFor(const int apiLevel)
 
 
 const char SettingsGroup[] = "HarmonyConfigurations";
-HarmonyConfigurations *m_instance = nullptr;
+HarmonyConfigurations *m_instance = nullptr; // NOSONAR (cpp:S1169) - reassigned during initialization
 HarmonyConfigurations::HarmonyConfigurations(QObject *parent)
     : QObject{parent}
 {
@@ -1030,7 +1009,7 @@ void HarmonyConfigurations::load()
         save();
 }
 
-void HarmonyConfigurations::save()
+void HarmonyConfigurations::save() const
 {
     QtcSettings *settings = Core::ICore::settings();
     settings->beginGroup(SettingsGroup);
@@ -1047,18 +1026,9 @@ void HarmonyConfigurations::persistSettings()
 void HarmonyConfigurations::updateHarmonyDevice()
 {
     /* ** 移除虚拟 Harmony 设备（无法使用）。 */
-    DeviceManager *const devMgr = DeviceManager::instance();
-    IDevice::ConstPtr dev = devMgr->find(Constants::HARMONY_DEVICE_ID);
-    if (dev)
-        devMgr->removeDevice(dev->id());
-    /*
-     * Add a deault Harmony device
-     */
-    // HarmonyDevice *defaultDevice = new HarmonyDevice();
-    // defaultDevice->setupId(IDevice::AutoDetected, Constants::HARMONY_DEVICE_ID);
-    // defaultDevice->setMachineType(IDevice::Emulator);
-    // defaultDevice->setDeviceState(IDevice::DeviceStateUnknown);
-    // devMgr->addDevice(IDevicePtr(defaultDevice));
+    DeviceManager *const devMgr = DeviceManager::instance(); // NOSONAR (cpp:S3578) - non-const methods called on devMgr
+    if (const IDevice::ConstPtr dev = devMgr->find(Constants::HARMONY_DEVICE_ID)) // NOSONAR (cpp:S5296)
+        devMgr->removeDevice(dev->id()); // NOSONAR (cpp:S5296)
     setupDevicesWatcher();
 }
 
@@ -1089,7 +1059,6 @@ void HarmonyConfigurations::registerNewToolchains()
     const Toolchains existingHarmonyToolchains
         = ToolchainManager::toolchains(Utils::equal(&Toolchain::typeId, Id(Constants::HARMONY_TOOLCHAIN_TYPEID)));
     ToolchainManager::registerToolchains(autodetectToolchains(existingHarmonyToolchains));
-    // registerCustomToolchainsAndDebuggers();
 }
 bool hasExistingVersion(const QtVersion *qtVersion) {
     const QtVersions installedVersions = QtVersionManager::versions(
@@ -1269,9 +1238,8 @@ void HarmonyConfigurations::updateAutomaticKitList()
              * 查找是否已存在匹配的Kit
              * 目前暂时只支持一个Harmony Qt版本对应一个Kit
              */
-            Kit *existingKit = Utils::findOrDefault(existingKits, [qt, bundle](const Kit *k) {
+            Kit *existingKit = Utils::findOrDefault(existingKits, [qt](const Kit *k) {
                 return (qt == QtKitAspect::qtVersion(k));
-                /* ** return matchKit(bundle, k); */
             });
 
             /* ** Kit 初始化函数 */

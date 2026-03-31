@@ -59,7 +59,7 @@ namespace Ohos::Internal {
          * @brief save
          * 保存配置
          */
-        void save();
+        void save() const;
         /**
          * @brief updateHarmonyDevice
          * 更新Harmony设备
