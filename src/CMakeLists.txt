@@ -138,6 +138,10 @@ extend_qtc_plugin(Harmony
   SOURCES
     harmonyhdctargetsparser_test.cpp
     harmonyhdctargetsparser_test.h
+    harmonyhvigoroutputparser_test.cpp
+    harmonyhvigoroutputparser_test.h
+    harmonydeviceinfo_test.cpp
+    harmonydeviceinfo_test.h
 )
 
 # 更新 .ts：构建 harmony_ts_zh_CN 或 harmony_ts_all（非默认 ALL，需手动选该目标）。

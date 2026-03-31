@@ -39,6 +39,8 @@
 
 #ifdef WITH_TESTS
 #  include "harmonyhdctargetsparser_test.h"
+#  include "harmonyhvigoroutputparser_test.h"
+#  include "harmonydeviceinfo_test.h"
 #endif
 
 #include <QTranslator>
@@ -130,6 +132,8 @@ public:
 
 #ifdef WITH_TESTS
         addTestCreator(createHarmonyHdcTargetsParserTest);
+        addTestCreator(createHarmonyHvigorOutputParserTest);
+        addTestCreator(createHarmonyDeviceInfoTest);
 #endif
     }
 
