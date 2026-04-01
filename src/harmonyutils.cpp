@@ -4,6 +4,7 @@
 #include "harmonylogcategories.h"
 #include "harmonyqtversion.h"
 #include "ohosconstants.h"
+#include "ohostr.h"
 #include "ohprojectecreator/ohprojectecreator.h"
 #include <cmakeprojectmanager/cmakeprojectconstants.h>
 #include <coreplugin/icontext.h>
@@ -559,6 +560,32 @@ QStringList ohModuleDeviceTypePresetIds()
 {
     return {QStringLiteral("phone"), QStringLiteral("tablet"), QStringLiteral("2in1"),
             QStringLiteral("wearable"), QStringLiteral("tv"), QStringLiteral("car")};
+}
+
+QString harmonyNameForApiLevel(int x)
+{
+    switch (x) {
+    case 12:
+        return QLatin1String("HarmonyOS 5.0.0");
+    case 13:
+        return QLatin1String("HarmonyOS 5.0.1");
+    case 14:
+        return QLatin1String("HarmonyOS 5.0.2");
+    case 15:
+        return QLatin1String("HarmonyOS 5.0.3");
+    case 16:
+        return QLatin1String("HarmonyOS 5.0.4");
+    case 17:
+        return QLatin1String("HarmonyOS 5.0.5");
+    case 18:
+        return QLatin1String("HarmonyOS 5.1.0");
+    case 19:
+        return QLatin1String("HarmonyOS 5.1.1");
+    case 20:
+        return QLatin1String("HarmonyOS 6.0.0");
+    default:
+        return Tr::tr("Unknown HarmonyOS version. API Level: %1").arg(x);
+    }
 }
 
 }

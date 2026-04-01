@@ -1,8 +1,11 @@
 #include "harmonydevice.h"
 #include "harmonydevicemanager.h"
 #include "harmonylogcategories.h"
+#include "harmonyutils.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
+
+#include <coreplugin/icore.h>
 
 #include <projectexplorer/devicesupport/idevicewidget.h>
 #include <projectexplorer/devicesupport/idevicefactory.h>
@@ -14,9 +17,15 @@
 #include <utils/portlist.h>
 #include <utils/url.h>
 
+#include <QMessageBox>
+#include <QPushButton>
+#include <QFormLayout>
+#include <QTimer>
+
 using namespace ProjectExplorer;
 using namespace QtTaskTree;
 using namespace Utils;
+
 namespace Ohos::Internal {
 
 class HarmonyDeviceWidget : public IDeviceWidget
@@ -25,12 +34,97 @@ public:
     explicit HarmonyDeviceWidget(const IDevice::Ptr &device);
 
     void updateDeviceFromUi() final { return; }
+    static QString dialogTitle();
+    static bool messageDialog(const QString &msg, QMessageBox::Icon icon);
+    static bool criticalDialog(const QString &error);
+    static bool infoDialog(const QString &msg);
+    static bool questionDialog(const QString &question);
 };
 
 HarmonyDeviceWidget::HarmonyDeviceWidget(const IDevice::Ptr &device)
     : IDeviceWidget(device)
 {
+    const auto dev = std::static_pointer_cast<HarmonyDevice>(device);
+    const auto formLayout = new QFormLayout(this);
+    formLayout->setFormAlignment(Qt::AlignLeft);
+    formLayout->setContentsMargins(0, 0, 0, 0);
+    setLayout(formLayout);
+    formLayout->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
 
+    formLayout->addRow(Tr::tr("Device name:"), new QLabel(dev->displayName()));
+    formLayout->addRow(Tr::tr("Device type:"), new QLabel(dev->deviceTypeName()));
+
+    QPointer<QLabel> serialNumberLabel = new QLabel;
+    formLayout->addRow(Tr::tr("Serial number:"), serialNumberLabel);
+
+    const QString abis = dev->supportedAbis().join(", ");
+    formLayout->addRow(Tr::tr("CPU architecture:"), new QLabel(abis));
+
+    const auto osString = QString("%1 (SDK %2)").arg(dev->harmonyVersion()).arg(dev->sdkLevel());
+    formLayout->addRow(Tr::tr("OS version:"), new QLabel(osString));
+
+    if (dev->machineType() == IDevice::Hardware) {
+        const QString authorizedStr = dev->deviceState() == IDevice::DeviceReadyToUse
+                                          ? Tr::tr("Yes")
+                                          : Tr::tr("No");
+        formLayout->addRow(Tr::tr("Authorized:"), new QLabel(authorizedStr));
+    }
+    // const QString openGlStatus = dev->openGLStatus();
+    // formLayout->addRow(Tr::tr("SD card size:"), new QLabel(dev->sdcardSize()));
+    // formLayout->addRow(Tr::tr("OpenGL status:"), new QLabel(openGlStatus));
+
+    // See QTCREATORBUG-31912 why this needs to be delayed.
+    QTimer::singleShot(0, serialNumberLabel, [serialNumberLabel, dev] {
+        const QString serialNumber = dev->serialNumber(); // This executes a blocking process.
+        const QString printableSerialNumber = serialNumber.isEmpty() ? Tr::tr("Unknown")
+                                                                     : serialNumber;
+        if (serialNumberLabel)
+            serialNumberLabel->setText(printableSerialNumber);
+    });
+
+    installMarkSettingsDirtyTriggerRecursively(this);
+}
+
+QString HarmonyDeviceWidget::dialogTitle()
+{
+    return Tr::tr("Harmony Device Manager");
+}
+
+bool HarmonyDeviceWidget::messageDialog(const QString &msg, QMessageBox::Icon icon)
+{
+    qCDebug(harmonyDeviceLog) << msg;
+    QMessageBox box(Core::ICore::dialogParent());
+    box.QDialog::setWindowTitle(dialogTitle());
+    box.setText(msg);
+    box.setIcon(icon);
+    box.setWindowFlag(Qt::WindowTitleHint);
+    return box.exec();
+}
+
+bool HarmonyDeviceWidget::criticalDialog(const QString &error)
+{
+    return messageDialog(error, QMessageBox::Critical);
+}
+
+bool HarmonyDeviceWidget::infoDialog(const QString &msg)
+{
+    return messageDialog(msg, QMessageBox::Information);
+}
+
+bool HarmonyDeviceWidget::questionDialog(const QString &question)
+{
+    QMessageBox box(Core::ICore::dialogParent());
+    box.QDialog::setWindowTitle(dialogTitle());
+    box.setText(question);
+    box.setIcon(QMessageBox::Question);
+    QPushButton *YesButton = box.addButton(QMessageBox::Yes);
+    box.addButton(QMessageBox::No);
+    box.setWindowFlag(Qt::WindowTitleHint);
+    box.exec();
+
+    if (box.clickedButton() == YesButton)
+        return true;
+    return false;
 }
 
 static void updateDeviceState(const IDevice::ConstPtr &device)
@@ -107,6 +201,31 @@ bool HarmonyDevice::canHandleDeployments() const
     if (machineType() == Hardware && deviceState() == DeviceDisconnected)
         return false;
     return true;
+}
+
+QString HarmonyDevice::serialNumber() const
+{
+    const QString serialNumber = extraData(Constants::HarmonySerialNumber).toString();
+    if (!serialNumber.isEmpty() || machineType() == Hardware)
+        return serialNumber;
+    return {};
+}
+
+int HarmonyDevice::sdkLevel() const
+{
+    return extraData(Constants::HarmonySdk).toInt();
+}
+
+QString HarmonyDevice::deviceTypeName() const
+{
+    if (machineType() == Emulator)
+        return Tr::tr("Emulator device");
+    return Tr::tr("Physical device");
+}
+
+QString HarmonyDevice::harmonyVersion() const
+{
+    return harmonyNameForApiLevel(sdkLevel());
 }
 
 IDevicePtr HarmonyDevice::create()

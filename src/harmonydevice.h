@@ -24,6 +24,12 @@ public:
     bool canSupportAbis(const QStringList &abis) const;
 
     bool canHandleDeployments() const;
+
+    QString serialNumber() const;
+    int sdkLevel() const;
+
+    QString deviceTypeName() const;
+    QString harmonyVersion() const;
     ProjectExplorer::IDeviceWidget *createWidget() override;
 
     QtTaskTree::ExecutableItem portsGatheringRecipe(

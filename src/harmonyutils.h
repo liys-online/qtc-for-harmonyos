@@ -50,6 +50,7 @@ bool isQt5CmakeProject(const ProjectExplorer::Target *target);
 Utils::FilePath harmonyBuildDirectory(const ProjectExplorer::BuildConfiguration *bc);
 Utils::FilePath buildDirectory(const ProjectExplorer::BuildConfiguration *bc);
 
+QString harmonyNameForApiLevel(int x);
 /**
  * Active CMake/build-system key for \c extraData lookups. When the run configuration uses the
  * synthetic \c HARMONY_DEFAULT_RUN_BUILD_KEY (no \c ProjectNode), falls back to the first
