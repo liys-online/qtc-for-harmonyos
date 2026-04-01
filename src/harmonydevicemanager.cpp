@@ -64,6 +64,12 @@ static void registerHarmonyDevice(DeviceManager *devMgr, const Id &id, const QSt
     if (IDevice::ConstPtr dev = devMgr->find(id)) { // NOSONAR (cpp:S5296) - find() is non-static
         devMgr->setDeviceState(id, state); // NOSONAR (cpp:S5296)
     } else {
+        if(state == IDevice::DeviceDisconnected) {
+            qCWarning(harmonyDeviceLog)
+                << QString("Device \"%1\" is not ready to use. It will be registered when it becomes ready.")
+                .arg(dirtySerial);
+            return;
+        }
         IDevice::Ptr newDev = std::make_shared<HarmonyDevice>();
         newDev->setupId(IDevice::AutoDetected, id);
         newDev->setDisplayName(displayName);
