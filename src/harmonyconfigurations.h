@@ -305,7 +305,7 @@ namespace Ohos::Internal {
          * @return
          * 获取ABI
          */
-        QString getAbis(const QString &device);
+        QStringList getAbis(const QString &device);
     }
     void setupHarmonyConfigurations();
 } // namespace OhosConfig

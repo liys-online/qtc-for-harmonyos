@@ -548,10 +548,11 @@ QString getDeviceName(const QString &device)
     return tmp.isEmpty() ? QString() : tmp.trimmed();
 }
 
-QString getAbis(const QString &device)
+QStringList getAbis(const QString &device)
 {
     const QString tmp = getDeviceProperty(device, Product::Cpu::abilist);
-    return tmp.isEmpty() ? QString() : tmp.trimmed();
+    return tmp.trimmed().split(QRegularExpression(QStringLiteral("[,\\s]+")),
+                 Qt::SkipEmptyParts);
 }
 
 QStringList &getSdkList()

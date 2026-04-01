@@ -69,13 +69,9 @@ static void registerHarmonyDevice(DeviceManager *devMgr, const Id &id, const QSt
         newDev->setDisplayName(displayName);
         newDev->setMachineType(IDevice::Hardware);
         newDev->setDeviceState(state);
+
         newDev->setExtraData(Constants::HarmonySerialNumber, dirtySerial);
-        const QString abiRaw = HarmonyConfig::getAbis(dirtySerial);
-        QStringList abis = abiRaw.split(QRegularExpression(QStringLiteral("[,\\s]+")),
-                                        Qt::SkipEmptyParts);
-        for (QString &a : abis)
-            a = a.trimmed();
-        newDev->setExtraData(Constants::HarmonyCpuAbi, abis);
+        newDev->setExtraData(Constants::HarmonyCpuAbi, HarmonyConfig::getAbis(dirtySerial));
         newDev->setExtraData(Constants::HarmonySdk, HarmonyConfig::getSDKVersion(dirtySerial));
         qCDebug(harmonyDeviceLog, "Registering new Harmony device id \"%s\".", newDev->id().name().data());
         devMgr->addDevice(newDev); // NOSONAR (cpp:S5296)
