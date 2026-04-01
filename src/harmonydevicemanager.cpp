@@ -61,8 +61,8 @@ static void registerHarmonyDevice(DeviceManager *devMgr, const Id &id, const QSt
                                          .arg(dirtySerial);
         return;
     }
-    if (IDevice::ConstPtr dev = devMgr->find(id)) { // NOSONAR (cpp:S5296) - find() is non-static
-        devMgr->setDeviceState(id, state); // NOSONAR (cpp:S5296)
+    if (IDevice::ConstPtr dev = DeviceManager::find(id)) {
+        DeviceManager::setDeviceState(id, state);
     } else {
         if(state == IDevice::DeviceDisconnected) {
             qCWarning(harmonyDeviceLog)
@@ -80,7 +80,7 @@ static void registerHarmonyDevice(DeviceManager *devMgr, const Id &id, const QSt
         newDev->setExtraData(Constants::HarmonyCpuAbi, HarmonyConfig::getAbis(dirtySerial));
         newDev->setExtraData(Constants::HarmonySdk, HarmonyConfig::getSDKVersion(dirtySerial));
         qCDebug(harmonyDeviceLog, "Registering new Harmony device id \"%s\".", newDev->id().name().data());
-        devMgr->addDevice(newDev); // NOSONAR (cpp:S5296)
+        DeviceManager::addDevice(newDev);
     }
 }
 static void handleDevicesListChange(const QString &serialNumber)
@@ -94,8 +94,8 @@ static void handleDevicesListChange(const QString &serialNumber)
     const QString &dirtySerial = parsed.device.serial;
 
     const Id id = Id(Constants::HARMONY_DEVICE_ID).withSuffix(":").withSuffix(dirtySerial);
-    if (IDevice::ConstPtr dev = devMgr->find(id)) { // NOSONAR (cpp:S5296)
-        devMgr->setDeviceState(id, state); // NOSONAR (cpp:S5296)
+    if (IDevice::ConstPtr dev = DeviceManager::find(id)) {
+        DeviceManager::setDeviceState(id, state);
     }
 
     QTimer::singleShot(5000, [devMgr, id, dirtySerial]() {

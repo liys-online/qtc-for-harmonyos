@@ -995,9 +995,9 @@ void HarmonyConfigurations::persistSettings()
 void HarmonyConfigurations::updateHarmonyDevice()
 {
     /* ** 移除虚拟 Harmony 设备（无法使用）。 */
-    DeviceManager *const devMgr = DeviceManager::instance(); // NOSONAR (cpp:S3578) - non-const methods called on devMgr
-    if (const IDevice::ConstPtr dev = devMgr->find(Constants::HARMONY_DEVICE_ID)) // NOSONAR (cpp:S5296)
-        devMgr->removeDevice(dev->id()); // NOSONAR (cpp:S5296)
+    if (const IDevice::ConstPtr dev = DeviceManager::find(Constants::HARMONY_DEVICE_ID)) {
+        DeviceManager::removeDevice(dev->id());
+    }
     setupDevicesWatcher();
 }
 
