@@ -7,6 +7,7 @@
 #include <debugger/debuggerkitaspect.h>
 #include <qjsonobject.h>
 #include <utils/persistentsettings.h>
+#include <utils/algorithm.h>
 
 #include <projectexplorer/kitaspect.h>
 #include <projectexplorer/toolchainmanager.h>
@@ -28,7 +29,6 @@
 #include "harmonylogcategories.h"
 #include "harmonyutils.h"
 #include "hdcsocketclient.h"
-#include "ohostr.h"
 #include <QDir>
 #include <QJsonDocument>
 #include <QVariant>
@@ -65,11 +65,7 @@ static FilePath unixHostMakeProgramForCMake()
         FilePath::fromString("/usr/bin/make"),
         FilePath::fromString("/bin/make"),
     };
-    for (const FilePath &fp : fallbacks) {
-        if (fp.isExecutableFile())
-            return fp;
-    }
-    return {};
+    return findOr(fallbacks, FilePath{}, [](const auto &fp) { return fp.isExecutableFile(); });
 }
 
 static bool harmonySdkListContainsNormalized(const QStringList &list, const FilePath &sdkDir)
@@ -301,99 +297,35 @@ void HarmonyConfigData::save(QtcSettings &settings) const
 
 FilePath devecoStudioLocation()
 {
-    return config().m_devecoStudioPath;
+    return devecoStudioLocation(config().m_devecoStudioPath); // normalize (e.g. resolve .app to Contents on macOS)
 }
 
-namespace {
-/** macOS: \c *.app → \c *.app/Contents for on-disk layout; otherwise \a root unchanged (e.g. Linux install or legacy \c Contents path). */
-FilePath devecoMacBundleContentsOrSame(const FilePath &root)
+FilePath devecoStudioLocation(const Utils::FilePath &root)
 {
-    FilePath r = root.cleanPath();
-    if (r.isEmpty())
+    FilePath ret = root.cleanPath();
+    if (ret.isEmpty()) {
         return {};
+    }
 #ifdef Q_OS_MACOS
-    if (r.path().endsWith(QLatin1String(".app"), Qt::CaseInsensitive))
-        r = r / "Contents";
-#endif
-    return r;
-}
-
-FilePath devecostudioExecutableForRootImpl(const FilePath &root)
-{
-    const FilePath rootClean = devecoMacBundleContentsOrSame(root);
-    if (rootClean.isEmpty())
-        return {};
-
-    const FilePath classic = FilePath(rootClean / "bin" / "devecostudio64").withExecutableSuffix();
-    if (classic.isExecutableFile())
-        return classic;
-
-#ifdef Q_OS_MACOS
-    const FilePath macosDir = rootClean / "MacOS";
-    if (macosDir.isReadableDir()) {
-        const QStringList names{QStringLiteral("devecostudio"),
-                                QStringLiteral("devecostudio64"),
-                                QStringLiteral("DevEco Studio")};
-        for (const QString &n : names) {
-            const FilePath exe = (macosDir / n).withExecutableSuffix();
-            if (exe.isExecutableFile())
-                return exe;
-        }
-        const FilePaths entries
-            = macosDir.dirEntries(QDir::Files | QDir::Executable | QDir::NoDotAndDotDot);
-        for (const FilePath &e : entries) {
-            if (e.isExecutableFile())
-                return e;
-        }
+    if (ret.path().endsWith(QLatin1String(".app"), Qt::CaseInsensitive)) {
+        return ret / "Contents";
     }
 #endif
-    return classic;
+    return ret;
 }
-
-FilePaths macOsDevEcoApplicationBundles()
-{
-    FilePaths results;
-#ifdef Q_OS_MACOS
-    QSet<QString> seen;
-    const QString home = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
-    QStringList appRoots;
-    appRoots << QStringLiteral("/Applications") << (home + QStringLiteral("/Applications"));
-    appRoots << QStandardPaths::standardLocations(QStandardPaths::ApplicationsLocation);
-
-    for (const QString &appsRoot : appRoots) {
-        const QDir rootDir(appsRoot);
-        if (!rootDir.exists())
-            continue;
-        const QStringList apps = rootDir.entryList({QStringLiteral("*.app")},
-                                                     QDir::Dirs | QDir::NoDotAndDotDot);
-        for (const QString &app : apps) {
-            if (!app.contains(QStringLiteral("DevEco"), Qt::CaseInsensitive))
-                continue;
-            const QString bundlePath = appsRoot + QLatin1Char('/') + app;
-            if (seen.contains(bundlePath))
-                continue;
-            seen.insert(bundlePath);
-            const FilePath fp = FilePath::fromUserInput(bundlePath).cleanPath();
-            if (fp.isReadableDir())
-                results.append(fp);
-        }
-    }
-#endif
-    return results;
-}
-} // namespace
 
 bool isValidDevecoStudioRoot(const FilePath &root)
 {
     const FilePath stored = root.cleanPath();
     if (stored.isEmpty() || !stored.isReadableDir())
         return false;
-    const FilePath layout = devecoMacBundleContentsOrSame(stored);
+    const FilePath layout = devecoStudioLocation(stored);
+
     if (!layout.isReadableDir())
         return false;
     if ((layout / "tools").isReadableDir())
         return true;
-    return devecostudioExecutableForRootImpl(stored).isExecutableFile();
+    return devecostudioExeLocation(layout).isExecutableFile();
 }
 
 bool tryAutoDetectDevecoStudio()
@@ -410,17 +342,34 @@ bool tryAutoDetectDevecoStudio()
             return true;
         }
     }
+#ifdef Q_OS_MACOS
+    QSet<QString> seen;
+    const QString home = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+    QStringList appRoots;
+    appRoots << QStringLiteral("/Applications") << (home + QStringLiteral("/Applications"));
+    appRoots << QStandardPaths::standardLocations(QStandardPaths::ApplicationsLocation);
 
-    if (HostOsInfo::isMacHost()) {
-        const FilePaths candidates = macOsDevEcoApplicationBundles();
-        for (const FilePath &c : candidates) {
-            if (isValidDevecoStudioRoot(c)) {
-                setDevecoStudioLocation(c);
+    for (const QString &appsRoot : std::as_const(appRoots)) {
+        const QDir rootDir(appsRoot);
+        if (!rootDir.exists())
+            continue;
+        const QStringList apps = rootDir.entryList({QStringLiteral("*.app")},
+                                                   QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const QString &app : std::as_const(apps)) {
+            if (!app.contains(QStringLiteral("DevEco"), Qt::CaseInsensitive))
+                continue;
+            const QString bundlePath = appsRoot + QLatin1Char('/') + app;
+            if (seen.contains(bundlePath))
+                continue;
+            seen.insert(bundlePath);
+            const FilePath fp = FilePath::fromUserInput(bundlePath).cleanPath();
+            if (isValidDevecoStudioRoot(fp)) {
+                setDevecoStudioLocation(fp);
                 return true;
             }
         }
     }
-
+#endif
     return false;
 }
 
@@ -629,7 +578,7 @@ bool isValidSdk(const FilePath &sdkLocation)
     const FilePath ndkPath = ndkLocation(sdkLocation);
     if (!ndkPath.isReadableDir())
         return false;
-    return releaseFile(ndkPath).isReadableFile();
+    return isValidReleaseFile(ndkPath);
 }
 
 bool isValidSdk(const QString &sdkLocation)
@@ -644,6 +593,11 @@ FilePath releaseFile(const Utils::FilePath &ndkLocation)
     return ndkLocation / "oh-uni-package.json";
 }
 
+bool isValidReleaseFile(const Utils::FilePath &ndkLocation)
+{
+    return releaseFile(ndkLocation).isReadableFile();
+}
+
 FilePath ndkLocation(const Utils::FilePath &sdkLocation)
 {
     const FilePath root = sdkLocation.cleanPath();
@@ -653,13 +607,7 @@ FilePath ndkLocation(const Utils::FilePath &sdkLocation)
         /* ** 部分 DevEco / 华为侧 SDK 布局：版本目录下直接为 openharmony/native */
         root / "openharmony" / "native",
     };
-
-    for (const FilePath &path : candidatePaths) {
-        if (releaseFile(path).isReadableFile())
-            return path;
-    }
-
-    return root / "native";
+    return findOr(candidatePaths, candidatePaths.at(0), isValidReleaseFile);
 }
 
 FilePath defaultSdk()
@@ -784,7 +732,15 @@ FilePath devecoToolsLocation()
     const FilePath stored = devecoStudioLocation();
     if (stored.isEmpty())
         return {};
-    return devecoMacBundleContentsOrSame(stored) / "tools";
+    return stored / "tools";
+}
+
+FilePath devecoSdkLocation()
+{
+    const FilePath stored = devecoStudioLocation();
+    if (stored.isEmpty())
+        return {};
+    return stored / "sdk";
 }
 
 FilePath hvigorwJsLocation()
@@ -902,7 +858,7 @@ FilePath javaLocation()
 {
     const FilePath stored = devecoStudioLocation();
     if (!stored.isEmpty()) {
-        const FilePath jbrRoot = devecoMacBundleContentsOrSame(stored) / "jbr";
+        const FilePath jbrRoot = stored / "jbr";
 #ifdef Q_OS_MACOS
         /* ** JetBrains JBR on macOS: …/jbr/Contents/Home/bin/java（勿把 JAVA_HOME 指到 jbr 根目录） */
         if (const FilePath macHome = javaHomeIfValid(jbrRoot / "Contents" / "Home"); !macHome.isEmpty())
@@ -927,7 +883,7 @@ FilePath javaLocation()
         return fromPath;
 
     if (!stored.isEmpty())
-        return devecoMacBundleContentsOrSame(stored) / "jbr";
+        return stored / "jbr";
     return {};
 }
 
@@ -936,7 +892,7 @@ QPair<int, QVersionNumber> devecoStudioVersion()
     const FilePath stored = devecoStudioLocation();
     const FilePath sdkPkg = stored.isEmpty()
                                 ? FilePath{}
-                                : devecoMacBundleContentsOrSame(stored) / "sdk" / "default" / "sdk-pkg.json";
+                                : stored / "sdk" / "default" / "sdk-pkg.json";
     QString sdkPkgJson = sdkPkg.toUserOutput();
     if (!QFile::exists(sdkPkgJson))
         return { -1, QVersionNumber() };
@@ -959,7 +915,19 @@ QPair<int, QVersionNumber> devecoStudioVersion()
 
 FilePath devecostudioExeLocation()
 {
-    return devecostudioExecutableForRootImpl(devecoStudioLocation());
+    return devecostudioExeLocation(devecoStudioLocation());
+}
+
+FilePath devecostudioExeLocation(const Utils::FilePath &devecoLocation)
+{
+    if (devecoLocation.isEmpty())
+        return {};
+#ifdef Q_OS_MACOS
+    const FilePath classic = FilePath(devecoLocation / "MacOS" / "devecostudio");
+#else
+    const FilePath classic = FilePath(devecoLocation / "bin" / "devecostudio64");
+#endif
+    return classic.withExecutableSuffix();
 }
 
 QStringList apiLevelNamesFor(const QList<int> &apiLevels)

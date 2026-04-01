@@ -159,6 +159,7 @@ namespace Ohos::Internal {
          * 不再要求选到 \c Contents；访问 tools/jbr/sdk 时在实现内解析到 \c Contents。
          */
         Utils::FilePath devecoStudioLocation();
+        Utils::FilePath devecoStudioLocation(const Utils::FilePath &root);
         /**
          * @brief setDevecoStudioLocation
          * @param devecoStudioLocation
@@ -175,8 +176,10 @@ namespace Ohos::Internal {
         bool tryAutoDetectDevecoStudio();
 
         Utils::FilePath devecostudioExeLocation();
+        Utils::FilePath devecostudioExeLocation(const Utils::FilePath &devecoLocation);
         QPair<int, QVersionNumber> devecoStudioVersion();
         Utils::FilePath devecoToolsLocation();
+        Utils::FilePath devecoSdkLocation();
         Utils::FilePath hvigorwJsLocation();
         Utils::FilePath nodeLocation();
         Utils::FilePath ohpmJsLocation();
@@ -261,6 +264,7 @@ namespace Ohos::Internal {
          * 发布文件
          */
         Utils::FilePath releaseFile(const Utils::FilePath &ndkLocation);
+        bool isValidReleaseFile(const Utils::FilePath &ndkLocation);
         /**
          * @brief getVersion
          * @param releaseFile
