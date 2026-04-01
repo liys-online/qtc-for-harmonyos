@@ -739,6 +739,7 @@ QWidget *HarmonyBuildHapStep::createConfigWidget()
 
 void HarmonyBuildHapStep::setupOutputFormatter(OutputFormatter *formatter)
 {
+#ifdef ENABLE_HVIGOR_OUTPUT_PARSING
     if (auto *bc = buildConfiguration()) {
         formatter->addSearchDir(harmonyBuildDirectory(bc));
         formatter->addSearchDir(bc->buildDirectory());
@@ -746,6 +747,7 @@ void HarmonyBuildHapStep::setupOutputFormatter(OutputFormatter *formatter)
             formatter->addSearchDir(proj->projectDirectory());
     }
     formatter->addLineParser(new HarmonyHvigorOhpmOutputParser());
+#endif
     AbstractProcessStep::setupOutputFormatter(formatter);
 }
 
