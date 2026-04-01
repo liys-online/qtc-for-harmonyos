@@ -60,13 +60,13 @@ private:
      * 检查SDK项
      * @param sdkLocation
      */
-    void checkSdkItem(QString sdkLocation);
+    void checkSdkItem(const FilePath &sdkLocation);
     /**
      * @brief checkQmakeItem
      * 检查Qmake项
      * @param qmakeLocation
      */
-    void checkQmakeItem(QString qmakeLocation);
+    void checkQmakeItem(const FilePath &qmakeLocation);
     /**
      * @brief isDefaultSdkSelected
      * 是否选择了默认SDK
@@ -156,6 +156,7 @@ private Q_SLOTS:
 enum HarmonyValidation {
     DevecoPathExistsAndWritableRow,
     OhosSdkManagerRootRow,
+    HdcToolsInstalledRow,
     SdkPathExistsAndWritableRow,
     SdkToolsInstalledRow,
     QMakeToolsInstalledRow,

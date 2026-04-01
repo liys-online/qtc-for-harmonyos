@@ -55,11 +55,6 @@ QString HarmonyQtVersion::description() const
     return Tr::tr("HarmonyOS");
 }
 
-QString HarmonyQtVersion::defaultUnexpandedDisplayName() const
-{
-    return Tr::tr("Qt %{Qt:Version} for HarmonyOS");
-}
-
 QVersionNumber HarmonyQtVersion::supportOhVersion() const
 {
     if (FilePath qconfigHeader = headerPath().pathAppended(Constants::Q_CONFIG_H); qconfigHeader.exists())

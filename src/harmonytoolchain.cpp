@@ -665,9 +665,8 @@ LanguageExtensions HarmonyToolchain::languageExtensions(const QStringList &cxxfl
 QString HarmonyToolchain::defaultDisplayName() const
 {
     auto versionPair = HarmonyConfig::getVersion(HarmonyConfig::releaseFile(ndkLocation()));
-    return Tr::tr("Harmony Clang (%1, %2, API %3 NDK %4)")
-            .arg(ToolchainManager::displayNameOfLanguageId(language()),
-                 HarmonyConfig::displayName(targetAbi()),
+    return Tr::tr("Harmony Clang (%1, API %2 %3)")
+            .arg(HarmonyConfig::displayName(targetAbi()),
                  versionPair.first.toString(),
                  versionPair.second.toString());
 }
@@ -929,8 +928,7 @@ ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown,
         const FilePath clangPath = HarmonyConfig::clangPathFromNdk(ndkLocation);
         if (!clangPath.exists())
         {
-            qCDebug(harmonyToolchainLog) << "Clang toolchains detection fails. Can not find Clang"
-                                  << clangPath;
+            qCDebug(harmonyToolchainLog) << "Clang toolchains detection fails. Can not find Clang" << clangPath;
         }
         for (const Id &lang : LanguageIds)
         {
@@ -940,8 +938,7 @@ ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown,
 
             if (!compilerCommand.exists())
             {
-                qCDebug(harmonyToolchainLog)
-                << "Skipping Clang toolchain. Can not find compiler" << compilerCommand;
+                qCDebug(harmonyToolchainLog) << "Skipping Clang toolchain. Can not find compiler" << compilerCommand;
                 continue;
             }
 
@@ -954,9 +951,8 @@ ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown,
 
                 const QString customStr = isCustom ? "Custom " : QString();
                 QPair<QVersionNumber, QVersionNumber> versionPair = HarmonyConfig::getVersion(HarmonyConfig::releaseFile(ndkLocation));
-                const QString displayName(customStr + QString("Harmony Clang (%1, %2, API %3 NDK %4)")
-                                                          .arg(ToolchainManager::displayNameOfLanguageId(lang),
-                                                               HarmonyConfig::displayName(abi),
+                const QString displayName(customStr + QString("Harmony Clang (%1, API %2 %3)")
+                                                          .arg(HarmonyConfig::displayName(abi),
                                                                versionPair.first.toString(),
                                                                versionPair.second.toString()));
                 if(tc)

@@ -29,12 +29,6 @@ public:
      */
     QString description() const override;
     /**
-     * @brief defaultUnexpandedDisplayName
-     * 默认未展开的显示名称
-     * @return
-     */
-    QString defaultUnexpandedDisplayName() const;
-    /**
      * @brief isHarmonyQtVersion
      * 是否是Harmony Qt版本
      * @return

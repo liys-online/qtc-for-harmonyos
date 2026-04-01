@@ -524,7 +524,7 @@ void HarmonySdkManagerDialog::finishDownloadBatch()
         for (const QString &api : std::as_const(m_batchApiVersions)) {
             const FilePath apiDir = configRoot.pathAppended(api);
             FilePath detected = findOhosSdkRootUnder(apiDir);
-            if (detected.isEmpty() && HarmonyConfig::isValidSdk(apiDir.toUserOutput()))
+            if (detected.isEmpty() && HarmonyConfig::isValidSdk(apiDir))
                 detected = apiDir;
             if (!detected.isEmpty() && !validRoots.contains(detected))
                 validRoots.append(detected);
@@ -542,7 +542,7 @@ void HarmonySdkManagerDialog::finishDownloadBatch()
     if (validRoots.size() == 1) {
         const FilePath sdkRoot = validRoots.first();
         appendLog(Tr::tr("Detected SDK root: %1").arg(sdkRoot.toUserOutput()));
-        if (HarmonyConfig::isValidSdk(sdkRoot.toUserOutput())) {
+        if (HarmonyConfig::isValidSdk(sdkRoot)) {
             QMessageBox mbox(QMessageBox::Information,
                              Tr::tr("Download"),
                              Tr::tr("Downloads finished.\n\n"

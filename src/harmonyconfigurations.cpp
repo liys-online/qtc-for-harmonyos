@@ -473,58 +473,42 @@ QPair<QVersionNumber, QVersionNumber> getVersion(const Utils::FilePath &releaseF
     return versionPair;
 }
 
-static void appendHarmonyHdcToolchainBases(QVector<FilePath> &out, const FilePath &sdkRoot)
-{
-    if (sdkRoot.isEmpty() || !sdkRoot.isReadableDir())
-        return;
-    const auto appendPair = [&](const FilePath &root) {
-        if (root.isEmpty() || !root.isReadableDir())
-            return;
-        out.append(root / "toolchains");
-        out.append(root / "default" / "openharmony" / "toolchains");
-    };
-    appendPair(sdkRoot);
-    /* ** SDK 根下多 API 目录（如 …/sdk/18/toolchains/hdc） */
-    const FilePaths children = sdkRoot.dirEntries(QDir::Dirs | QDir::NoDotAndDotDot);
-    for (const FilePath &ch : children) {
-        if (ch.fileName() == QStringLiteral(".temp"))
-            continue;
-        if (const QString n = ch.fileName(); !n.isEmpty() && n.at(0) == QLatin1Char('.'))
-            continue;
-        appendPair(ch);
-    }
-}
-
 FilePath hdcToolPath()
 {
-    QVector<FilePath> bases;
-    QSet<QString> seen;
+    return (skdToolchains(devecoSdkLocation()) / "hdc").withExecutableSuffix();
+}
 
-    const auto addRoots = [&](const FilePath &sdkRoot) {
-        QVector<FilePath> chunk;
-        appendHarmonyHdcToolchainBases(chunk, sdkRoot.cleanPath());
-        for (const FilePath &b : std::as_const(chunk)) {
-            const QString k = b.toUserOutput();
-            if (k.isEmpty() || seen.contains(k))
-                continue;
-            seen.insert(k);
-            bases.append(b);
-        }
-    };
-
-    addRoots(defaultSdk());
-    for (const QString &s : getSdkList())
-        addRoots(FilePath::fromUserInput(s).cleanPath());
-    addRoots(effectiveOhosSdkRoot());
-
-    for (const FilePath &path : std::as_const(bases)) {
-        const FilePath hdcPath = path.pathAppended("hdc").withExecutableSuffix();
-        if (hdcPath.isExecutableFile())
-            return hdcPath;
+QString hdcVersion()
+{
+    const FilePath hdcPath = hdcToolPath();
+    if (!hdcPath.isExecutableFile()) {
+        qCWarning(harmonyConfigLog) << "HDC tool not found at expected location:" << hdcPath.toUserOutput();
+        return {};
     }
+    Process proc;
+    CommandLine cmd(hdcPath, {"--version"});
+    proc.setCommand(cmd);
 
-    const FilePath fallbackRoot = !defaultSdk().isEmpty() ? defaultSdk().cleanPath() : effectiveOhosSdkRoot();
-    return (fallbackRoot / "toolchains" / "hdc").withExecutableSuffix();
+    proc.runBlocking();
+    if (proc.result() != ProcessResult::FinishedWithSuccess) {
+        qCWarning(harmonyConfigLog) << "Failed to execute HDC tool for version check:" << proc.errorString();
+        return {};
+    }
+    const QString output = proc.cleanedStdOut().trimmed();
+    const QStringList lines = output.split('\n');
+    if (lines.isEmpty()) {
+        qCWarning(harmonyConfigLog) << "Unexpected HDC version output format:" << output;
+        return {};
+    }
+    // 格式类似 "Ver: 3.2.0b"
+    const QString versionLine = lines.first();
+    const QStringList parts = versionLine.split(QRegularExpression("\\s+"));
+    if (parts.size() < 2) {
+        qCWarning(harmonyConfigLog) << "Unexpected HDC version output format:" << versionLine;
+        return {};
+    }
+    const QString versionPart = parts.last();
+    return versionPart;
 }
 
 int getSDKVersion(const QString &device)
@@ -576,17 +560,7 @@ void removeSdkList(const QString &sdk)
 
 bool isValidSdk(const FilePath &sdkLocation)
 {
-    const FilePath ndkPath = ndkLocation(sdkLocation);
-    if (!ndkPath.isReadableDir())
-        return false;
-    return isValidReleaseFile(ndkPath);
-}
-
-bool isValidSdk(const QString &sdkLocation)
-{
-    if (sdkLocation.isEmpty())
-        return false;
-    return isValidSdk(FilePath::fromUserInput(sdkLocation).cleanPath());
+    return isValidReleaseFile(ndkLocation(sdkLocation));
 }
 
 FilePath releaseFile(const Utils::FilePath &ndkLocation)
@@ -604,16 +578,29 @@ FilePath ndkLocation(const Utils::FilePath &sdkLocation)
     const FilePath root = sdkLocation.cleanPath();
     const QVector candidatePaths = {
         root / "native",
-        root / "default" / "openharmony" / "native",
-        /* ** 部分 DevEco / 华为侧 SDK 布局：版本目录下直接为 openharmony/native */
         root / "openharmony" / "native",
     };
-    return findOr(candidatePaths, candidatePaths.at(0), isValidReleaseFile);
+    return findOr(candidatePaths, FilePath{}, isValidReleaseFile);
 }
 
 FilePath defaultSdk()
 {
     return config().m_defaultSdkLocation;
+}
+
+FilePath defaultNdk()
+{
+    return ndkLocation(defaultSdk());
+}
+
+FilePath defaultReleaseFile()
+{
+    return releaseFile(defaultNdk());
+}
+
+QPair<QVersionNumber, QVersionNumber> defaultVersion()
+{
+    return getVersion(defaultReleaseFile());
 }
 
 void setdefaultSdk(const Utils::FilePath &sdkLocation)
@@ -741,7 +728,7 @@ FilePath devecoSdkLocation()
     const FilePath stored = devecoStudioLocation();
     if (stored.isEmpty())
         return {};
-    return stored / "sdk";
+    return stored / "sdk" / "default";
 }
 
 FilePath hvigorwJsLocation()
@@ -945,6 +932,11 @@ QString apiLevelNameFor(const int apiLevel)
     return QString();
 }
 
+Utils::FilePath skdToolchains(const Utils::FilePath &sdkLocation)
+{
+    return sdkLocation / "openharmony" / "toolchains";
+}
+
 } // namespace HarmonyConfig
 
 
@@ -1059,8 +1051,9 @@ void HarmonyConfigurations::registerQtVersions()
                 qmakePath, DetectionSource(DetectionSource::Manual));
             if (auto *harmonyQtVersion = dynamic_cast<HarmonyQtVersion *>(qtVersion))
             {
-                QString displayName = harmonyQtVersion->defaultUnexpandedDisplayName()
-                                      + harmonyQtVersion->supportOhVersion().toString();
+                QString displayName = QStringLiteral("Qt %{Qt:Version} for %1 %2")
+                                          .arg(harmonyQtVersion->description(),
+                                               harmonyQtVersion->supportOhVersion().toString());
                 harmonyQtVersion->setUnexpandedDisplayName(displayName);
                 if(QtVersionManager::instance()->isLoaded() && !hasExistingVersion(harmonyQtVersion))
                 {
@@ -1290,7 +1283,7 @@ void HarmonyConfigurations::updateAutomaticKitList()
                 if (HostOsInfo::isWindowsHost()) {
                     using namespace CMakeProjectManager;
                     /* ** 强制生成器为 MinGW Makefiles，使 CMake 使用 mingw32-make */
-                    CMakeGeneratorKitAspect::setGenerator(k, QStringLiteral("MinGW Makefiles"));
+                    CMakeGeneratorKitAspect::setGenerator(k, QStringLiteral("Ninja"));
 
                     /* ** 若已配置 makeLocation（MinGW 根目录），确保 CMAKE_MAKE_PROGRAM 指向 mingw32-make.exe */
                     const FilePath root = HarmonyConfig::makeLocation();
@@ -1314,14 +1307,9 @@ void HarmonyConfigurations::updateAutomaticKitList()
                 if (!debuggerId.isNull())
                     Debugger::DebuggerKitAspect::setDebugger(k, debuggerId);
 
-                /* ** 设置显示名称 */
-                QString versionStr = QLatin1String("Qt %{Qt:Version}");
-                if (!ohQt->detectionSource().isAutoDetected())
-                    versionStr = QString("%1").arg(ohQt->displayName());
-                
-                k->setUnexpandedDisplayName(QObject::tr("HarmonyOS%1 %2 Clang %3")
-                                                .arg(ohQt->supportOhVersion().toString(),
-                                                     versionStr,
+                k->setUnexpandedDisplayName(QObject::tr("%1 for HarmonyOS %2 %3")
+                                                .arg(QLatin1String("Qt %{Qt:Version}"),
+                                                     ohQt->supportOhVersion().toString(),
                                                      HarmonyConfig::displayName(ohQt->targetAbi())));
 
                 /* ** 设置 NDK 和 SDK 路径 */

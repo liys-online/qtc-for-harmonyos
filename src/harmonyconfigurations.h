@@ -92,6 +92,9 @@ namespace Ohos::Internal {
          * 获取默认的SDK
          */
         Utils::FilePath defaultSdk();
+        Utils::FilePath defaultNdk();
+        Utils::FilePath defaultReleaseFile();
+        QPair<QVersionNumber, QVersionNumber> defaultVersion();
         /**
          * @brief setdefaultSdk
          * @param sdkLocation
@@ -125,7 +128,6 @@ namespace Ohos::Internal {
          * @return
          * 是否是有效的SDK
          */
-        bool isValidSdk(const QString &sdkLocation);
         /** \overload 使用 FilePath，避免从磁盘枚举到的路径经 QString 往返时解析不一致。 */
         bool isValidSdk(const Utils::FilePath &sdkLocation);
         /**
@@ -227,7 +229,8 @@ namespace Ohos::Internal {
          * @return
          * 从NDK获取工具链路径
          */
-        Utils::FilePath toolchainPathFromNdk( const Utils::FilePath &ndkLocation);
+        Utils::FilePath toolchainPathFromNdk(const Utils::FilePath &ndkLocation);
+        Utils::FilePath skdToolchains(const Utils::FilePath &sdkLocation);
         /**
          * @brief clangPathFromNdk
          * @param ndkLocation
@@ -278,6 +281,7 @@ namespace Ohos::Internal {
          * HDC工具路径
          */
         Utils::FilePath hdcToolPath();
+        QString hdcVersion();
         /**
          * @brief getSDKVersion
          * @param device
