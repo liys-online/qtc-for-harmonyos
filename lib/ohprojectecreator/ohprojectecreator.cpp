@@ -491,6 +491,28 @@ void OhProjecteCreator::destroy()
     }
 }
 
+QList<int> OhProjecteCreator::availableApiLevels()
+{
+    return OhProjecteCreator::instance()->m_p->sdkVersionMap.keys();
+}
+
+bool OhProjecteCreator::updateBuildProfileSdkVersions(const QString &ohproPath,
+                                                      int targetSdkVersion,
+                                                      int compatibleSdkVersion)
+{
+    const QString filePath = ohproPath + "/build-profile.json5";
+    if (!QFile::exists(filePath))
+        return false;
+    const QString targetVer  = versionForApiLevel(targetSdkVersion);
+    const QString compatVer  = versionForApiLevel(compatibleSdkVersion);
+    QMap<QString, QJsonValue> changes;
+    changes.insert("app.products[0].targetSdkVersion",
+                   targetVer + QString("(%1)").arg(targetSdkVersion));
+    changes.insert("app.products[0].compatibleSdkVersion",
+                   compatVer + QString("(%1)").arg(compatibleSdkVersion));
+    return modifyJsonFile(filePath, changes);
+}
+
 OhProjecteCreator::OhProjecteCreator(QObject *parent)
     : QObject(parent),
       m_p(new OhProjecteCreatorPrivate)

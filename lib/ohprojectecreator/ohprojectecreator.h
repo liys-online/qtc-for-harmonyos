@@ -38,6 +38,15 @@ public:
     static int latestApiLevel();
     static int defaultApiLevel();
     static void destroy();
+    static QList<int> availableApiLevels();
+    /**
+     * @brief 若 ohproPath/build-profile.json5 存在，就地更新
+     *        app.products[0].targetSdkVersion / compatibleSdkVersion 字段。
+     * @return 文件存在且修改成功时返回 true，文件不存在时返回 false（静默）。
+     */
+    static bool updateBuildProfileSdkVersions(const QString &ohproPath,
+                                              int targetSdkVersion,
+                                              int compatibleSdkVersion);
 Q_SIGNALS:
     void signalCreateFinished(bool success, const QString &msg);
 private:

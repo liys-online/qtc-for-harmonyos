@@ -195,48 +195,51 @@ public:
 
         /* ** Application group */
 
-        QList<int>  buildToolsVersions = {HarmonyConfig::devecoStudioVersion().first};
+        const int devecoApiLevel = HarmonyConfig::devecoStudioVersion().first;
+        QList<int> buildToolsVersions = OhProjecteCreator::availableApiLevels();
         QStringList versions = HarmonyConfig::apiLevelNamesFor(buildToolsVersions);
-
         versions.removeDuplicates();
 
+        // 两个下拉框共享同一 API 等级列表
         auto targetSDKComboBox = new QComboBox();
-        for(int i = 0; i < versions.size(); ++i) {
-            targetSDKComboBox->addItem(versions.at(i), QVariant::fromValue(buildToolsVersions.at(i)));
-        }
-        // targetSDKComboBox->setCurrentIndex(versions.indexOf(m_step->buildTargetSdk()));
-
-        connect(targetSDKComboBox, &QComboBox::activated, this, [this, targetSDKComboBox](int idx) {
-            const QString sdk = targetSDKComboBox->itemText(idx);
-            m_step->setBuildTargetSdk(sdk);
-        });
-        if (!buildToolsVersions.isEmpty()) {
-            const int initIdx = (m_step->buildTargetSdk().isEmpty())
-            ? buildToolsVersions.indexOf(buildToolsVersions.last())
-            : versions.indexOf(m_step->buildTargetSdk());
-            targetSDKComboBox->setCurrentIndex(initIdx);
-        }
-
-        auto *ohQt = dynamic_cast<const HarmonyQtVersion *>(QtSupport::QtKitAspect::qtVersion(m_step->kit()));
-        const int minApiSupported = ohQt->supportOhVersion().majorVersion();
-        QList<int> apiLevels = {minApiSupported};
-        QStringList targets = HarmonyConfig::apiLevelNamesFor(apiLevels);
-        targets.removeDuplicates();
         auto buildToolsSdkComboBox = new QComboBox();
-        for(int i = 0; i < targets.size(); ++i) {
-            buildToolsSdkComboBox->addItem(targets.at(i), QVariant::fromValue(apiLevels.at(i)));
+        for (int i = 0; i < versions.size(); ++i) {
+            const QVariant v = QVariant::fromValue(buildToolsVersions.at(i));
+            targetSDKComboBox->addItem(versions.at(i), v);
+            buildToolsSdkComboBox->addItem(versions.at(i), v);
         }
-        connect(buildToolsSdkComboBox, &QComboBox::activated, this,
-                [this, buildToolsSdkComboBox](int idx) {
-                    m_step->setBuildToolsVersion(buildToolsSdkComboBox->itemText(idx));
-                });
 
-        if (!apiLevels.isEmpty()) {
-            const int initIdx = (m_step->buildToolsVersion().isEmpty())
-            ? apiLevels.indexOf(apiLevels.last())
-            : targets.indexOf(m_step->buildToolsVersion());
-            buildToolsSdkComboBox->setCurrentIndex(initIdx);
-        }
+        // 默认选中 DevEco Studio 对应版本；有已保存值则恢复保存值
+        const auto resolveInitIdx = [&](const QString &stored) {
+            if (!stored.isEmpty()) {
+                const auto idx = versions.indexOf(stored);
+                if (idx >= 0)
+                    return static_cast<int>(idx);
+            }
+            if (buildToolsVersions.isEmpty())
+                return 0;
+            const auto devecoIdx = buildToolsVersions.indexOf(devecoApiLevel);
+            return static_cast<int>(devecoIdx >= 0 ? devecoIdx : versions.size() - 1);
+        };
+        targetSDKComboBox->setCurrentIndex(resolveInitIdx(m_step->buildTargetSdk()));
+        buildToolsSdkComboBox->setCurrentIndex(resolveInitIdx(m_step->buildToolsVersion()));
+
+        connect(targetSDKComboBox, &QComboBox::activated, this,
+                [this, targetSDKComboBox, buildToolsSdkComboBox](int idx) {
+                    m_step->setBuildTargetSdk(targetSDKComboBox->itemText(idx));
+                    OhProjecteCreator::updateBuildProfileSdkVersions(
+                        m_step->buildDirectory().toUserOutput() + "/ohpro",
+                        targetSDKComboBox->currentData().toInt(),
+                        buildToolsSdkComboBox->currentData().toInt());
+                });
+        connect(buildToolsSdkComboBox, &QComboBox::activated, this,
+                [this, targetSDKComboBox, buildToolsSdkComboBox](int idx) {
+                    m_step->setBuildToolsVersion(buildToolsSdkComboBox->itemText(idx));
+                    OhProjecteCreator::updateBuildProfileSdkVersions(
+                        m_step->buildDirectory().toUserOutput() + "/ohpro",
+                        targetSDKComboBox->currentData().toInt(),
+                        buildToolsSdkComboBox->currentData().toInt());
+                });
 
         auto createHarmonyTemplatesButton = new QPushButton(Tr::tr("Create Templates"));
         createHarmonyTemplatesButton->setToolTip(
