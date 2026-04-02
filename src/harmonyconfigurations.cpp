@@ -1079,10 +1079,10 @@ void HarmonyConfigurations::removeOldToolchains()
 static FilePath ohosHostLldb(const FilePath &ndkPath)
 {
     /* ** (1) DevEco Studio: <DevEco.app>/Contents/sdk/default/openharmony/native/llvm/bin/lldb */
-    const FilePath tools = HarmonyConfig::devecoToolsLocation();
-    if (!tools.isEmpty()) {
-        const FilePath candidate = tools.parentDir()
-                                   / "sdk" / "default" / "openharmony" / "native" / "llvm" / "bin" / "lldb";
+    const FilePath devecoSdk = HarmonyConfig::devecoSdkLocation();
+    if (!devecoSdk.isEmpty()) {
+        const FilePath candidate = FilePath(devecoSdk / "openharmony" / "native" / "llvm" / "bin" / "lldb")
+                                       .withExecutableSuffix();
         if (candidate.isExecutableFile())
             return candidate;
     }
