@@ -92,4 +92,5 @@ jobs:
             build/**/Harmony.lib
             build/**/Harmony.pdb
             build/**/lldbbridge.py
+            build/**/CMakeLists.txt
             build/**/arktsdebugbridge.exe

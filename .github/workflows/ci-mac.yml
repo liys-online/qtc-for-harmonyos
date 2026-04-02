@@ -98,4 +98,5 @@ jobs:
           path: |
             build/**/libHarmony.dylib
             build/**/lldbbridge.py
+            build/**/CMakeLists.txt
             build/Qt Creator.app/**/arktsdebugbridge

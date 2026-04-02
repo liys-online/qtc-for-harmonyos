@@ -156,3 +156,19 @@ if(TARGET copy_share_files_to_builddir)
     add_dependencies(HarmonyLldbBridge copy_share_files_to_builddir)
 endif()
 add_dependencies(Harmony HarmonyLldbBridge)
+
+set(_harmony_template_src "${CMAKE_CURRENT_SOURCE_DIR}/../share/templates/projects/qtwidgetsapplication/CMakeLists.txt")
+set(_harmony_template_dst "${CMAKE_BINARY_DIR}/${IDE_DATA_PATH}/templates/wizards/projects/qtwidgetsapplication/CMakeLists.txt")
+set(_harmony_template_stamp "${CMAKE_CURRENT_BINARY_DIR}/templates.stamp")
+add_custom_command(
+    OUTPUT  "${_harmony_template_stamp}"
+    COMMAND "${CMAKE_COMMAND}" -E copy "${_harmony_template_src}" "${_harmony_template_dst}"
+    COMMAND "${CMAKE_COMMAND}" -E touch "${_harmony_template_stamp}"
+    DEPENDS "${_harmony_template_src}"
+    COMMENT "Deploying OHOS templates to templates resources"
+)
+add_custom_target(HarmonyTemplate ALL DEPENDS "${_harmony_template_stamp}")
+if(TARGET copy_share_files_to_builddir)
+    add_dependencies(HarmonyTemplate copy_share_files_to_builddir)
+endif()
+add_dependencies(Harmony HarmonyTemplate)

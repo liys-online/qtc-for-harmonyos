@@ -81,4 +81,5 @@ jobs:
           path: |
             build/**/libHarmony.so
             build/**/lldbbridge.py
+            build/**/CMakeLists.txt
             build/bin/arktsdebugbridge
