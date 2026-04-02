@@ -68,7 +68,9 @@ bool shouldShowCatalogAssetForHost(const QtForOhReleaseAsset &asset)
     if (asset.catalogPlatform != hostPlat)
         return false;
 
-    /* ** catalog 的 arch 字段为 OpenHarmony *目标* ABI（如设备侧 arm64、模拟器侧 x86_64），而非主机 CPU。 */
+    /*
+    ** catalog 的 arch 字段为 OpenHarmony *目标* ABI（如设备侧 arm64、模拟器侧 x86_64），而非主机 CPU。
+    */
     return true;
 }
 
@@ -128,7 +130,6 @@ private:
     QPushButton *m_refreshBtn = nullptr;
     QPushButton *m_downloadBtn = nullptr;
     QPushButton *m_closeBtn = nullptr;
-    QCheckBox *m_autoExtractCheck = nullptr;
 
     HarmonyQtOhReleasesDownloader *m_listDownloader = nullptr;
     QNetworkAccessManager m_downloadNam;
@@ -172,19 +173,14 @@ HarmonyQtOhSdkManagerDialog::HarmonyQtOhSdkManagerDialog(QWidget *parent)
     m_installRootChooser->setPromptDialogTitle(Tr::tr("Select Qt for OpenHarmony Install Root"));
     m_installRootChooser->setFilePath(defaultInstallRoot());
 
-    m_autoExtractCheck = new QCheckBox(
-        Tr::tr("After each download, extract with the system \"tar\" when the format is supported "
-               "(.zip / .tar / .tar.gz, same as OpenHarmony SDK Manager), then search for "
-               "<code>bin/qmake</code> and add it to <i>Qt for Harmony qmake list</i> when found. "
-               "Split .7z parts must be merged with 7-Zip manually."));
-    m_autoExtractCheck->setChecked(true);
-
     m_tree = new QTreeWidget;
-    m_tree->setColumnCount(3);
+    m_tree->setColumnCount(5);
     m_tree->setHeaderLabels({
         Tr::tr("Get"),
         Tr::tr("Release"),
-        Tr::tr("Package"),
+        Tr::tr("Qt Version"),
+        Tr::tr("Harmony Arch"),
+        Tr::tr("Created At")
     });
     m_tree->header()->setStretchLastSection(true);
     m_tree->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -229,7 +225,6 @@ HarmonyQtOhSdkManagerDialog::HarmonyQtOhSdkManagerDialog(QWidget *parent)
         Row { m_openGitCodeBtn, st },
         Tr::tr("Install / download root:"),
         m_installRootChooser,
-        m_autoExtractCheck,
         m_tree,
         m_progress,
         Row { m_refreshBtn, st, m_downloadBtn, st, m_closeBtn },
@@ -237,7 +232,7 @@ HarmonyQtOhSdkManagerDialog::HarmonyQtOhSdkManagerDialog(QWidget *parent)
         m_log,
     }.attachTo(this);
 
-    appendLog(Tr::tr("Click \"Refresh List\" to load releases (GitCode catalog, GitHub fallback)."));
+    appendLog(Tr::tr("Click \"Refresh List\" to load releases."));
 }
 
 void HarmonyQtOhSdkManagerDialog::showEvent(QShowEvent *e)
@@ -257,8 +252,6 @@ void HarmonyQtOhSdkManagerDialog::setBusy(bool busy)
     m_closeBtn->setEnabled(!busy);
     m_tree->setEnabled(!busy);
     m_installRootChooser->setEnabled(!busy);
-    if (m_autoExtractCheck)
-        m_autoExtractCheck->setEnabled(!busy);
     if (m_openGitCodeBtn)
         m_openGitCodeBtn->setEnabled(!busy);
 }
@@ -295,15 +288,8 @@ void HarmonyQtOhSdkManagerDialog::fillTree(const QVector<QtForOhRelease> &releas
         auto *parent = new QTreeWidgetItem(m_tree);
         const QString relLabel = rel.title.isEmpty() ? rel.tagName : rel.title;
         parent->setText(1, relLabel);
-        QString tagCol = rel.tagName;
-        if (!rel.qtVersion.isEmpty())
-            tagCol = QStringLiteral("%1 (%2)").arg(rel.tagName, rel.qtVersion);
-        parent->setText(2, QStringLiteral("%1 · %2 %3")
-                                .arg(tagCol,
-                                     QString::number(visibleAssets),
-                                     Tr::tr("file(s)")));
-        parent->setFlags(parent->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsAutoTristate
-                         | Qt::ItemIsEnabled);
+        parent->setText(2, QStringLiteral("%2 %3") .arg(QString::number(visibleAssets), Tr::tr("file(s)")));
+        parent->setFlags(parent->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsAutoTristate | Qt::ItemIsEnabled);
         parent->setCheckState(0, Qt::Unchecked);
 
         for (int ai = 0; ai < rel.assets.size(); ++ai) {
@@ -316,7 +302,10 @@ void HarmonyQtOhSdkManagerDialog::fillTree(const QVector<QtForOhRelease> &releas
             ch->setFlags(ch->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
             ch->setCheckState(0, Qt::Unchecked);
             ch->setText(1, relLabel);
-            ch->setText(2, as.name);
+            ch->setText(2, rel.qtVersion);
+            ch->setText(3, as.catalogArch);
+            QDateTime dt = QDateTime::fromString(rel.createdAt, Qt::ISODate);
+            ch->setText(4, dt.isValid() ? dt.toString(QStringLiteral("yyyy-MM-dd")) : rel.createdAt);
         }
     }
 
@@ -482,27 +471,25 @@ void HarmonyQtOhSdkManagerDialog::startNextDownload()
         reply->deleteLater();
         appendLog(Tr::tr("Saved: %1").arg(destPath.toUserOutput()));
 
-        if (m_autoExtractCheck && m_autoExtractCheck->isChecked()) {
-            const QString lower = destPath.fileName().toLower();
-            const bool maybe7z = lower.contains(QLatin1String(".7z"));
-            if (maybe7z) {
-                appendLog(Tr::tr("Skipping automatic extract for 7z; merge parts with 7-Zip if needed, "
-                                 "then extract manually."));
+        const QString lower = destPath.fileName().toLower();
+        const bool maybe7z = lower.contains(QLatin1String(".7z"));
+        if (maybe7z) {
+            appendLog(Tr::tr("Skipping automatic extract for 7z; merge parts with 7-Zip if needed, "
+                             "then extract manually."));
+        } else {
+            const FilePath extractRoot = m_batchInstallRoot.pathAppended(
+                safeFileName(rel.tagName));
+            if (!extractRoot.exists() && !extractRoot.createDir()) {
+                appendLog(
+                    Tr::tr("Cannot create unpack directory: %1").arg(extractRoot.toUserOutput()));
             } else {
-                const FilePath extractRoot = m_batchInstallRoot.pathAppended(
-                    safeFileName(rel.tagName));
-                if (!extractRoot.exists() && !extractRoot.createDir()) {
-                    appendLog(
-                        Tr::tr("Cannot create unpack directory: %1").arg(extractRoot.toUserOutput()));
+                QString exErr;
+                const bool extracted = extractHarmonySdkArchive(destPath, extractRoot, &exErr);
+                if (extracted) {
+                    appendLog(Tr::tr("Extracted into %1").arg(extractRoot.toUserOutput()));
+                    tryRegisterExtractedQtOhQmake(extractRoot);
                 } else {
-                    QString exErr;
-                    const bool extracted = extractHarmonySdkArchive(destPath, extractRoot, &exErr);
-                    if (extracted) {
-                        appendLog(Tr::tr("Extracted into %1").arg(extractRoot.toUserOutput()));
-                        tryRegisterExtractedQtOhQmake(extractRoot);
-                    } else {
-                        appendLog(Tr::tr("Extract skipped or failed: %1").arg(exErr));
-                    }
+                    appendLog(Tr::tr("Extract skipped or failed: %1").arg(exErr));
                 }
             }
         }

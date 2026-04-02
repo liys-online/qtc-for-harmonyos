@@ -124,7 +124,6 @@ private:
     std::unique_ptr<QFile> m_downloadFile;
     std::unique_ptr<QCryptographicHash> m_downloadHash;
 
-    QCheckBox *m_autoExtractCheck = nullptr;
     FilePath m_batchSdkRoot;
     FilePath m_batchTempDir;
     QSet<QString> m_batchApiVersions;
@@ -139,14 +138,6 @@ HarmonySdkManagerDialog::HarmonySdkManagerDialog(QWidget *parent)
     m_pathsHintLabel = new QLabel;
     m_pathsHintLabel->setWordWrap(true);
     m_pathsHintLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-
-    m_autoExtractCheck = new QCheckBox(
-        Tr::tr("After each download, extract with the system \"tar\" into "
-               "<HarmonyOS SDK location>/<API version>/ (macOS, Linux, Windows 10+)."));
-    m_autoExtractCheck->setChecked(true);
-    m_autoExtractCheck->setToolTip(
-        Tr::tr("Each package unpacks under the API version folder under your HarmonyOS SDK root "
-               "so components merge into one SDK tree per API level."));
 
     m_tree = new QTreeWidget;
     m_tree->setColumnCount(4);
@@ -193,7 +184,6 @@ HarmonySdkManagerDialog::HarmonySdkManagerDialog(QWidget *parent)
 
     Column {
         m_pathsHintLabel,
-        m_autoExtractCheck,
         m_tree,
         m_progress,
         Row { m_refreshBtn, st, m_downloadBtn, st, m_closeBtn },
@@ -217,14 +207,14 @@ void HarmonySdkManagerDialog::refreshPathsHint()
     const FilePath tempDir = root.pathAppended(QStringLiteral(".temp"));
     if (HarmonyConfig::ohosSdkRoot().cleanPath().isEmpty()) {
         m_pathsHintLabel->setText(
-            Tr::tr("No custom path saved yet — using default (same idea as Android SDK location).\n"
-                   "SDK root: %1\n• Downloads: %2\n• Unpack: %3/<API version>/\n\n"
+            Tr::tr("No custom path saved yet — using default.\n"
+                   "SDK root: %1\n• Downloads: %2\n• Unpack: %3/<api_version>/\n\n"
                    "Override under Harmony preferences if needed.")
-                .arg(root.toUserOutput(), tempDir.toUserOutput(), root.toUserOutput()));
+                .arg(root.path(), tempDir.path(), root.path()));
     } else {
         m_pathsHintLabel->setText(
-            Tr::tr("SDK root: %1\n• Downloads: %2\n• Unpack: %3/<API version>/")
-                .arg(root.toUserOutput(), tempDir.toUserOutput(), root.toUserOutput()));
+            Tr::tr("SDK root: %1\n• Downloads: %2\n• Unpack: %3/<api_version>/")
+                .arg(root.path(), tempDir.path(), root.path()));
     }
 }
 
@@ -237,8 +227,6 @@ void HarmonySdkManagerDialog::setBusy(bool busy)
 {
     m_refreshBtn->setEnabled(!busy);
     m_downloadBtn->setEnabled(!busy);
-    if (m_autoExtractCheck)
-        m_autoExtractCheck->setEnabled(!busy);
     if (m_tree)
         m_tree->setEnabled(!busy);
     if (m_closeBtn)
@@ -478,8 +466,7 @@ void HarmonySdkManagerDialog::startNextDownload()
             appendLog(Tr::tr("No checksum in index; skipped verification."));
         }
 
-        if (guard && m_autoExtractCheck && m_autoExtractCheck->isChecked()
-            && !m_batchSdkRoot.isEmpty()) {
+        if (guard && !m_batchSdkRoot.isEmpty()) {
             QString apiKey = e.apiVersion.trimmed();
             if (apiKey.isEmpty())
                 apiKey = QStringLiteral("unknown");
@@ -520,7 +507,7 @@ void HarmonySdkManagerDialog::finishDownloadBatch()
     }
 
     FilePaths validRoots;
-    if (m_autoExtractCheck->isChecked() && !configRoot.isEmpty()) {
+    if (!configRoot.isEmpty()) {
         for (const QString &api : std::as_const(m_batchApiVersions)) {
             const FilePath apiDir = configRoot.pathAppended(api);
             FilePath detected = findOhosSdkRootUnder(apiDir);
@@ -551,8 +538,8 @@ void HarmonySdkManagerDialog::finishDownloadBatch()
                                  .arg(sdkRoot.toUserOutput()),
                              QMessageBox::NoButton,
                              this);
-            QPushButton *addBtn = mbox.addButton(Tr::tr("Add to SDK List"), QMessageBox::AcceptRole);
-            QPushButton *openBtn = mbox.addButton(Tr::tr("Open Harmony Settings"), QMessageBox::ActionRole);
+            const auto *addBtn = mbox.addButton(Tr::tr("Add to SDK List"), QMessageBox::AcceptRole);
+            const auto *openBtn = mbox.addButton(Tr::tr("Open Harmony Settings"), QMessageBox::ActionRole);
             mbox.addButton(QMessageBox::Close);
             mbox.exec();
 
@@ -582,7 +569,7 @@ void HarmonySdkManagerDialog::finishDownloadBatch()
                              .arg(joinPaths(validRoots)),
                          QMessageBox::NoButton,
                          this);
-        QPushButton *openBtn = mbox.addButton(Tr::tr("Open Harmony Settings"), QMessageBox::AcceptRole);
+        const auto *openBtn = mbox.addButton(Tr::tr("Open Harmony Settings"), QMessageBox::AcceptRole);
         mbox.addButton(QMessageBox::Close);
         mbox.exec();
         if (mbox.clickedButton() == openBtn)
@@ -590,7 +577,7 @@ void HarmonySdkManagerDialog::finishDownloadBatch()
     } else {
         QMessageBox mbox(QMessageBox::Information,
                          Tr::tr("Download"),
-                         m_autoExtractCheck->isChecked() && !configRoot.isEmpty()
+                         !configRoot.isEmpty()
                              ? Tr::tr("Downloads finished.\n\n"
                                       "No complete SDK root was found under:\n%1/<API version>/\n\n"
                                       "If archives use another layout, merge manually, "
@@ -600,7 +587,7 @@ void HarmonySdkManagerDialog::finishDownloadBatch()
                                       "Enable extraction or add the SDK path under Harmony settings."),
                          QMessageBox::NoButton,
                          this);
-        QPushButton *openBtn = mbox.addButton(Tr::tr("Open Harmony Settings"), QMessageBox::AcceptRole);
+        const auto *openBtn = mbox.addButton(Tr::tr("Open Harmony Settings"), QMessageBox::AcceptRole);
         mbox.addButton(QMessageBox::Close);
         mbox.exec();
         if (mbox.clickedButton() == openBtn)
