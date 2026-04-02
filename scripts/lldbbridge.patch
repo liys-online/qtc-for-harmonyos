@@ -1,0 +1,79 @@
+diff --git "a/.\\share\\qtcreator\\debugger\\lldbbridge.py" "b/.\\src\\plugins\\harmonyos\\scripts\\lldbbridge.py"
+index b49c686e914..b7cd465e59d 100644
+--- "a/.\\share\\qtcreator\\debugger\\lldbbridge.py"
++++ "b/.\\src\\plugins\\harmonyos\\scripts\\lldbbridge.py"
+@@ -1095,7 +1095,74 @@ class Dumper(DumperBase):
+ 
+                     if self.breakOnMain_:
+                         self.createBreakpointAtMain()
++                # HarmonyOS/OpenHarmony additions — Copyright (C) 2026 Li-Yaosong.
++                # Based on Qt Creator 19.0.0 (share/qtcreator/debugger/lldbbridge.py).
++                # The remote-ohos platform attach block in runEngine() is specific to the HarmonyOS Qt Creator plugin.
++                elif self.platform_ == "remote-ohos":
++                    interp = self.debugger.GetCommandInterpreter()
+ 
++                    connect_options = lldb.SBPlatformConnectOptions(self.remoteChannel_)
++                    target_platform = self.target.GetPlatform()
++
++                    res = target_platform.ConnectRemote(connect_options)
++                    
++                    is_connected = target_platform.IsConnected()
++
++                    DumperBase.warn("CONNECT: %s %s target platform: %s connected: %s"
++                        % (res, self.remoteChannel_, target_platform.GetName(), is_connected))
++
++                    if not res.Success():
++                        self.report(self.describeError(res))
++                        self.reportState('enginerunfailed')
++                        return
++                    if not is_connected:
++                        self.report('Could not connect to debug server')
++                        self.reportState('enginerunfailed')
++                        return
++
++                    attach_info = lldb.SBAttachInfo(self.attachPid_)
++                    self.process = self.target.Attach(attach_info, error)
++                    if not error.Success():
++                        self.report(self.describeError(error))
++                        self.reportState('enginerunfailed')
++                    else:
++                        self.report('pid="%s"' % self.process.GetProcessID())
++                        self.reportState('enginerunandinferiorstopok')
++
++                    # Fix: OHOS LLDB on Windows lacks base64, so hexencode_ falls back to
++                    # '%x' (no zero-padding), garbling 0x00 bytes in UTF-16 QString data.
++                    import dumper as _dumper_mod
++                    _dumper_mod.hexencode_ = lambda s: bytes(s).hex()
++
++                    # OHOS-specific post-attach LLDB settings
++                    _ohos_cmds = [
++                        'settings set target.process.thread.step-avoid-regexp ^std::',
++                        'type format add --format boolean jboolean',
++                        'process handle -p true -s false SIGILL',
++                        'process handle -p false -s false -n false SIGRTMIN+1',
++                        'process handle -p true -s false SIGPIPE',
++                        'settings set target.process.stop-on-sharedlibrary-events false',
++                    ]
++                    for _cmd in _ohos_cmds:
++                        _r = lldb.SBCommandReturnObject()
++                        interp.HandleCommand(_cmd, _r)
++                        DumperBase.warn("OHOS post-attach %r: ok=%s" % (_cmd, _r.Succeeded()))
++
++                    # workingDirectory_ carries the signal file path for OHOS attach.
++                    # Creating it unblocks the bridge which then sends Runtime.runIfWaitingForDebugger.
++                    _sig = self.workingDirectory_
++                    if _sig and not os.path.isdir(_sig):
++                        try:
++                            _d = os.path.dirname(_sig)
++                            if _d:
++                                os.makedirs(_d, exist_ok=True)
++                            open(_sig, 'w').close()
++                            DumperBase.warn("OHOS: created signal file %s" % _sig)
++                        except Exception as _e:
++                            DumperBase.warn("OHOS: WARNING: could not create signal file: %s" % _e)
++
++                    self.report('pid="%s"' % self.process.GetProcessID())
++                    self.reportState('enginerunandinferiorstopok')
+                 else:
+                     self.report("Unsupported platform: %s" % self.platform_)
+                     self.reportState('enginerunfailed')
