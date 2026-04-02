@@ -48,7 +48,6 @@ class HarmonySdkDownloader final : public QObject
 public:
     struct ListRequest {
         QUrl primaryListPostUrl;
-        QUrl backupListGetUrl;
         QString osType;
         QString osArch;
         QString supportVersion;

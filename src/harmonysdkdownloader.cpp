@@ -47,19 +47,6 @@ QString detectOsArchForSdkList()
     return arch;
 }
 
-QString backupListUrlPrefix(HarmonySdkBackupMirror mirror)
-{
-    switch (mirror) {
-    case HarmonySdkBackupMirror::GitHub:
-        return QStringLiteral(
-            "https://github.com/liys-online/prebuilt/releases/download/1.0.0/getSdkList");
-    case HarmonySdkBackupMirror::GitCode:
-        return QStringLiteral(
-            "https://gitcode.com/Li-Yaosong/prebuilt/releases/download/1.0.0/getSdkList");
-    }
-    return {};
-}
-
 QString entryKey(const HarmonySdkPackageEntry &e)
 {
     return e.apiVersion + QLatin1Char('\n') + e.componentPath;
@@ -120,7 +107,6 @@ HarmonySdkDownloader::ListRequest HarmonySdkDownloader::defaultListRequest(Harmo
     r.primaryListPostUrl
         = QUrl(QStringLiteral("https://repo.harmonyos.com/sdkmanager/v5/ohos/getSdkList"));
     const QString osType = detectOsTypeForSdkList();
-    r.backupListGetUrl = QUrl(backupListUrlPrefix(mirror) + QLatin1Char('-') + osType);
     r.osType = osType;
     r.osArch = detectOsArchForSdkList();
     r.supportVersion = QStringLiteral("6.0-ohos-single-3");
@@ -163,36 +149,8 @@ QVector<HarmonySdkPackageEntry> HarmonySdkDownloader::parsePackageListJson(const
 
 void HarmonySdkDownloader::fetchPackageList(const ListRequest &request)
 {
-    if (!request.primaryListPostUrl.isValid() && !request.backupListGetUrl.isValid()) {
-        emit fetchFailed(Tr::tr("SDK list endpoints are not configured."));
-        return;
-    }
-
-    const auto runBackupAndEmit = [this](const QVector<HarmonySdkPackageEntry> &primary,
-                                         const QUrl &backupUrl) {
-        if (!backupUrl.isValid()) {
-            emit packageListFetched(primary);
-            return;
-        }
-
-        QNetworkReply *reply = m_nam->get(QNetworkRequest(backupUrl));
-        connect(reply, &QNetworkReply::finished, this, [this, primary, reply] {
-            reply->deleteLater();
-            QVector<HarmonySdkPackageEntry> backup;
-            if (reply->error() == QNetworkReply::NoError) {
-                QString parseErr;
-                backup = parsePackageListJson(reply->readAll(), &parseErr);
-                if (!parseErr.isEmpty()) {
-                    emit fetchFailed(parseErr);
-                    return;
-                }
-            }
-            emit packageListFetched(mergeLists(backup, primary));
-        });
-    };
-
     if (!request.primaryListPostUrl.isValid()) {
-        runBackupAndEmit({}, request.backupListGetUrl);
+        emit fetchFailed(Tr::tr("SDK list endpoints are not configured."));
         return;
     }
 
@@ -205,18 +163,17 @@ void HarmonySdkDownloader::fetchPackageList(const ListRequest &request)
     req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
 
     QNetworkReply *reply = m_nam->post(req, QJsonDocument(body).toJson(QJsonDocument::Compact));
-    connect(reply, &QNetworkReply::finished, this, [this, request, reply, runBackupAndEmit] {
+    connect(reply, &QNetworkReply::finished, this, [this, request, reply] {
         reply->deleteLater();
-        QVector<HarmonySdkPackageEntry> primary;
         if (reply->error() == QNetworkReply::NoError) {
             QString parseErr;
-            primary = parsePackageListJson(reply->readAll(), &parseErr);
+            QVector<HarmonySdkPackageEntry> primary = parsePackageListJson(reply->readAll(), &parseErr);
             if (!parseErr.isEmpty()) {
                 emit fetchFailed(parseErr);
                 return;
             }
+            emit packageListFetched(primary);
         }
-        runBackupAndEmit(primary, request.backupListGetUrl);
     });
 }
 
