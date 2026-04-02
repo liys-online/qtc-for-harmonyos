@@ -122,7 +122,7 @@ static void platformArchFromName(const QString &name, QString *platform, QString
         *platform = QStringLiteral("windows");
 
     if (n.contains(u"arm64-v8a"))
-        *arch = QStringLiteral("aarch64");
+        *arch = QStringLiteral("arm64-v8a");
     else if (n.contains(u"x86-64") || n.contains(u"x86_64"))
         *arch = QStringLiteral("x86_64");
 }
@@ -192,17 +192,16 @@ static QJsonObject buildCatalog(const QJsonArray &releasesRaw, const QString &re
             QString plat, arch;
             if (kind == QLatin1String("archive")) {
                 platformArchFromName(nm, &plat, &arch);
-                if (!plat.isEmpty())
+                if (!plat.isEmpty() && !arch.isEmpty()) {
                     o.insert(QStringLiteral("platform"), plat);
-                if (!arch.isEmpty())
                     o.insert(QStringLiteral("arch"), arch);
+                    const QString ct = contentTypeForFileName(nm);
+                    if (!ct.isEmpty())
+                        o.insert(QStringLiteral("contentType"), ct);
+
+                    outAssets.append(o);
+                }
             }
-
-            const QString ct = contentTypeForFileName(nm);
-            if (!ct.isEmpty())
-                o.insert(QStringLiteral("contentType"), ct);
-
-            outAssets.append(o);
         }
 
         QJsonObject rel{
@@ -264,21 +263,25 @@ int main(int argc, char *argv[])
         QStringLiteral("Generate qt-for-openharmony.binary-catalog v1 JSON from GitCode API."));
     p.addHelpOption();
     p.addVersionOption();
-    p.addOption({QStringLiteral("o"),
-                 QStringLiteral("output"),
-                 QStringLiteral("Write catalog to <file> (UTF-8)."),
-                 QStringLiteral("file")});
-    p.addOption({QStringLiteral("t"),
-                 QStringLiteral("token"),
-                 QStringLiteral("GitCode private token (otherwise GITCODE_PRIVATE_TOKEN env)."),
-                 QStringLiteral("token")});
-    p.addOption({QStringLiteral("repo"),
-                 QStringLiteral("repo path (owner/name), default openharmony-sig/qt."),
-                 QStringLiteral("path")});
-    p.addOption(
-        {QStringLiteral("min-alpha"),
-         QStringLiteral("Minimum Alpha_vN tag to include (default 7)."),
-         QStringLiteral("n")});
+    p.addOption(QCommandLineOption(
+        QStringList() << "o" << "output",
+        "Write catalog to <file> (UTF-8).",
+        "file"));
+
+    p.addOption(QCommandLineOption(
+        QStringList() << "t" << "token",
+        "GitCode private token (otherwise GITCODE_PRIVATE_TOKEN env).",
+        "token"));
+
+    p.addOption(QCommandLineOption(
+        QStringList() << "repo",
+        "repo path (owner/name), default openharmony-sig/qt.",
+        "path"));
+
+    p.addOption(QCommandLineOption(
+        QStringList() << "min-alpha",
+        "Minimum Alpha_vN tag to include (default 7).",
+        "n"));
 
     p.process(app);
 
