@@ -6,7 +6,6 @@
 #include "harmonyconfigurations.h"
 #include "harmonysdkarchiveutils.h"
 #include "ohostr.h"
-#include "ohosconstants.h"
 
 #include <coreplugin/icore.h>
 

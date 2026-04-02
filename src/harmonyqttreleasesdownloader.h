@@ -57,7 +57,7 @@ private:
     std::unique_ptr<QNetworkAccessManager> m_nam;
     QNetworkReply *m_reply = nullptr;
 
-    QUrl m_fallbackUrl;
+    // QUrl m_fallbackUrl;
     bool m_currentFetchIsPrimary = true;
 };
 

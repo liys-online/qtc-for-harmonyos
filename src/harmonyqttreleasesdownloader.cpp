@@ -132,7 +132,7 @@ void HarmonyQtOhReleasesDownloader::fetchAllReleases()
 
     const QString primaryString = HarmonyConfig::effectiveQtOhBinaryCatalogUrl();
     const QUrl primary = QUrl::fromUserInput(primaryString);
-    m_fallbackUrl = QUrl(QString::fromLatin1(Constants::QtOhBinaryCatalogDefaultGithubUrl));
+    // m_fallbackUrl = QUrl(QString::fromLatin1(Constants::QtOhBinaryCatalogDefaultGithubUrl));
 
     if (!primary.isValid() || primaryString.trimmed().isEmpty()) {
         emit fetchFailed(Ohos::Tr::tr("Invalid Qt for OpenHarmony catalog URL."));
@@ -167,29 +167,18 @@ void HarmonyQtOhReleasesDownloader::onCatalogReplyFinished()
         return;
     }
 
-    reply->deleteLater();
-
-    auto tryFallback = [this](const QString &reason) {
-        if (m_currentFetchIsPrimary && m_fallbackUrl.isValid()
-            && !m_fallbackUrl.toString().trimmed().isEmpty()
-            && (m_fallbackUrl.scheme() == QStringLiteral("https")
-                || m_fallbackUrl.scheme() == QStringLiteral("http"))) {
-            startCatalogFetch(m_fallbackUrl, false);
-            return;
-        }
-        emit fetchFailed(reason);
-    };
-
     if (reply->error() != QNetworkReply::NoError) {
-        tryFallback(reply->errorString());
+        emit fetchFailed(reply->errorString());
+        reply->deleteLater();
         return;
     }
 
     const QByteArray body = reply->readAll();
+    reply->deleteLater();
     QString err;
     const QVector<QtForOhRelease> items = parseBinaryCatalogV1(body, &err);
     if (!err.isEmpty()) {
-        tryFallback(err);
+        emit fetchFailed(err);
         return;
     }
 
