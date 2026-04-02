@@ -345,7 +345,7 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     connect(addSDKButton, &QPushButton::clicked, this,
             &HarmonySettingsWidget::addSdkItem);
 
-    connect(removeSDKButton, &QPushButton::clicked, this, [this, removeSDKButton] {
+    connect(removeSDKButton, &QPushButton::clicked, this, [this] {
         if (isDefaultSdkSelected())
             HarmonyConfig::setdefaultSdk({});
         HarmonyConfig::removeSdkList(m_sdkListWidget->currentItem()->text());
@@ -367,7 +367,7 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     connect(addQmakeButton, &QPushButton::clicked, this,
             &HarmonySettingsWidget::addQmakeItem);
 
-    connect(removeQmakeButton, &QPushButton::clicked, this, [this, removeQmakeButton] {
+    connect(removeQmakeButton, &QPushButton::clicked, this, [this] {
         HarmonyConfig::removeQmake(m_qmakeListWidget->currentItem()->text());
         m_qmakeListWidget->takeItem(m_qmakeListWidget->currentRow());
     });
