@@ -1,0 +1,18 @@
+diff --git "a/.\\share\\qtcreator\\templates\\wizards\\projects\\qtwidgetsapplication\\CMakeLists.txt" "b/.\\src\\plugins\\harmonyos\\share\\templates\\projects\\qtwidgetsapplication\\CMakeLists.txt"
+index d2ca81d463b..8a382a13842 100644
+--- "a/.\\share\\qtcreator\\templates\\wizards\\projects\\qtwidgetsapplication\\CMakeLists.txt"
++++ "b/.\\src\\plugins\\harmonyos\\share\\templates\\projects\\qtwidgetsapplication\\CMakeLists.txt"
+@@ -51,6 +51,13 @@ else()
+         )
+ # Define properties for Android with Qt 5 after find_package() calls as:
+ #    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
++    elseif(OHOS)
++        unset(CMAKE_CXX_COMPILER_EXTERNAL_TOOLCHAIN)
++        add_library(%{ProjectName} SHARED
++            ${PROJECT_SOURCES}
++        )
++        # Link to the Qt for OpenHarmony platform integration plugin (QPA)
++        target_link_libraries(%{ProjectName} PRIVATE Qt${QT_VERSION_MAJOR}::QOpenHarmonyPlatformIntegrationPlugin)
+     else()
+         add_executable(%{ProjectName}
+             ${PROJECT_SOURCES}
