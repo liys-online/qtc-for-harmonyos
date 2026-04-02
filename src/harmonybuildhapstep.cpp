@@ -17,6 +17,7 @@
 #include <projectexplorer/buildconfiguration.h>
 
 #include <QCheckBox>
+#include <QLineEdit>
 #include <QGridLayout>
 #include <QHash>
 #include <QSignalBlocker>
@@ -275,11 +276,30 @@ public:
                 }
             }
             proInfo.deviceTypes = m_step->effectiveModuleDeviceTypes();
-            const QString buildKey = m_step->buildConfiguration()->activeBuildKey();
-            proInfo.entrylib = buildKey.isEmpty() ? "libentry.so" : QString("lib%1.so").arg(buildKey);
+            proInfo.entrylib = m_step->resolvedEntryLib();
             ohPro->create(proInfo);
         });
         connect(m_step, &HarmonyBuildHapStep::createTemplates, createHarmonyTemplatesButton, &QPushButton::click);
+
+        m_entryLibEdit = new QLineEdit;
+        m_entryLibEdit->setPlaceholderText(m_step->resolvedEntryLib());
+        m_entryLibEdit->setText(m_step->entryLibOverride());
+        m_entryLibEdit->setToolTip(
+            Tr::tr("Override the shared library name written into EntryAbility.ets "
+                   "(e.g. libmyapp.so). Leave empty to auto-detect from the active build target."));
+        connect(m_entryLibEdit, &QLineEdit::textChanged, this, [this](const QString &text) {
+            m_step->setEntryLibOverride(text);
+            m_entryLibEdit->setPlaceholderText(m_step->resolvedEntryLib());
+        });
+
+        auto applyEntryLibButton = new QPushButton(Tr::tr("Apply"));
+        applyEntryLibButton->setToolTip(
+            Tr::tr("Write the entry library name directly into the existing EntryAbility.ets "
+                   "without re-creating all templates."));
+        connect(applyEntryLibButton, &QAbstractButton::clicked, this, [this] {
+            const QString ohproPath = m_step->buildDirectory().toUserOutput() + "/ohpro";
+            OhProjecteCreator::patchEntryAbilityLib(ohproPath, m_step->resolvedEntryLib());
+        });
 
         m_followKitModuleDeviceTypes = new QCheckBox(
             Tr::tr("Use Harmony preferences and Kit for module device types (no step override)"));
@@ -333,6 +353,7 @@ public:
                 Tr::tr("Harmony target Sdk Version:"), targetSDKComboBox, br,
                 m_followKitModuleDeviceTypes, br,
                 Tr::tr("Override module device types:"), m_moduleDeviceTypesOverrideWidget, br,
+                Tr::tr("Entry library name:"), m_entryLibEdit, applyEntryLibButton, br,
                 Tr::tr("Harmony customization:"), createHarmonyTemplatesButton,
             }
         };
@@ -385,6 +406,7 @@ public:
 
 private:
     HarmonyBuildHapStep *m_step = nullptr;
+    QLineEdit *m_entryLibEdit = nullptr;
     QCheckBox *m_followKitModuleDeviceTypes = nullptr;
     QWidget *m_moduleDeviceTypesOverrideWidget = nullptr;
     QHash<QString, QCheckBox *> m_moduleDeviceTypeCheckBoxes;
@@ -416,6 +438,7 @@ void HarmonyBuildHapStep::fromMap(const Utils::Store &map)
     migrateLegacyHarmonyBuildHapMap(m);
     m_buildTargetSdk = m.value(Key(Constants::HarmonyBuildHapTargetSdkKey)).toString();
     m_buildToolsVersion = m.value(Key(Constants::HarmonyBuildHapBuildToolsVersionKey)).toString();
+    m_entryLibOverride = m.value(Key(Constants::HarmonyBuildHapEntryLibOverrideKey)).toString();
     m_ohModuleDeviceTypesLine = m.value(Constants::HarmonyBuildOhModuleDeviceTypesLine).toString();
     if (m_buildTargetSdk.isEmpty()) {
         m_buildTargetSdk = HarmonyConfig::apiLevelNameFor(HarmonyConfig::devecoStudioVersion().first);
@@ -429,6 +452,7 @@ void HarmonyBuildHapStep::toMap(Utils::Store &map) const
     ProjectExplorer::AbstractProcessStep::toMap(map);
     map.insert(Key(Constants::HarmonyBuildHapTargetSdkKey), m_buildTargetSdk);
     map.insert(Key(Constants::HarmonyBuildHapBuildToolsVersionKey), m_buildToolsVersion);
+    map.insert(Key(Constants::HarmonyBuildHapEntryLibOverrideKey), m_entryLibOverride);
     map.insert(Constants::HarmonyBuildOhModuleDeviceTypesLine, m_ohModuleDeviceTypesLine);
 }
 
@@ -705,6 +729,25 @@ void HarmonyBuildHapStep::setBuildToolsVersion(const QString &version)
     if (m_buildToolsVersion != version) {
         m_buildToolsVersion = version;
     }
+}
+
+QString HarmonyBuildHapStep::entryLibOverride() const
+{
+    return m_entryLibOverride;
+}
+
+void HarmonyBuildHapStep::setEntryLibOverride(const QString &lib)
+{
+    m_entryLibOverride = lib;
+}
+
+QString HarmonyBuildHapStep::resolvedEntryLib() const
+{
+    if (!m_entryLibOverride.trimmed().isEmpty())
+        return m_entryLibOverride.trimmed();
+    const QString buildKey = buildConfiguration() ? buildConfiguration()->activeBuildKey() : QString();
+    const bool isDefaultKey = buildKey.isEmpty() || buildKey == QLatin1String(Constants::HARMONY_DEFAULT_RUN_BUILD_KEY);
+    return isDefaultKey ? QStringLiteral("libentry.so") : QString("lib%1.so").arg(buildKey);
 }
 
 QString HarmonyBuildHapStep::moduleDeviceTypesLine() const

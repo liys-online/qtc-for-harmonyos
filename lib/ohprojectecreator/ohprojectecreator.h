@@ -47,6 +47,13 @@ public:
     static bool updateBuildProfileSdkVersions(const QString &ohproPath,
                                               int targetSdkVersion,
                                               int compatibleSdkVersion);
+    /**
+     * @brief Patches the launchApplication value in an already-created EntryAbility.ets.
+     * @param ohproPath  Path to the ohpro root directory (contains entry/src/main/ets/...).
+     * @param libName    New shared library name, e.g. "libmyapp.so".
+     * @return true on success; false if the file does not exist or cannot be written.
+     */
+    static bool patchEntryAbilityLib(const QString &ohproPath, const QString &libName);
 Q_SIGNALS:
     void signalCreateFinished(bool success, const QString &msg);
 private:

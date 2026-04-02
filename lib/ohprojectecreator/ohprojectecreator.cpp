@@ -1,8 +1,10 @@
 #include "ohprojectecreator.h"
 #include <QDir>
+#include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QRegularExpression>
 #include <QSaveFile>
 
 /**
@@ -494,6 +496,29 @@ void OhProjecteCreator::destroy()
 QList<int> OhProjecteCreator::availableApiLevels()
 {
     return OhProjecteCreator::instance()->m_p->sdkVersionMap.keys();
+}
+
+bool OhProjecteCreator::patchEntryAbilityLib(const QString &ohproPath, const QString &libName)
+{
+    const QString path = ohproPath + "/entry/src/main/ets/entryability/EntryAbility.ets";
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+        return false;
+    QByteArray data = f.readAll();
+    f.close();
+
+    // Replace the value of launchApplication regardless of what it was set to previously.
+    static const QRegularExpression re(
+        R"((private\s+launchApplication\s*=\s*")[^"]*("))");
+    QString text = QString::fromUtf8(data);
+    const QString replacement = "\\1" + libName + "\\2";
+    text.replace(re, replacement);
+
+    QSaveFile sf(path);
+    if (!sf.open(QIODevice::WriteOnly | QIODevice::Text))
+        return false;
+    sf.write(text.toUtf8());
+    return sf.commit();
 }
 
 bool OhProjecteCreator::updateBuildProfileSdkVersions(const QString &ohproPath,

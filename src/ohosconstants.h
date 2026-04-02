@@ -79,6 +79,8 @@ const char HarmonyBuildOhModuleDeviceTypesLine[] = "Harmony.BuildOhModuleDeviceT
 /** Canonical \c HarmonyBuildHapStep store keys (P1-12). Legacy: \c BuildTargetSdk / \c BuildToolsVersion. */
 const char HarmonyBuildHapTargetSdkKey[] = "Harmony.BuildHap.TargetSdk";
 const char HarmonyBuildHapBuildToolsVersionKey[] = "Harmony.BuildHap.BuildToolsVersion";
+/** Optional override for the shared library name written into EntryAbility.ets (empty → auto from build key). */
+const char HarmonyBuildHapEntryLibOverrideKey[] = "Harmony.BuildHap.EntryLibOverride";
 const char HARMONY_DEPLOY_QT_ID[] = "Qt4ProjectManager.HarmonyDeployQtStep";
 /** Canonical \c HarmonyDeployQtStep BoolAspect store key (P1-12). Legacy: \c UninstallPreviousPackage. */
 const char HarmonyDeployUninstallPreviousPackageKey[] = "Harmony.Deploy.UninstallPreviousPackage";

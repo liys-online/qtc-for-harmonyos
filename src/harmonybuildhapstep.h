@@ -24,6 +24,11 @@ public:
     QString buildToolsVersion() const;
     void setBuildToolsVersion(const QString &version);
 
+    QString entryLibOverride() const;
+    void setEntryLibOverride(const QString &lib);
+    /** Returns the override if set, otherwise auto-detects from the active build key. */
+    QString resolvedEntryLib() const;
+
     QString moduleDeviceTypesLine() const;
     void setModuleDeviceTypesLine(const QString &line);
     /** For \c OhProjecteCreator: step line → else Kit → else global preferences (default \c 2in1). */
@@ -47,6 +52,7 @@ private:
     friend class HarmonyBuildHapWidget;
     QString m_buildTargetSdk;
     QString m_buildToolsVersion;
+    QString m_entryLibOverride;
     QString m_ohModuleDeviceTypesLine;
 };
 
