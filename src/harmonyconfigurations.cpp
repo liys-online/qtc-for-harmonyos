@@ -1249,25 +1249,6 @@ void HarmonyConfigurations::updateAutomaticKitList()
                 cmakeConfig.insert(
                     CMakeConfigItem("OHOS_PLATFORM", CMakeConfigItem::STRING, QByteArrayLiteral("OHOS")));
 
-                /* ** Unix Makefiles 生成器需要本机 make：PATH 优先（Homebrew 等），再试常见路径。 */
-                if (HostOsInfo::isAnyUnixHost()) {
-                    const FilePath unixMake = unixHostMakeProgramForCMake();
-                    if (!unixMake.isEmpty()) {
-                        cmakeConfig.insert(CMakeConfigItem("CMAKE_MAKE_PROGRAM", CMakeConfigItem::FILEPATH,
-                                                           unixMake.toUserOutput().toUtf8()));
-                    }
-                } else if (HostOsInfo::isWindowsHost()) {
-                    const FilePath root = HarmonyConfig::makeLocation();
-                    if (!root.isEmpty()) {
-                        const FilePath mingwMake = root.pathAppended("bin/mingw32-make.exe");
-                        if (mingwMake.isExecutableFile()) {
-                            cmakeConfig.insert(CMakeConfigItem("CMAKE_MAKE_PROGRAM", CMakeConfigItem::FILEPATH,
-                                                               mingwMake.toUserOutput().toUtf8()));
-                        }
-                    }
-                }
-
-
                 k->setDetectionSource(DetectionSource(
                     DetectionSource::FromSystem, QStringLiteral("HarmonyConfiguration")));
                 RunDeviceTypeKitAspect::setDeviceTypeId(k, Constants::HARMONY_DEVICE_TYPE);
@@ -1278,24 +1259,8 @@ void HarmonyConfigurations::updateAutomaticKitList()
                 BuildDeviceKitAspect::setDeviceId(k, DeviceManager::defaultDesktopDevice()->id());
 
                 CMakeConfigurationKitAspect::setConfiguration(k, cmakeConfig);
-
-                /* ** Windows 上：将 Harmony Qt Kit 适配为使用 MinGW Makefiles（如可能）。 */
-                if (HostOsInfo::isWindowsHost()) {
-                    using namespace CMakeProjectManager;
-                    /* ** 强制生成器为 MinGW Makefiles，使 CMake 使用 mingw32-make */
-                    CMakeGeneratorKitAspect::setGenerator(k, QStringLiteral("Ninja"));
-
-                    /* ** 若已配置 makeLocation（MinGW 根目录），确保 CMAKE_MAKE_PROGRAM 指向 mingw32-make.exe */
-                    const FilePath root = HarmonyConfig::makeLocation();
-                    if (!root.isEmpty()) {
-                        const FilePath mingwMake = root.pathAppended("bin/mingw32-make.exe");
-                        if (mingwMake.isExecutableFile()) {
-                            cmakeConfig.insert(CMakeConfigItem("CMAKE_MAKE_PROGRAM", CMakeConfigItem::FILEPATH,
-                                                               mingwMake.toUserOutput().toUtf8()));
-                            CMakeConfigurationKitAspect::setConfiguration(k, cmakeConfig);
-                        }
-                    }
-                }
+                using namespace CMakeProjectManager;
+                CMakeGeneratorKitAspect::setGenerator(k, QStringLiteral("Ninja"));
                 
                 /* ** 设置粘性属性，防止用户意外修改关键设置 */
                 k->setSticky(QtKitAspect::id(), true);

@@ -136,7 +136,7 @@ HarmonySettingsWidget::HarmonySettingsWidget()
     infoLabel->setFilled(true);
 
     const QIcon downloadIcon = Icons::ONLINE.icon();
-    const bool showMakeControls = HostOsInfo::isWindowsHost();
+    const bool showMakeControls = false;
 
     auto *makeLocationLabel = new QLabel(Tr::tr("Make location:"));
     makeLocationLabel->setVisible(showMakeControls);
