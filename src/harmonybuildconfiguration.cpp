@@ -176,12 +176,7 @@ void HarmonyCMakeSummaryWidget::refresh()
         m_kitOhosArchLabel->setToolTip(kitArch);
     }
 
-    QString projArch;
-    if (BuildSystem *bs = m_bc->buildSystem()) {
-        projArch = bs->extraData(buildKeyForCMakeExtraData(m_bc.data()), Constants::OHOS_ARCH)
-                       .toString()
-                       .trimmed();
-    }
+    QString projArch = kit->value(Constants::OHOS_ARCH).toString();
     if (projArch.isEmpty()) {
         m_projectOhosArchLabel->setText(
             Tr::tr("Not available (configure CMake or select an application target)"));

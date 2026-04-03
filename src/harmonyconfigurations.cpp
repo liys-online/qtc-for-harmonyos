@@ -1282,6 +1282,7 @@ void HarmonyConfigurations::updateAutomaticKitList()
                 k->setValueSilently(Constants::HARMONY_KIT_SDK, ohQt->qmakeFilePath().toSettings());
                 k->setValueSilently(Constants::HARMONY_KIT_MODULE_DEVICE_TYPES,
                                     QVariant::fromValue(HarmonyConfig::ohModuleDeviceTypes()));
+                k->setValueSilently(Constants::OHOS_ARCH, QString::fromLatin1(ohosArch));
             };
 
             if (existingKit) {
