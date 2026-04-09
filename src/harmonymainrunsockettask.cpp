@@ -33,7 +33,7 @@ void HarmonyMainRunSocketTask::start()
         return;
     }
 
-    m_client = new HdcSocketClient(this);
+    m_client = new HdcSocketClient(this);   // NOSONAR (cpp:S5025) - parented, will auto-delete on stopped
 
     QObject::connect(m_client, &HdcSocketClient::started, this, [this] {
         m_sessionReady = true;
