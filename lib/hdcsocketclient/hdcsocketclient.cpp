@@ -54,7 +54,7 @@ void HdcSocketClient::start(const QString &serial, const QString &command)
     m_pendingPayload = -1;
     m_utf8 = QStringDecoder(QStringDecoder::Utf8);
 
-    m_socket = new QTcpSocket(this);
+    m_socket = new QTcpSocket(this); // NOSONAR (cpp:S5025) - parented, will auto-delete
     connect(m_socket, &QTcpSocket::connected,    this, &HdcSocketClient::onConnected);
     connect(m_socket, &QTcpSocket::readyRead,    this, &HdcSocketClient::onReadyRead);
     connect(m_socket, &QTcpSocket::disconnected, this, &HdcSocketClient::onDisconnected);
@@ -214,146 +214,176 @@ void HdcSocketClient::emitLines(const QByteArray &payload)
 
 /*
 ** 阻塞同步 shell（P2-15 阶段一）— 独立于流式 start() 的新连接。
+** 实现细节：将协议状态和各阶段处理逻辑提取为 ShellSyncCtx + 独立静态函数，
+** 使 runShellSync 本体仅负责连接信号与驱动事件循环。
 */
+
+struct ShellSyncCtx
+{
+    QByteArray         readBuf;
+    QByteArray         outputUtf8;
+    qint32             pendingPayload = -1;
+    bool               commandSent   = false;
+    bool               quitScheduled = false;
+    QString            serial;
+    QString            command;
+    int                timeoutMs     = 0;
+    HdcShellSyncResult result;
+    QEventLoop        *loop   = nullptr;
+    QTcpSocket        *socket = nullptr;
+};
+
+static void syncQuitOnce(ShellSyncCtx &ctx)
+{
+    if (ctx.quitScheduled)
+        return;
+    ctx.quitScheduled = true;
+    ctx.loop->quit();
+}
+
+static void syncOnTimeout(ShellSyncCtx &ctx)
+{
+    ctx.result.code           = HdcShellSyncResult::Code::Timeout;
+    ctx.result.errorMessage   = HdcSocketClient::tr("hdc shell sync: timeout after %1 ms").arg(ctx.timeoutMs);
+    ctx.result.standardOutput = QString::fromUtf8(ctx.outputUtf8);
+    ctx.socket->abort();
+    syncQuitOnce(ctx);
+}
+
+static bool syncProcessHandshake(ShellSyncCtx &ctx)
+{
+    if (ctx.readBuf.size() < HdcSocketProtocol::handshakeSize)
+        return false;
+    const QByteArray hs = ctx.readBuf.left(HdcSocketProtocol::handshakeSize);
+    ctx.readBuf.remove(0, HdcSocketProtocol::handshakeSize);
+    if (!HdcSocketProtocol::verifyHandshakeResponse(hs)) {
+        ctx.result.code         = HdcShellSyncResult::Code::HandshakeFailed;
+        ctx.result.errorMessage = HdcSocketClient::tr("hdc daemon handshake verification failed (expected OHOS HDC).");
+        qCWarning(hdcSocketLog) << ctx.result.errorMessage;
+        ctx.socket->abort();
+        syncQuitOnce(ctx);
+        return false;
+    }
+    ctx.socket->write(HdcSocketProtocol::buildHeadPacket(ctx.serial));
+    ctx.socket->write(HdcSocketProtocol::buildCommandPacket(ctx.command));
+    ctx.socket->flush();
+    ctx.commandSent = true;
+    return true;
+}
+
+static bool syncProcessOneFrame(ShellSyncCtx &ctx)
+{
+    if (ctx.pendingPayload < 0) {
+        if (ctx.readBuf.size() < HdcSocketProtocol::frameHeaderSize)
+            return false;
+        quint32 raw = 0;
+        std::memcpy(&raw, ctx.readBuf.constData(), HdcSocketProtocol::frameHeaderSize);
+        ctx.pendingPayload = qint32(qFromBigEndian(raw));
+        ctx.readBuf.remove(0, HdcSocketProtocol::frameHeaderSize);
+        if (ctx.pendingPayload == 0) {
+            ctx.pendingPayload = -1;
+            return true; /* 空帧，继续下一帧 */
+        }
+        if (ctx.pendingPayload < 0 || ctx.pendingPayload > HdcSocketProtocol::maxFramePayload) {
+            ctx.result.code           = HdcShellSyncResult::Code::BadFrame;
+            ctx.result.errorMessage   = HdcSocketClient::tr("hdc shell sync: invalid frame size (%1).").arg(ctx.pendingPayload);
+            ctx.result.standardOutput = QString::fromUtf8(ctx.outputUtf8);
+            qCWarning(hdcSocketLog) << ctx.result.errorMessage;
+            ctx.socket->abort();
+            syncQuitOnce(ctx);
+            return false;
+        }
+    }
+    if (ctx.readBuf.size() < ctx.pendingPayload)
+        return false;
+    ctx.outputUtf8 += ctx.readBuf.left(ctx.pendingPayload);
+    ctx.readBuf.remove(0, ctx.pendingPayload);
+    ctx.pendingPayload = -1;
+    return true;
+}
+
+static void syncOnReadyRead(ShellSyncCtx &ctx)
+{
+    ctx.readBuf.append(ctx.socket->readAll());
+    if (!ctx.commandSent && !syncProcessHandshake(ctx))
+        return;
+    while (!ctx.quitScheduled && syncProcessOneFrame(ctx)) { /* consume all buffered frames */ }
+}
+
+static void syncOnDisconnected(ShellSyncCtx &ctx)
+{
+    if (!ctx.commandSent) {
+        ctx.result.code = HdcShellSyncResult::Code::ConnectionFailed;
+        if (ctx.result.errorMessage.isEmpty()) {
+            ctx.result.errorMessage =
+                HdcSocketClient::tr("Connection closed before hdc handshake completed (%1).")
+                    .arg(ctx.socket->errorString());
+        }
+        syncQuitOnce(ctx);
+        return;
+    }
+    ctx.result.code           = HdcShellSyncResult::Code::Ok;
+    ctx.result.standardOutput = QString::fromUtf8(ctx.outputUtf8);
+    syncQuitOnce(ctx);
+}
+
+static void syncOnError(ShellSyncCtx &ctx, QAbstractSocket::SocketError err)
+{
+    if (err == QAbstractSocket::RemoteHostClosedError) {
+        if (ctx.commandSent) {
+            ctx.result.code           = HdcShellSyncResult::Code::Ok;
+            ctx.result.standardOutput = QString::fromUtf8(ctx.outputUtf8);
+        } else {
+            ctx.result.code         = HdcShellSyncResult::Code::ConnectionFailed;
+            ctx.result.errorMessage = HdcSocketClient::tr("hdc daemon closed the connection before handshake completed.");
+        }
+        syncQuitOnce(ctx);
+        return;
+    }
+    ctx.result.code = (err == QAbstractSocket::ConnectionRefusedError)
+                          ? HdcShellSyncResult::Code::ConnectionFailed
+                          : HdcShellSyncResult::Code::SocketError;
+    ctx.result.errorMessage   = ctx.socket->errorString();
+    ctx.result.standardOutput = QString::fromUtf8(ctx.outputUtf8);
+    qCWarning(hdcSocketLog) << "HdcSocketClient::runShellSync socket error" << err
+                            << ctx.result.errorMessage;
+    syncQuitOnce(ctx);
+}
+
 HdcShellSyncResult HdcSocketClient::runShellSync(const QString &serial,
                                                  const QString &command,
                                                  int timeoutMs)
 {
-    HdcShellSyncResult result;
     if (timeoutMs <= 0) {
-        result.code = HdcShellSyncResult::Code::SocketError;
+        HdcShellSyncResult result;
+        result.code         = HdcShellSyncResult::Code::SocketError;
         result.errorMessage = tr("hdc shell sync: invalid timeout");
         return result;
     }
 
+    ShellSyncCtx ctx;
+    ctx.serial    = serial;
+    ctx.command   = command;
+    ctx.timeoutMs = timeoutMs;
+
     QEventLoop loop;
     QTcpSocket socket;
-    QTimer timer;
+    QTimer     timer;
     timer.setSingleShot(true);
+    ctx.loop   = &loop;
+    ctx.socket = &socket;
 
-    QByteArray readBuf;
-    QByteArray outputUtf8;
-    qint32 pendingPayload = -1;
-    bool commandSent = false;
-    bool quitScheduled = false;
-
-    auto quitOnce = [&quitScheduled, &loop] {
-        if (quitScheduled)
-            return;
-        quitScheduled = true;
-        loop.quit();
-    };
-
-    QObject::connect(&timer, &QTimer::timeout, &loop, [&] {
-        if (quitScheduled)
-            return;
-        result.code = HdcShellSyncResult::Code::Timeout;
-        result.errorMessage = tr("hdc shell sync: timeout after %1 ms").arg(timeoutMs);
-        result.standardOutput = QString::fromUtf8(outputUtf8);
-        socket.abort();
-        quitOnce();
-    });
-
-    QObject::connect(&socket, &QTcpSocket::connected, &loop, [&socket] {
-        socket.setSocketOption(QAbstractSocket::LowDelayOption, 1);
-    });
-
-    QObject::connect(&socket, &QTcpSocket::readyRead, &loop, [&] {
-        readBuf.append(socket.readAll());
-
-        if (!commandSent) {
-            if (readBuf.size() < HdcSocketProtocol::handshakeSize)
-                return;
-            const QByteArray hs = readBuf.left(HdcSocketProtocol::handshakeSize);
-            readBuf.remove(0, HdcSocketProtocol::handshakeSize);
-            if (!HdcSocketProtocol::verifyHandshakeResponse(hs)) {
-                result.code = HdcShellSyncResult::Code::HandshakeFailed;
-                result.errorMessage =
-                    tr("hdc daemon handshake verification failed (expected OHOS HDC).");
-                qCWarning(hdcSocketLog) << result.errorMessage;
-                socket.abort();
-                quitOnce();
-                return;
-            }
-            socket.write(HdcSocketProtocol::buildHeadPacket(serial));
-            socket.write(HdcSocketProtocol::buildCommandPacket(command));
-            socket.flush();
-            commandSent = true;
-        }
-
-        for (;;) {
-            if (pendingPayload < 0) {
-                if (readBuf.size() < HdcSocketProtocol::frameHeaderSize)
-                    return;
-                quint32 raw = 0;
-                std::memcpy(&raw, readBuf.constData(), HdcSocketProtocol::frameHeaderSize);
-                pendingPayload = qint32(qFromBigEndian(raw));
-                readBuf.remove(0, HdcSocketProtocol::frameHeaderSize);
-                if (pendingPayload == 0) {
-                    pendingPayload = -1;
-                    continue;
-                }
-                if (pendingPayload < 0 || pendingPayload > HdcSocketProtocol::maxFramePayload) {
-                    result.code = HdcShellSyncResult::Code::BadFrame;
-                    result.errorMessage = tr("hdc shell sync: invalid frame size (%1).").arg(pendingPayload);
-                    result.standardOutput = QString::fromUtf8(outputUtf8);
-                    qCWarning(hdcSocketLog) << result.errorMessage;
-                    socket.abort();
-                    quitOnce();
-                    return;
-                }
-            }
-            if (readBuf.size() < pendingPayload)
-                return;
-            const QByteArray payload = readBuf.left(pendingPayload);
-            readBuf.remove(0, pendingPayload);
-            pendingPayload = -1;
-            outputUtf8 += payload;
-        }
-    });
-
-    QObject::connect(&socket, &QTcpSocket::disconnected, &loop, [&] {
-        if (quitScheduled)
-            return;
-        if (!commandSent) {
-            result.code = HdcShellSyncResult::Code::ConnectionFailed;
-            if (result.errorMessage.isEmpty()) {
-                result.errorMessage =
-                    tr("Connection closed before hdc handshake completed (%1).").arg(socket.errorString());
-            }
-            quitOnce();
-            return;
-        }
-        result.code = HdcShellSyncResult::Code::Ok;
-        result.standardOutput = QString::fromUtf8(outputUtf8);
-        quitOnce();
-    });
-
-    QObject::connect(&socket, &QTcpSocket::errorOccurred, &loop,
-                     [&](QAbstractSocket::SocketError err) {
-                         if (quitScheduled)
-                             return;
-                         if (err == QAbstractSocket::RemoteHostClosedError) {
-                             if (commandSent) {
-                                 result.code = HdcShellSyncResult::Code::Ok;
-                                 result.standardOutput = QString::fromUtf8(outputUtf8);
-                             } else {
-                                 result.code = HdcShellSyncResult::Code::ConnectionFailed;
-                                 result.errorMessage =
-                                     tr("hdc daemon closed the connection before handshake completed.");
-                             }
-                             quitOnce();
-                             return;
-                         }
-                         if (err == QAbstractSocket::ConnectionRefusedError)
-                             result.code = HdcShellSyncResult::Code::ConnectionFailed;
-                         else
-                             result.code = HdcShellSyncResult::Code::SocketError;
-                         result.errorMessage = socket.errorString();
-                         result.standardOutput = QString::fromUtf8(outputUtf8);
-                         qCWarning(hdcSocketLog)
-                             << "HdcSocketClient::runShellSync socket error" << err << result.errorMessage;
-                         quitOnce();
+    QObject::connect(&timer,  &QTimer::timeout,
+                     &loop,   [&ctx] { syncOnTimeout(ctx); });
+    QObject::connect(&socket, &QTcpSocket::connected,
+                     &loop,   [&socket] { socket.setSocketOption(QAbstractSocket::LowDelayOption, 1); });
+    QObject::connect(&socket, &QTcpSocket::readyRead,
+                     &loop,   [&ctx] { syncOnReadyRead(ctx); });
+    QObject::connect(&socket, &QTcpSocket::disconnected,
+                     &loop,   [&ctx] { if (!ctx.quitScheduled) syncOnDisconnected(ctx); });
+    QObject::connect(&socket, &QTcpSocket::errorOccurred,
+                     &loop,   [&ctx](QAbstractSocket::SocketError err) {
+                         if (!ctx.quitScheduled) syncOnError(ctx, err);
                      });
 
     timer.start(timeoutMs);
@@ -361,13 +391,13 @@ HdcShellSyncResult HdcSocketClient::runShellSync(const QString &serial,
     loop.exec();
     timer.stop();
 
-    if (!quitScheduled) {
-        result.code = HdcShellSyncResult::Code::SocketError;
-        result.errorMessage = tr("hdc shell sync: event loop exited unexpectedly.");
-        result.standardOutput = QString::fromUtf8(outputUtf8);
+    if (!ctx.quitScheduled) {
+        ctx.result.code           = HdcShellSyncResult::Code::SocketError;
+        ctx.result.errorMessage   = tr("hdc shell sync: event loop exited unexpectedly.");
+        ctx.result.standardOutput = QString::fromUtf8(ctx.outputUtf8);
     }
 
-    return result;
+    return ctx.result;
 }
 
 bool HdcSocketClient::preferCliFromEnvironment()
@@ -379,6 +409,30 @@ bool HdcSocketClient::preferCliFromEnvironment()
     return s.compare(u"1", Qt::CaseInsensitive) == 0
         || s.compare(u"true", Qt::CaseInsensitive) == 0
         || s.compare(u"yes", Qt::CaseInsensitive) == 0;
+}
+
+/*
+** 判断 socket 结果是否可直接使用（无需回退 CLI）。
+** 返回 true 表示结果已接受；false 表示需要继续走 CLI 路径。
+*/
+static bool cliFallbackEvaluateSocket(
+    const HdcShellSyncResult &sock,
+    const std::function<void(const QString &)> &notifier,
+    const std::function<bool(const HdcShellSyncResult &)> &rejectOk)
+{
+    if (!sock.isOk()) {
+        if (notifier)
+            notifier(HdcSocketClient::tr("Harmony: hdc daemon socket failed, falling back to hdc.exe (%1).").arg(sock.errorMessage));
+        qCWarning(hdcSocketLog) << "runSyncWithCliFallback socket failed" << int(sock.code) << sock.errorMessage;
+        return false;
+    }
+    if (bool(rejectOk) && rejectOk(sock)) {
+        if (notifier)
+            notifier(HdcSocketClient::tr("Harmony: rejecting hdc socket output, falling back to hdc.exe."));
+        qCDebug(hdcSocketLog) << "runSyncWithCliFallback: socket result rejected, using hdc.exe";
+        return false;
+    }
+    return true;
 }
 
 HdcShellSyncResult HdcSocketClient::runSyncWithCliFallback(
@@ -397,32 +451,12 @@ HdcShellSyncResult HdcSocketClient::runSyncWithCliFallback(
         return out;
     }
 
-    const bool cliOnly = preferCliFromEnvironment();
-    HdcShellSyncResult sock;
-    bool socketRejected = false;
-
-    if (!cliOnly) {
-        sock = runShellSync(deviceSerial, daemonCommand, timeoutMs);
-        if (sock.isOk()) {
-            socketRejected = bool(rejectSocketOk) && rejectSocketOk(sock);
-            if (!socketRejected)
-                return sock;
-            if (socketFallbackNotifier) {
-                socketFallbackNotifier(
-                    tr("Harmony: rejecting hdc socket output, falling back to hdc.exe."));
-            }
-            qCDebug(hdcSocketLog) << "runSyncWithCliFallback: socket result rejected, using hdc.exe";
-        } else {
-            if (socketFallbackNotifier) {
-                socketFallbackNotifier(
-                    tr("Harmony: hdc daemon socket failed, falling back to hdc.exe (%1).")
-                        .arg(sock.errorMessage));
-            }
-            qCWarning(hdcSocketLog) << "runSyncWithCliFallback socket failed" << int(sock.code)
-                                    << sock.errorMessage;
-        }
-    } else {
+    if (preferCliFromEnvironment()) {
         qCDebug(hdcSocketLog) << "runSyncWithCliFallback: QTC_HARMONY_HDC_USE_CLI — hdc.exe only";
+    } else {
+        const HdcShellSyncResult sock = runShellSync(deviceSerial, daemonCommand, timeoutMs);
+        if (cliFallbackEvaluateSocket(sock, socketFallbackNotifier, rejectSocketOk))
+            return sock;
     }
 
     if (hdcProgram.isEmpty()) {
