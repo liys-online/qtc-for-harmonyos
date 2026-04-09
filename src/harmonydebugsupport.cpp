@@ -154,7 +154,7 @@ static void fireHdcShell(RunControl *runControl,
                           const QString &serial,
                           const QString &shellCmd)
 {
-    auto *client = new HdcSocketClient(runControl);
+    auto *client = new HdcSocketClient(runControl); // NOSONAR (cpp:S5025) - parented, will auto-delete on stopped
     /*
     ** 调试结束时关闭连接，设备侧命令随之收到 SIGHUP
     */
