@@ -489,8 +489,8 @@ Group HarmonyDeployQtStep::deployRecipe()
 
 QWidget *HarmonyDeployQtStep::createConfigWidget()
 {
-    auto widget = new QWidget;
-    auto installCustomApkButton = new QPushButton(widget);
+    auto widget = new QWidget;  // NOSONAR - parented, will be owned by the caller
+    auto installCustomApkButton = new QPushButton(widget);  // NOSONAR - parented, will be owned by the caller
     installCustomApkButton->setText(Tr::tr("Install a HAP File…"));
     installCustomApkButton->setToolTip(
         Tr::tr("Install a .hap package on the run device selected in the active kit using hdc."));
