@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QVariant>
+#include <QSharedPointer>
 
 class OhProjecteCreatorPrivate;
 class OhProjecteCreator : public QObject
@@ -58,7 +59,7 @@ Q_SIGNALS:
 private:
     explicit OhProjecteCreator(QObject *parent = nullptr);
     ~OhProjecteCreator();
-    std::unique_ptr<OhProjecteCreatorPrivate> m_p = nullptr;
+    QSharedPointer<OhProjecteCreatorPrivate> m_p = nullptr;
 };
 
 #endif // OHPROJECTECREATOR_H

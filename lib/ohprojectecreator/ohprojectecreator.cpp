@@ -520,7 +520,7 @@ bool OhProjecteCreator::updateBuildProfileSdkVersions(const QString &ohproPath,
 
 OhProjecteCreator::OhProjecteCreator(QObject *parent)
     : QObject(parent),
-    m_p(std::make_unique<OhProjecteCreatorPrivate>())
+    m_p(QSharedPointer<OhProjecteCreatorPrivate>::create())
 {}
 
 OhProjecteCreator::~OhProjecteCreator()

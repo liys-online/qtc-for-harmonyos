@@ -2,6 +2,7 @@
 #define USBMONITOR_H
 
 #include <QObject>
+#include <QSharedPointer>
 
 class UsbMonitorPrivate;
 class UsbMonitor : public QObject
@@ -20,7 +21,7 @@ private:
     explicit UsbMonitor(QObject *parent = nullptr);
     ~UsbMonitor();
     Q_INVOKABLE void onUsbEvent();   // called cross-thread via QMetaObject::invokeMethod
-    std::unique_ptr<UsbMonitorPrivate> m_p = nullptr;
+    QSharedPointer<UsbMonitorPrivate> m_p = nullptr;
 };
 
 #endif // USBMONITOR_H

@@ -299,7 +299,7 @@ void UsbMonitor::stopMonitor()
 // ── Constructor / Destructor ──────────────────────────────────────────────
 UsbMonitor::UsbMonitor(QObject *parent)
     : QObject(parent)
-    , m_p(std::make_unique<UsbMonitorPrivate>())
+    , m_p(QSharedPointer<UsbMonitorPrivate>::create())
 {
     m_p->debounceTimer = std::make_unique<QTimer>();
     m_p->debounceTimer->setSingleShot(true);
