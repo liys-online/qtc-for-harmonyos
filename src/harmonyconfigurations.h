@@ -186,6 +186,8 @@ namespace Ohos::Internal {
         Utils::FilePath nodeLocation();
         Utils::FilePath ohpmJsLocation();
         Utils::FilePath javaLocation();
+        /** DevEco Studio 内置 cmake 可执行文件路径（tools/cmake/bin/cmake），不存在时返回空。 */
+        Utils::FilePath devecoCmakePath();
 
         /** Default registry passed to \c ohpm install \c --registry when user override is empty. */
         QString defaultOhpmRegistryUrl();

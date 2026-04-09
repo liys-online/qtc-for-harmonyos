@@ -17,6 +17,8 @@
 #include <projectexplorer/projectexplorerconstants.h>
 #include <projectexplorer/toolchainkitaspect.h>
 #include <cmakeprojectmanager/cmakekitaspect.h>
+#include <cmakeprojectmanager/cmaketool.h>
+#include <cmakeprojectmanager/cmaketoolmanager.h>
 #include <projectexplorer/abi.h>
 
 #include <qtsupport/qtversionfactory.h>
@@ -723,6 +725,16 @@ FilePath devecoToolsLocation()
     return stored / "tools";
 }
 
+FilePath devecoCmakePath()
+{
+    const FilePath devecoNdk = ndkLocation(devecoSdkLocation());
+    if (devecoNdk.isEmpty())
+        return {};
+    // DevEco Studio 将 cmake 打包在 tools/cmake/bin/cmake 下
+    const FilePath cmake = (devecoNdk / "build-tools" / "cmake" / "bin" / "cmake").withExecutableSuffix();
+    return cmake.isExecutableFile() ? cmake : FilePath{};
+}
+
 FilePath devecoSdkLocation()
 {
     const FilePath stored = devecoStudioLocation();
@@ -1131,6 +1143,32 @@ static QVariant findOrRegisterOhosDebugger(const FilePath &ndkPath)
     return DebuggerItemManager::registerDebugger(item);
 }
 
+/*
+** 在 CMakeToolManager 中查找或注册 DevEco Studio 内置的 CMake。
+** 若 DevEco Studio 未配置或其 cmake 不可执行则返回空 FilePath。
+*/
+static FilePath findOrRegisterDevecoCmake()
+{
+    const FilePath cmake = HarmonyConfig::devecoCmakePath();
+    if (cmake.isEmpty())
+        return {};
+
+    using namespace CMakeProjectManager;
+
+    /* ** 若该路径已注册则直接复用 */
+    if (CMakeToolManager::findByCommand(cmake))
+        return cmake;
+
+    /* ** 注册新的 CMake 条目 */
+    auto tool = std::make_unique<CMakeTool>(
+        DetectionSource(DetectionSource::Manual, QStringLiteral("HarmonyConfiguration")),
+        CMakeTool::createId());
+    tool->setFilePath(cmake);
+    tool->setDisplayName(QObject::tr("OHOS CMake"));
+    CMakeToolManager::registerCMakeTool(std::move(tool));
+    return cmake;
+}
+
 void HarmonyConfigurations::updateAutomaticKitList()
 {
     /* ** 更新现有 Harmony Kit 的 NDK 和 SDK 设置 */
@@ -1271,6 +1309,11 @@ void HarmonyConfigurations::updateAutomaticKitList()
                 const QVariant debuggerId = findOrRegisterOhosDebugger(expectedNdkPath);
                 if (!debuggerId.isNull())
                     Debugger::DebuggerKitAspect::setDebugger(k, debuggerId);
+
+                /* ** 注册并设置 DevEco Studio 内置 CMake */
+                const FilePath devecoCmake = findOrRegisterDevecoCmake();
+                if (!devecoCmake.isEmpty())
+                    CMakeProjectManager::CMakeKitAspect::setCMakeExecutable(k, devecoCmake);
 
                 k->setUnexpandedDisplayName(QObject::tr("%1 for HarmonyOS %2 %3")
                                                 .arg(QLatin1String("Qt %{Qt:Version}"),
