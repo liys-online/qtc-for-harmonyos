@@ -38,7 +38,7 @@ HarmonyDeviceManager::HarmonyDeviceManager(QObject *parent)
 
 HarmonyDeviceManager::~HarmonyDeviceManager()
 {
-    UsbMonitor::destroy();
+    UsbMonitor::stopMonitor();
 
 }
 static void registerHarmonyDevice(DeviceManager *devMgr, const Id &id, const QString &dirtySerial) // NOSONAR (cpp:S3578) - non-const DeviceManager methods called

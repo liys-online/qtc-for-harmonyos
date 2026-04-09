@@ -213,35 +213,23 @@ private:
 class UsbMonitorPrivate
 {
 public:
-    bool    running       = false;
-    QTimer *debounceTimer = nullptr;
-    static UsbMonitor *m_instance;
+    bool running = false;
+    std::unique_ptr<QTimer> debounceTimer = nullptr;
 
 #if defined(Q_OS_WIN)
-    WinUsbMonitorThread *winThread = nullptr;
+    std::unique_ptr<WinUsbMonitorThread> winThread = nullptr;
 #elif defined(Q_OS_LINUX)
-    QFileSystemWatcher *watcher = nullptr;
+    std::unique_ptr<QFileSystemWatcher> watcher = nullptr;
 #elif defined(Q_OS_MACOS)
-    MacUsbMonitorThread *macThread = nullptr;
+    std::unique_ptr<MacUsbMonitorThread> macThread = nullptr;
 #endif
 };
-
-UsbMonitor *UsbMonitorPrivate::m_instance = nullptr;
 
 // ── Singleton ─────────────────────────────────────────────────────────────
 UsbMonitor *UsbMonitor::instance()
 {
-    return UsbMonitorPrivate::m_instance
-               ? UsbMonitorPrivate::m_instance
-               : new UsbMonitor;
-}
-
-void UsbMonitor::destroy()
-{
-    if (UsbMonitorPrivate::m_instance) {
-        delete UsbMonitorPrivate::m_instance;
-        UsbMonitorPrivate::m_instance = nullptr;
-    }
+    static UsbMonitor usbMonitor;
+    return &usbMonitor;
 }
 
 bool UsbMonitor::isRunning() const
@@ -266,16 +254,16 @@ void UsbMonitor::startMonitor()
 
 #if defined(Q_OS_WIN)
     if (!inst->m_p->winThread) {
-        inst->m_p->winThread = new WinUsbMonitorThread(inst);
+        inst->m_p->winThread = std::make_unique<WinUsbMonitorThread>(inst);
         inst->m_p->winThread->start();
         qCDebug(harmonyUsbMonitorLog) << "UsbMonitor: Win32 monitor thread started.";
     }
 #elif defined(Q_OS_LINUX)
     if (!inst->m_p->watcher) {
-        inst->m_p->watcher = new QFileSystemWatcher(inst);
+        inst->m_p->watcher = std::make_unique<QFileSystemWatcher>();
         const QString usbPath = QStringLiteral("/sys/bus/usb/devices");
         if (inst->m_p->watcher->addPath(usbPath)) {
-            QObject::connect(inst->m_p->watcher, &QFileSystemWatcher::directoryChanged,
+            QObject::connect(inst->m_p->watcher.get(), &QFileSystemWatcher::directoryChanged,
                              inst, &UsbMonitor::onUsbEvent);
             qCDebug(harmonyUsbMonitorLog) << "UsbMonitor: watching" << usbPath;
         } else {
@@ -284,7 +272,7 @@ void UsbMonitor::startMonitor()
     }
 #elif defined(Q_OS_MACOS)
     if (!inst->m_p->macThread) {
-        inst->m_p->macThread = new MacUsbMonitorThread(inst);
+        inst->m_p->macThread = std::make_unique<MacUsbMonitorThread>(inst);
         inst->m_p->macThread->start();
     }
 #endif
@@ -300,19 +288,10 @@ void UsbMonitor::stopMonitor()
 #if defined(Q_OS_WIN)
     if (inst->m_p->winThread) {
         inst->m_p->winThread->stop();
-        delete inst->m_p->winThread;
-        inst->m_p->winThread = nullptr;
-    }
-#elif defined(Q_OS_LINUX)
-    if (inst->m_p->watcher) {
-        delete inst->m_p->watcher;
-        inst->m_p->watcher = nullptr;
     }
 #elif defined(Q_OS_MACOS)
     if (inst->m_p->macThread) {
         inst->m_p->macThread->stop();
-        delete inst->m_p->macThread;
-        inst->m_p->macThread = nullptr;
     }
 #endif
 }
@@ -320,12 +299,11 @@ void UsbMonitor::stopMonitor()
 // ── Constructor / Destructor ──────────────────────────────────────────────
 UsbMonitor::UsbMonitor(QObject *parent)
     : QObject(parent)
-    , m_p(new UsbMonitorPrivate)
+    , m_p(std::make_unique<UsbMonitorPrivate>())
 {
-    m_p->m_instance   = this;
-    m_p->debounceTimer = new QTimer(this);
+    m_p->debounceTimer = std::make_unique<QTimer>();
     m_p->debounceTimer->setSingleShot(true);
-    connect(m_p->debounceTimer, &QTimer::timeout, this, &UsbMonitor::usbDeviceChanged);
+    connect(m_p->debounceTimer.get(), &QTimer::timeout, this, &UsbMonitor::usbDeviceChanged);
 }
 
 UsbMonitor::~UsbMonitor()
@@ -333,6 +311,5 @@ UsbMonitor::~UsbMonitor()
     qCDebug(harmonyUsbMonitorLog) << "UsbMonitor destructor called.";
     if (m_p->running)
         stopMonitor();
-    delete m_p;
 }
 

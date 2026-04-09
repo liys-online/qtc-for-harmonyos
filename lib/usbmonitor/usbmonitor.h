@@ -9,7 +9,6 @@ class UsbMonitor : public QObject
     Q_OBJECT
 public:
     static UsbMonitor *instance();
-    static void destroy();
     bool isRunning() const;
     static void startMonitor();
     static void stopMonitor();
@@ -21,7 +20,7 @@ private:
     explicit UsbMonitor(QObject *parent = nullptr);
     ~UsbMonitor();
     Q_INVOKABLE void onUsbEvent();   // called cross-thread via QMetaObject::invokeMethod
-    UsbMonitorPrivate * const m_p;
+    std::unique_ptr<UsbMonitorPrivate> m_p = nullptr;
 };
 
 #endif // USBMONITOR_H

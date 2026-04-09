@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
     UsbMonitor::startMonitor();
-    QObject::connect(qApp, &QCoreApplication::aboutToQuit, UsbMonitor::instance(), &UsbMonitor::destroy);
+    QObject::connect(qApp, &QCoreApplication::aboutToQuit, UsbMonitor::instance(), &UsbMonitor::stopMonitor);
     QObject::connect(UsbMonitor::instance(), &UsbMonitor::usbDeviceChanged, qApp, []() {
         qDebug() << "USB device changed";
     });
