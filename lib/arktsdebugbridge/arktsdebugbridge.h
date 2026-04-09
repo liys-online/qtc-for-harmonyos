@@ -7,6 +7,8 @@
 #include <QObject>
 #include <QString>
 
+#include <memory>
+
 QT_BEGIN_NAMESPACE
 class QWebSocket;
 class QTimer;
@@ -37,8 +39,8 @@ QT_END_NAMESPACE
 **   auto bridge = new ArkTSDebugBridge;
 **   connect(bridge, &ArkTSDebugBridge::logMessage, ...);
 **   bridge->start(connectPort, pandaPort, signalFilePath);
-**   // LLDB 运行期间会在 'process continue' 之前创建 signalFilePath
-**   // bridge 随后异步驱动后续流程
+**   LLDB 运行期间会在 'process continue' 之前创建 signalFilePath
+**   bridge 随后异步驱动后续流程
 */
 class ArkTSDebugBridge : public QObject
 {
@@ -98,7 +100,7 @@ private:
     void onL1Connected();
     void onL1TextMessageReceived(const QString &message);
     void onL1Disconnected();
-    void onL1Error();
+    void onL1Error() const;
 
     /*
     ** 信号文件监控
@@ -114,7 +116,7 @@ private:
     void onL2Connected();
     void onL2TextMessageReceived(const QString &message);
     void onL2Disconnected();
-    void onL2Error();
+    void onL2Error() const;
 
     void sendCDTMessages();
 
@@ -128,17 +130,17 @@ private:
     /*
     ** 成员状态
     */
-    State       m_state       = State::Idle;
-    quint16     m_connectPort = 0;
-    quint16     m_pandaPort   = 0;
-    QString     m_signalFile;
+    State m_state = State::Idle;
+    quint16 m_connectPort = 0;
+    quint16 m_pandaPort = 0;
+    QString m_signalFile = "";
 
-    QWebSocket *m_l1Socket    = nullptr;
-    QWebSocket *m_l2Socket    = nullptr;
+    std::unique_ptr<QWebSocket> m_l1Socket;
+    std::unique_ptr<QWebSocket> m_l2Socket;
 
-    QTimer *m_retryTimer    = nullptr; /* ** L1 / L2 重试时钟 */
-    QTimer *m_signalTimer   = nullptr; /* ** 100ms 信号文件轮询定时器 */
-    QTimer *m_deadlineTimer = nullptr; /* ** 分阶段超时看门狗 */
+    std::unique_ptr<QTimer> m_retryTimer;    /* ** L1 / L2 重试时钟 */
+    std::unique_ptr<QTimer> m_signalTimer;   /* ** 100ms 信号文件轮询定时器 */
+    std::unique_ptr<QTimer> m_deadlineTimer; /* ** 分阶段超时看门狗 */
 
     int m_l1Attempts = 0; /* ** 最多 60 次，间隔 500ms */
     int m_l2Attempts = 0; /* ** 最多 20 次，间隔 300ms */

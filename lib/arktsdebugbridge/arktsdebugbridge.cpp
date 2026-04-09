@@ -32,7 +32,16 @@ static constexpr int kCdtIntervalMs   = 100;
 
 ArkTSDebugBridge::ArkTSDebugBridge(QObject *parent)
     : QObject(parent)
-{}
+    , m_l1Socket(std::make_unique<QWebSocket>())
+    , m_l2Socket(std::make_unique<QWebSocket>())
+    , m_retryTimer(std::make_unique<QTimer>())
+    , m_signalTimer(std::make_unique<QTimer>())
+    , m_deadlineTimer(std::make_unique<QTimer>())
+{
+    m_retryTimer->setSingleShot(true);
+    m_signalTimer->setInterval(kSignalPollMs);
+    m_deadlineTimer->setSingleShot(true);
+}
 
 ArkTSDebugBridge::~ArkTSDebugBridge()
 {
@@ -93,25 +102,19 @@ void ArkTSDebugBridge::attemptL1Connect()
 
     ++m_l1Attempts;
 
-    if (m_l1Socket) {
-        m_l1Socket->disconnect(this);
-        m_l1Socket->abort();
-        m_l1Socket->deleteLater();
-        m_l1Socket = nullptr;
-    }
+    m_l1Socket->disconnect(this);
+    m_l1Socket->abort();
 
-    m_l1Socket = new QWebSocket(QString(), QWebSocketProtocol::VersionLatest, this);
-
-    connect(m_l1Socket, &QWebSocket::connected,
+    connect(m_l1Socket.get(), &QWebSocket::connected,
             this, &ArkTSDebugBridge::onL1Connected);
-    connect(m_l1Socket, &QWebSocket::textMessageReceived,
+    connect(m_l1Socket.get(), &QWebSocket::textMessageReceived,
             this, &ArkTSDebugBridge::onL1TextMessageReceived);
-    connect(m_l1Socket, &QWebSocket::disconnected,
+    connect(m_l1Socket.get(), &QWebSocket::disconnected,
             this, &ArkTSDebugBridge::onL1Disconnected);
-    connect(m_l1Socket, &QWebSocket::errorOccurred,
+    connect(m_l1Socket.get(), &QWebSocket::errorOccurred,
             this, [this](QAbstractSocket::SocketError) { onL1Error(); });
 
-    const QUrl url = QUrl(QStringLiteral("ws://127.0.0.1:%1").arg(m_connectPort));
+    const auto url = QUrl(QStringLiteral("ws://127.0.0.1:%1").arg(m_connectPort));
     qCDebug(arkLog) << "L1 connect attempt" << m_l1Attempts << url;
     m_l1Socket->open(url);
 }
@@ -122,11 +125,8 @@ void ArkTSDebugBridge::onL1Connected()
         return;
 
     /* ** 停止重试定时器 */
-    if (m_retryTimer) {
-        m_retryTimer->stop();
-        m_retryTimer->deleteLater();
-        m_retryTimer = nullptr;
-    }
+    m_retryTimer->stop();
+    m_retryTimer->disconnect(this);
 
     log(QStringLiteral("[BRIDGE] WebSocket connected, port=%1").arg(m_connectPort));
     m_state = State::WaitingSignal;
@@ -146,11 +146,8 @@ void ArkTSDebugBridge::onL1TextMessageReceived(const QString &message)
             log(QStringLiteral("[BRIDGE] Got addInstance, instanceId=%1").arg(instanceId));
 
             /* ** 取消 addInstance 超时看门狗 */
-            if (m_deadlineTimer) {
-                m_deadlineTimer->stop();
-                m_deadlineTimer->deleteLater();
-                m_deadlineTimer = nullptr;
-            }
+            m_deadlineTimer->stop();
+            m_deadlineTimer->disconnect(this);
 
             emit addInstanceReceived(instanceId);
             m_state = State::ConnectingL2;
@@ -164,12 +161,9 @@ void ArkTSDebugBridge::onL1Disconnected()
 {
     if (m_state == State::ConnectingL1) {
         /* ** 连接被拒绝，等待重试 */
-        if (m_retryTimer == nullptr) {
-            m_retryTimer = new QTimer(this);
-            m_retryTimer->setSingleShot(true);
-            connect(m_retryTimer, &QTimer::timeout,
-                    this, &ArkTSDebugBridge::attemptL1Connect);
-        }
+        m_retryTimer->disconnect(this);
+        connect(m_retryTimer.get(), &QTimer::timeout,
+                this, &ArkTSDebugBridge::attemptL1Connect);
         if (m_l1Attempts == 1) {
             log(QStringLiteral("[BRIDGE] port=%1 connect attempt 1 failed, retrying...")
                     .arg(m_connectPort));
@@ -191,9 +185,9 @@ void ArkTSDebugBridge::onL1Disconnected()
     }
 }
 
-void ArkTSDebugBridge::onL1Error()
+void ArkTSDebugBridge::onL1Error() const
 {
-    if (!m_l1Socket || m_state == State::Idle)
+    if (m_state == State::Idle)
         return;
 
     const QString errMsg = m_l1Socket->errorString();
@@ -217,15 +211,13 @@ void ArkTSDebugBridge::startSignalWatch()
     log(QStringLiteral("[BRIDGE] Waiting for signal: %1").arg(m_signalFile));
 
     /* ** 每 100ms 轮询一次 */
-    m_signalTimer = new QTimer(this);
-    m_signalTimer->setInterval(kSignalPollMs);
-    connect(m_signalTimer, &QTimer::timeout, this, &ArkTSDebugBridge::onSignalPollTick);
+    m_signalTimer->disconnect(this);
+    connect(m_signalTimer.get(), &QTimer::timeout, this, &ArkTSDebugBridge::onSignalPollTick);
     m_signalTimer->start();
 
     /* ** 总超时 120s */
-    m_deadlineTimer = new QTimer(this);
-    m_deadlineTimer->setSingleShot(true);
-    connect(m_deadlineTimer, &QTimer::timeout, this, &ArkTSDebugBridge::onSignalTimeout);
+    m_deadlineTimer->disconnect(this);
+    connect(m_deadlineTimer.get(), &QTimer::timeout, this, &ArkTSDebugBridge::onSignalTimeout);
     m_deadlineTimer->start(kSignalTimeoutMs);
 }
 
@@ -239,14 +231,13 @@ void ArkTSDebugBridge::onSignalPollTick()
 
     /* ** 信号文件已出现，停止轮询和看门狗定时器 */
     m_signalTimer->stop();
-    m_signalTimer->deleteLater();
-    m_signalTimer = nullptr;
+    m_signalTimer->disconnect(this);
 
     m_deadlineTimer->stop(); /* ** 下方复用此定时器作为 addInstance 超时 */
 
     /* ** 发送 {"type":"connected"}（第一级解锁）*/
-    const QString connected = QStringLiteral("{\"type\":\"connected\"}");
-    if (!m_l1Socket || m_l1Socket->state() != QAbstractSocket::ConnectedState) {
+    const auto connected = QStringLiteral("{\"type\":\"connected\"}");
+    if (m_l1Socket->state() != QAbstractSocket::ConnectedState) {
         fatalError(QStringLiteral("[BRIDGE] ERROR sending connected: socket not ready"));
         return;
     }
@@ -261,8 +252,8 @@ void ArkTSDebugBridge::onSignalPollTick()
     m_deadlineTimer->setInterval(kAddInstanceWaitMs);
     m_deadlineTimer->setSingleShot(true);
     /* ** 复用同一定时器，重新绑定 addInstance 超时槽函数 */
-    disconnect(m_deadlineTimer, &QTimer::timeout, this, &ArkTSDebugBridge::onSignalTimeout);
-    connect(m_deadlineTimer, &QTimer::timeout, this, [this] {
+    disconnect(m_deadlineTimer.get(), &QTimer::timeout, this, &ArkTSDebugBridge::onSignalTimeout);
+    connect(m_deadlineTimer.get(), &QTimer::timeout, this, [this] {
         log(QStringLiteral("[BRIDGE] WARNING: no addInstance — trying Panda CDT anyway"));
         m_state = State::ConnectingL2;
         m_l2Attempts = 0;
@@ -292,28 +283,22 @@ void ArkTSDebugBridge::attemptL2Connect()
 
     ++m_l2Attempts;
 
-    if (m_l2Socket) {
-        m_l2Socket->disconnect(this);
-        m_l2Socket->abort();
-        m_l2Socket->deleteLater();
-        m_l2Socket = nullptr;
-    }
+    m_l2Socket->disconnect(this);
+    m_l2Socket->abort();
 
     log(QStringLiteral("[BRIDGE] Connecting to Panda CDT at port=%1... (attempt %2)")
             .arg(m_pandaPort).arg(m_l2Attempts));
 
-    m_l2Socket = new QWebSocket(QString(), QWebSocketProtocol::VersionLatest, this);
-
-    connect(m_l2Socket, &QWebSocket::connected,
+    connect(m_l2Socket.get(), &QWebSocket::connected,
             this, &ArkTSDebugBridge::onL2Connected);
-    connect(m_l2Socket, &QWebSocket::textMessageReceived,
+    connect(m_l2Socket.get(), &QWebSocket::textMessageReceived,
             this, &ArkTSDebugBridge::onL2TextMessageReceived);
-    connect(m_l2Socket, &QWebSocket::disconnected,
+    connect(m_l2Socket.get(), &QWebSocket::disconnected,
             this, &ArkTSDebugBridge::onL2Disconnected);
-    connect(m_l2Socket, &QWebSocket::errorOccurred,
+    connect(m_l2Socket.get(), &QWebSocket::errorOccurred,
             this, [this](QAbstractSocket::SocketError) { onL2Error(); });
 
-    const QUrl url = QUrl(QStringLiteral("ws://127.0.0.1:%1").arg(m_pandaPort));
+    const auto url = QUrl(QStringLiteral("ws://127.0.0.1:%1").arg(m_pandaPort));
     m_l2Socket->open(url);
 }
 
@@ -322,11 +307,8 @@ void ArkTSDebugBridge::onL2Connected()
     if (m_state != State::ConnectingL2)
         return;
 
-    if (m_retryTimer) {
-        m_retryTimer->stop();
-        m_retryTimer->deleteLater();
-        m_retryTimer = nullptr;
-    }
+    m_retryTimer->stop();
+    m_retryTimer->disconnect(this);
 
     m_state = State::Running;
     sendCDTMessages();
@@ -343,20 +325,20 @@ void ArkTSDebugBridge::sendCDTMessages()
     {
         const char *method;
     };
-    static const CdtMsg kMsgs[] = {
-        {"Runtime.enable"},
-        {"Debugger.enable"},
-        {"Runtime.runIfWaitingForDebugger"},
+    static const std::array<CdtMsg, 3> kMsgs = {
+        CdtMsg{"Runtime.enable"},
+        CdtMsg{"Debugger.enable"},
+        CdtMsg{"Runtime.runIfWaitingForDebugger"},
     };
 
     /* ** 通过单次定时器链依次延迟发送 */
     int delayMs = 0;
-    for (const CdtMsg &m : kMsgs) {
+    for (const auto &m : kMsgs) {
         ++m_cdtMsgId;
         const int     id     = m_cdtMsgId;
         const QString method = QString::fromLatin1(m.method);
         QTimer::singleShot(delayMs, this, [this, id, method] {
-            if (m_state != State::Running || !m_l2Socket)
+            if (m_state != State::Running)
                 return;
             const QString msg =
                 QStringLiteral("{\"id\":%1,\"method\":\"%2\",\"params\":{}}")
@@ -375,7 +357,7 @@ void ArkTSDebugBridge::onL2TextMessageReceived(const QString &message)
 {
     log(QStringLiteral("[BRIDGE] Panda CDT: %1").arg(message.left(300)));
 
-    if (m_state != State::Running || !m_l2Socket)
+    if (m_state != State::Running)
         return;
 
     const QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
@@ -405,12 +387,9 @@ void ArkTSDebugBridge::onL2Disconnected()
 {
     if (m_state == State::ConnectingL2) {
         /* ** 等待重试 */
-        if (m_retryTimer == nullptr) {
-            m_retryTimer = new QTimer(this);
-            m_retryTimer->setSingleShot(true);
-            connect(m_retryTimer, &QTimer::timeout,
-                    this, &ArkTSDebugBridge::attemptL2Connect);
-        }
+        m_retryTimer->disconnect(this);
+        connect(m_retryTimer.get(), &QTimer::timeout,
+                this, &ArkTSDebugBridge::attemptL2Connect);
         m_retryTimer->start(kL2RetryMs);
         return;
     }
@@ -421,9 +400,9 @@ void ArkTSDebugBridge::onL2Disconnected()
     }
 }
 
-void ArkTSDebugBridge::onL2Error()
+void ArkTSDebugBridge::onL2Error() const
 {
-    if (!m_l2Socket || m_state == State::Idle)
+    if (m_state == State::Idle)
         return;
 
     qCDebug(arkLog) << "L2 error:" << m_l2Socket->errorString();
@@ -458,42 +437,29 @@ void ArkTSDebugBridge::cleanup(bool emitFinished)
     const State prev = m_state;
     m_state = State::Idle;
 
-    auto stopAndDelete = [](QTimer *&t) {
-        if (t) {
-            t->stop();
-            t->deleteLater();
-            t = nullptr;
-        }
-    };
-    stopAndDelete(m_retryTimer);
-    stopAndDelete(m_signalTimer);
-    stopAndDelete(m_deadlineTimer);
+    for (const auto &t : {m_retryTimer.get(), m_signalTimer.get(), m_deadlineTimer.get()}) {
+        t->stop();
+        t->disconnect(this);
+    }
 
     /* ** 清理 L2：先发 Debugger.disable 再优雅关闭，
     ** 确保设备侧 ArkTS 调试端口被正确释放。 */
-    if (m_l2Socket) {
-        if (prev == State::Running
-            && m_l2Socket->state() == QAbstractSocket::ConnectedState) {
-            ++m_cdtMsgId;
-            m_l2Socket->sendTextMessage(
-                QStringLiteral("{\"id\":%1,\"method\":\"Debugger.disable\",\"params\":{}}").arg(m_cdtMsgId));
-            m_l2Socket->close();
-        } else {
-            m_l2Socket->abort();
-        }
-        m_l2Socket->disconnect(this);
-        m_l2Socket->deleteLater();
-        m_l2Socket = nullptr;
+    if (prev == State::Running
+        && m_l2Socket->state() == QAbstractSocket::ConnectedState) {
+        ++m_cdtMsgId;
+        m_l2Socket->sendTextMessage(
+            QStringLiteral("{\"id\":%1,\"method\":\"Debugger.disable\",\"params\":{}}").arg(m_cdtMsgId));
+        m_l2Socket->close();
+    } else {
+        m_l2Socket->abort();
     }
-    if (m_l1Socket) {
-        m_l1Socket->disconnect(this);
-        if (m_l1Socket->state() == QAbstractSocket::ConnectedState)
-            m_l1Socket->close();
-        else
-            m_l1Socket->abort();
-        m_l1Socket->deleteLater();
-        m_l1Socket = nullptr;
-    }
+    m_l2Socket->disconnect(this);
+
+    m_l1Socket->disconnect(this);
+    if (m_l1Socket->state() == QAbstractSocket::ConnectedState)
+        m_l1Socket->close();
+    else
+        m_l1Socket->abort();
 
     if (emitFinished)
         emit finished();
