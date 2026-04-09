@@ -35,10 +35,10 @@ public:
     QStringList effectiveModuleDeviceTypes() const;
 
 protected:
-    QtTaskTree::GroupItem defaultProcessTask();
+    QtTaskTree::GroupItem hvigorBuildTask();
     QtTaskTree::GroupItem syncProjectTask();
     QtTaskTree::GroupItem ohpmInstallTask();
-    bool setupProcess(Utils::Process &process);
+    bool setupHvigorProcess(Utils::Process &process);
     /** 创建 build/ohpro，返回规范绝对路径供 hvigor/Node（避免 uv_cwd EPERM）。 */
     bool prepareOhProDirectory(Utils::FilePath *outCwd, QString *errorMessage);
 

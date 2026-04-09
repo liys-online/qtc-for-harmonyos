@@ -17,6 +17,7 @@
 #include <projectexplorer/buildconfiguration.h>
 
 #include <QCheckBox>
+#include <QComboBox>
 #include <QLineEdit>
 #include <QGridLayout>
 #include <QHash>
@@ -202,12 +203,12 @@ public:
         versions.removeDuplicates();
 
         // 两个下拉框共享同一 API 等级列表
-        auto targetSDKComboBox = new QComboBox();
-        auto buildToolsSdkComboBox = new QComboBox();
+        m_targetSDKComboBox = new QComboBox(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
+        m_buildToolsSdkComboBox = new QComboBox(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
         for (int i = 0; i < versions.size(); ++i) {
             const QVariant v = QVariant::fromValue(buildToolsVersions.at(i));
-            targetSDKComboBox->addItem(versions.at(i), v);
-            buildToolsSdkComboBox->addItem(versions.at(i), v);
+            m_targetSDKComboBox->addItem(versions.at(i), v);
+            m_buildToolsSdkComboBox->addItem(versions.at(i), v);
         }
 
         // 默认选中 DevEco Studio 对应版本；有已保存值则恢复保存值
@@ -222,66 +223,34 @@ public:
             const auto devecoIdx = buildToolsVersions.indexOf(devecoApiLevel);
             return static_cast<int>(devecoIdx >= 0 ? devecoIdx : versions.size() - 1);
         };
-        targetSDKComboBox->setCurrentIndex(resolveInitIdx(m_step->buildTargetSdk()));
-        buildToolsSdkComboBox->setCurrentIndex(resolveInitIdx(m_step->buildToolsVersion()));
+        m_targetSDKComboBox->setCurrentIndex(resolveInitIdx(m_step->buildTargetSdk()));
+        m_buildToolsSdkComboBox->setCurrentIndex(resolveInitIdx(m_step->buildToolsVersion()));
 
-        connect(targetSDKComboBox, &QComboBox::activated, this,
-                [this, targetSDKComboBox, buildToolsSdkComboBox](int idx) {
-                    m_step->setBuildTargetSdk(targetSDKComboBox->itemText(idx));
+        connect(m_targetSDKComboBox, &QComboBox::activated, this,
+                [this](int idx) {
+                    m_step->setBuildTargetSdk(m_targetSDKComboBox->itemText(idx));
                     OhProjecteCreator::updateBuildProfileSdkVersions(
                         m_step->buildDirectory().toUserOutput() + "/ohpro",
-                        targetSDKComboBox->currentData().toInt(),
-                        buildToolsSdkComboBox->currentData().toInt());
+                        m_targetSDKComboBox->currentData().toInt(),
+                        m_buildToolsSdkComboBox->currentData().toInt());
                 });
-        connect(buildToolsSdkComboBox, &QComboBox::activated, this,
-                [this, targetSDKComboBox, buildToolsSdkComboBox](int idx) {
-                    m_step->setBuildToolsVersion(buildToolsSdkComboBox->itemText(idx));
+        connect(m_buildToolsSdkComboBox, &QComboBox::activated, this,
+                [this](int idx) {
+                    m_step->setBuildToolsVersion(m_buildToolsSdkComboBox->itemText(idx));
                     OhProjecteCreator::updateBuildProfileSdkVersions(
                         m_step->buildDirectory().toUserOutput() + "/ohpro",
-                        targetSDKComboBox->currentData().toInt(),
-                        buildToolsSdkComboBox->currentData().toInt());
+                        m_targetSDKComboBox->currentData().toInt(),
+                        m_buildToolsSdkComboBox->currentData().toInt());
                 });
 
-        auto createHarmonyTemplatesButton = new QPushButton(Tr::tr("Create Templates"));
+        auto createHarmonyTemplatesButton = new QPushButton(Tr::tr("Create Templates"), this);   // NOSONAR (cpp:S5025)
         createHarmonyTemplatesButton->setToolTip(
             Tr::tr("Create an HarmonyOS package for Custom Java code, assets, and Gradle configurations."));
-        connect(createHarmonyTemplatesButton, &QAbstractButton::clicked, this, [this, targetSDKComboBox, buildToolsSdkComboBox] {
-            using namespace QtSupport;
-            auto *buildsystem = m_step->buildSystem();
-            if (!buildsystem)
-                return;
-            auto *ohPro = OhProjecteCreator::instance();
-            OhProjecteCreator::ProjecteInfo proInfo;
-            proInfo.projectPath = m_step->buildDirectory().toUserOutput() + "/ohpro";
-            proInfo.targetSdkVersion = targetSDKComboBox->currentData().toInt();
-            if(proInfo.targetSdkVersion < 0) {
-                proInfo.targetSdkVersion = HarmonyConfig::devecoStudioVersion().first;
-            }
-            if(auto *project = buildsystem->project())
-            {
-                QString projFile = project->projectFilePath().toUserOutput();
-                if(projFile.endsWith("CMakeLists.txt")) {
-                    proInfo.cmakeListPath = projFile;
-                }
-            }
-            if(auto *kit = buildsystem->kit())
-            {
-                auto ohQt = static_cast<const HarmonyQtVersion *>(QtKitAspect::qtVersion(kit));
-                if(ohQt) {
-                    proInfo.compatibleSdkVersion =buildToolsSdkComboBox->currentData().toInt();
-                    if(proInfo.compatibleSdkVersion < 0) {
-                        proInfo.compatibleSdkVersion = ohQt->supportOhVersion().majorVersion();
-                    }
-                    proInfo.qtHostPath = ohQt->hostPrefixPath().toUserOutput();
-                }
-            }
-            proInfo.deviceTypes = m_step->effectiveModuleDeviceTypes();
-            proInfo.entrylib = m_step->resolvedEntryLib();
-            ohPro->create(proInfo);
-        });
+        connect(createHarmonyTemplatesButton, &QAbstractButton::clicked,
+                this, [this] { createTemplatesFromUi(); });
         connect(m_step, &HarmonyBuildHapStep::createTemplates, createHarmonyTemplatesButton, &QPushButton::click);
 
-        m_entryLibEdit = new QLineEdit;
+        m_entryLibEdit = new QLineEdit(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
         m_entryLibEdit->setPlaceholderText(m_step->resolvedEntryLib());
         m_entryLibEdit->setText(m_step->entryLibOverride());
         m_entryLibEdit->setToolTip(
@@ -292,7 +261,7 @@ public:
             m_entryLibEdit->setPlaceholderText(m_step->resolvedEntryLib());
         });
 
-        auto applyEntryLibButton = new QPushButton(Tr::tr("Apply"));
+        auto applyEntryLibButton = new QPushButton(Tr::tr("Apply"), this);  // NOSONAR (cpp:S5025)
         applyEntryLibButton->setToolTip(
             Tr::tr("Write the entry library name directly into the existing EntryAbility.ets "
                    "without re-creating all templates."));
@@ -301,56 +270,27 @@ public:
             OhProjecteCreator::patchEntryAbilityLib(ohproPath, m_step->resolvedEntryLib());
         });
 
-        m_followKitModuleDeviceTypes = new QCheckBox(
-            Tr::tr("Use Harmony preferences and Kit for module device types (no step override)"));
+        m_followKitModuleDeviceTypes = new QCheckBox(  // NOSONAR (cpp:S5025) - parented, will auto-delete
+            Tr::tr("Use Harmony preferences and Kit for module device types (no step override)"), this);
         m_followKitModuleDeviceTypes->setToolTip(
             Tr::tr("When checked, the build step does not store an override; effective device types use the "
                    "Kit field, then global Harmony preferences (empty preference means 2in1). Uncheck to pick "
                    "presets for this step only."));
-        m_moduleDeviceTypesOverrideWidget = new QWidget;
+        m_moduleDeviceTypesOverrideWidget = new QWidget(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
         {
-            auto *grid = new QGridLayout(m_moduleDeviceTypesOverrideWidget);
+            auto *grid = new QGridLayout(m_moduleDeviceTypesOverrideWidget);  // NOSONAR (cpp:S5025)
             grid->setContentsMargins(0, 0, 0, 0);
-            int i = 0;
-            for (const QString &id : ohModuleDeviceTypePresetIds()) {
-                auto *cb = new QCheckBox(id);
-                m_moduleDeviceTypeCheckBoxes.insert(id, cb);
-                grid->addWidget(cb, i / 3, i % 3);
-                ++i;
-                connect(cb, &QCheckBox::toggled, this, [this] {
-                    if (!m_followKitModuleDeviceTypes->isChecked())
-                        applyModuleDeviceTypesOverrideFromCheckBoxes();
-                });
-            }
+            setupDeviceTypeCheckBoxGrid(grid);
         }
-        connect(m_followKitModuleDeviceTypes, &QCheckBox::toggled, this, [this](bool followKit) {
-            if (followKit) {
-                m_step->setModuleDeviceTypesLine(QString());
-                for (QCheckBox *cb : m_moduleDeviceTypeCheckBoxes)
-                    if (cb) {
-                        const QSignalBlocker b(cb);
-                        cb->setChecked(false);
-                    }
-                m_moduleDeviceTypesOverrideWidget->setEnabled(false);
-            } else {
-                m_moduleDeviceTypesOverrideWidget->setEnabled(true);
-                const QStringList eff = m_step->effectiveModuleDeviceTypes();
-                for (const QString &id : ohModuleDeviceTypePresetIds()) {
-                    if (QCheckBox *cb = m_moduleDeviceTypeCheckBoxes.value(id)) {
-                        const QSignalBlocker b(cb);
-                        cb->setChecked(eff.contains(id));
-                    }
-                }
-                applyModuleDeviceTypesOverrideFromCheckBoxes();
-            }
-        });
+        connect(m_followKitModuleDeviceTypes, &QCheckBox::toggled,
+                this, &HarmonyBuildHapWidget::onFollowKitToggled);
         reloadModuleDeviceTypesUiFromStep();
 
         Group applicationGroup {
             title(Tr::tr("Application")),
             Form {
-                Tr::tr("Harmony compatible Sdk Version:"), buildToolsSdkComboBox, br,
-                Tr::tr("Harmony target Sdk Version:"), targetSDKComboBox, br,
+                Tr::tr("Harmony compatible Sdk Version:"), m_buildToolsSdkComboBox, br,
+                Tr::tr("Harmony target Sdk Version:"), m_targetSDKComboBox, br,
                 m_followKitModuleDeviceTypes, br,
                 Tr::tr("Override module device types:"), m_moduleDeviceTypesOverrideWidget, br,
                 Tr::tr("Entry library name:"), m_entryLibEdit, applyEntryLibButton, br,
@@ -404,13 +344,89 @@ public:
             m_step->setModuleDeviceTypesLine(line);
     }
 
+    void createTemplatesFromUi() const;
+    void onFollowKitToggled(bool followKit);
+    void setupDeviceTypeCheckBoxGrid(QGridLayout *grid);
+
 private:
     HarmonyBuildHapStep *m_step = nullptr;
     QLineEdit *m_entryLibEdit = nullptr;
+    QComboBox *m_targetSDKComboBox = nullptr;
+    QComboBox *m_buildToolsSdkComboBox = nullptr;
     QCheckBox *m_followKitModuleDeviceTypes = nullptr;
     QWidget *m_moduleDeviceTypesOverrideWidget = nullptr;
     QHash<QString, QCheckBox *> m_moduleDeviceTypeCheckBoxes;
 };
+
+void HarmonyBuildHapWidget::createTemplatesFromUi() const
+{
+    using namespace QtSupport;
+    const auto *buildsystem = m_step->buildSystem();
+    if (!buildsystem)
+        return;
+    auto *ohPro = OhProjecteCreator::instance();
+    OhProjecteCreator::ProjecteInfo proInfo;
+    proInfo.projectPath = m_step->buildDirectory().toUserOutput() + "/ohpro";
+    proInfo.targetSdkVersion = m_targetSDKComboBox->currentData().toInt();
+    if (proInfo.targetSdkVersion < 0)
+        proInfo.targetSdkVersion = HarmonyConfig::devecoStudioVersion().first;
+    if (const auto *project = buildsystem->project()) {
+        const QString projFile = project->projectFilePath().toUserOutput();
+        if (projFile.endsWith("CMakeLists.txt"))
+            proInfo.cmakeListPath = projFile;
+    }
+    if (const auto *kit = buildsystem->kit()) {
+        const auto *ohQt = static_cast<const HarmonyQtVersion *>(QtKitAspect::qtVersion(kit));
+        if (ohQt) {
+            proInfo.compatibleSdkVersion = m_buildToolsSdkComboBox->currentData().toInt();
+            if (proInfo.compatibleSdkVersion < 0)
+                proInfo.compatibleSdkVersion = ohQt->supportOhVersion().majorVersion();
+            proInfo.qtHostPath = ohQt->hostPrefixPath().toUserOutput();
+        }
+    }
+    proInfo.deviceTypes = m_step->effectiveModuleDeviceTypes();
+    proInfo.entrylib = m_step->resolvedEntryLib();
+    ohPro->create(proInfo);
+}
+
+void HarmonyBuildHapWidget::onFollowKitToggled(bool followKit)
+{
+    if (followKit) {
+        m_step->setModuleDeviceTypesLine(QString());
+        for (QCheckBox *cb : m_moduleDeviceTypeCheckBoxes) {
+            if (cb) {
+                const QSignalBlocker b(cb);
+                cb->setChecked(false);
+            }
+        }
+        m_moduleDeviceTypesOverrideWidget->setEnabled(false);
+    } else {
+        m_moduleDeviceTypesOverrideWidget->setEnabled(true);
+        const QStringList eff = m_step->effectiveModuleDeviceTypes();
+        for (const QString &id : ohModuleDeviceTypePresetIds()) {
+            if (QCheckBox *cb = m_moduleDeviceTypeCheckBoxes.value(id)) {
+                const QSignalBlocker b(cb);
+                cb->setChecked(eff.contains(id));
+            }
+        }
+        applyModuleDeviceTypesOverrideFromCheckBoxes();
+    }
+}
+
+void HarmonyBuildHapWidget::setupDeviceTypeCheckBoxGrid(QGridLayout *grid)
+{
+    int i = 0;
+    for (const QString &id : ohModuleDeviceTypePresetIds()) {
+        auto *cb = new QCheckBox(id, this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
+        m_moduleDeviceTypeCheckBoxes.insert(id, cb);
+        grid->addWidget(cb, i / 3, i % 3);
+        ++i;
+        connect(cb, &QCheckBox::toggled, this, [this] {
+            if (!m_followKitModuleDeviceTypes->isChecked())
+                applyModuleDeviceTypesOverrideFromCheckBoxes();
+        });
+    }
+}
 
 namespace {
 void migrateLegacyHarmonyBuildHapMap(Utils::Store &m)
@@ -487,10 +503,10 @@ bool HarmonyBuildHapStep::prepareOhProDirectory(FilePath *outCwd, QString *error
     return true;
 }
 
-QtTaskTree::GroupItem HarmonyBuildHapStep::defaultProcessTask()
+QtTaskTree::GroupItem HarmonyBuildHapStep::hvigorBuildTask()
 {
     const auto onSetup = [this](Process &process) {
-        return setupProcess(process) ? QtTaskTree::SetupResult::Continue
+        return setupHvigorProcess(process) ? QtTaskTree::SetupResult::Continue
                                      : QtTaskTree::SetupResult::StopWithError;
     };
     const auto onDone = [this](const Process &process) { handleProcessDone(process); };
@@ -648,7 +664,7 @@ QtTaskTree::GroupItem HarmonyBuildHapStep::ohpmInstallTask()
     return ProcessTask(onOhpmInstall, onOhpmInstallDone);
 }
 
-bool HarmonyBuildHapStep::setupProcess(Utils::Process &process)
+bool HarmonyBuildHapStep::setupHvigorProcess(Utils::Process &process)
 {
     using namespace Utils;
     using namespace ProjectExplorer;
@@ -765,14 +781,14 @@ QStringList HarmonyBuildHapStep::effectiveModuleDeviceTypes() const
     const QStringList fromLine = parseOhModuleDeviceTypesLine(m_ohModuleDeviceTypesLine);
     if (!fromLine.isEmpty())
         return fromLine;
-    if (ProjectExplorer::BuildConfiguration *bc = buildConfiguration()) {
-        if (ProjectExplorer::Kit *k = bc->kit()) {
-            const QVariant v = k->value(Id(Constants::HARMONY_KIT_MODULE_DEVICE_TYPES));
-            if (v.canConvert<QStringList>()) {
-                const QStringList kl = v.toStringList();
-                if (!kl.isEmpty())
-                    return kl;
-            }
+    const auto *bc = buildConfiguration();
+    const ProjectExplorer::Kit *k = bc ? bc->kit() : nullptr;
+    if (k) {
+        const QVariant v = k->value(Id(Constants::HARMONY_KIT_MODULE_DEVICE_TYPES));
+        if (v.canConvert<QStringList>()) {
+            const QStringList kl = v.toStringList();
+            if (!kl.isEmpty())
+                return kl;
         }
     }
     return HarmonyConfig::ohModuleDeviceTypes();
@@ -780,7 +796,7 @@ QStringList HarmonyBuildHapStep::effectiveModuleDeviceTypes() const
 
 QWidget *HarmonyBuildHapStep::createConfigWidget()
 {
-    return new HarmonyBuildHapWidget(this);
+    return new HarmonyBuildHapWidget(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
 }
 
 void HarmonyBuildHapStep::setupOutputFormatter(OutputFormatter *formatter)
@@ -872,7 +888,7 @@ QtTaskTree::GroupItem HarmonyBuildHapStep::runRecipe()
         ignoreReturnValue() ? QtTaskTree::finishAllAndSuccess : QtTaskTree::stopOnError,
         syncProjectTask(),
         ohpmInstallTask(),
-        defaultProcessTask()};
+        hvigorBuildTask()};
 }
 
 
