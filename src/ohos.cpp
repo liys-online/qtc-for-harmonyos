@@ -96,11 +96,9 @@ class OhosPlugin final : public ExtensionSystem::IPlugin
 public:
     OhosPlugin() = default;
 
-    ~OhosPlugin() final
-    {
-
-    }
-
+    ~OhosPlugin() final  = default;
+    
+    using ExtensionSystem::IPlugin::initialize;
     void initialize() final
     {
         using namespace ProjectExplorer;
@@ -223,14 +221,17 @@ public:
         }
     }
     void loadTranslations() {
-        QTranslator *translator = new QTranslator();
-        if (translator->load(":/Harmony_zh_CN.qm")) {
-            QCoreApplication::installTranslator(translator);
+        const QString lang = Core::ICore::userInterfaceLanguage();
+        if (lang.isEmpty() || lang.startsWith(QLatin1String("en")))
+            return; // English is the source language; no translation file needed.
+        QTranslator translator;
+        if (translator.load(QLatin1String(":/Harmony_") + lang + QLatin1String(".qm"))) {
+            QCoreApplication::installTranslator(&translator);
         }
     }
     void extensionsInitialized() final
     {
-
+        return;
     }
 
     ShutdownFlag aboutToShutdown() final
