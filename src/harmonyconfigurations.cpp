@@ -1041,39 +1041,35 @@ bool hasExistingVersion(const QtVersion *qtVersion) {
     return !installedVersions.isEmpty();
 }
 
+static void tryRegisterHarmonyQtVersion(const FilePath &qmakePath)
+{
+    if (!qmakePath.isExecutableFile())
+        return;
+    auto *qtVersion = QtVersionFactory::createQtVersionFromQMakePath(
+        qmakePath, DetectionSource(DetectionSource::Manual));
+    auto *harmonyQtVersion = dynamic_cast<HarmonyQtVersion *>(qtVersion);
+    if (!harmonyQtVersion)
+        return;
+    const QString displayName = QStringLiteral("Qt %{Qt:Version} for %1 %2")
+                                    .arg(harmonyQtVersion->description(),
+                                         harmonyQtVersion->supportOhVersion().toString());
+    harmonyQtVersion->setUnexpandedDisplayName(displayName);
+    if (QtVersionManager::instance()->isLoaded() && !hasExistingVersion(harmonyQtVersion))
+        QtVersionManager::instance()->addVersion(harmonyQtVersion);
+}
+
 void HarmonyConfigurations::registerQtVersions()
 {
     const auto installedVersions = QtVersionManager::versions([](auto version) {
         return version->type() == Constants::HARMONY_QT_TYPE;
     });
-    for (auto *version : installedVersions)
-    {
+    for (auto *version : installedVersions) {
         if (!version->qmakeFilePath().exists() ||
             !HarmonyConfig::getQmakeList().contains(version->qmakeFilePath().toFSPathString()))
-        {
             QtVersionManager::instance()->removeVersion(version);
-        }
     }
-    for(const auto &qmake : std::as_const(HarmonyConfig::getQmakeList()))
-    {
-        const auto qmakePath = FilePath::fromString(qmake);
-        if (qmakePath.isExecutableFile())
-        {
-            auto *qtVersion = QtVersionFactory::createQtVersionFromQMakePath(
-                qmakePath, DetectionSource(DetectionSource::Manual));
-            if (auto *harmonyQtVersion = dynamic_cast<HarmonyQtVersion *>(qtVersion))
-            {
-                QString displayName = QStringLiteral("Qt %{Qt:Version} for %1 %2")
-                                          .arg(harmonyQtVersion->description(),
-                                               harmonyQtVersion->supportOhVersion().toString());
-                harmonyQtVersion->setUnexpandedDisplayName(displayName);
-                if(QtVersionManager::instance()->isLoaded() && !hasExistingVersion(harmonyQtVersion))
-                {
-                    QtVersionManager::instance()->addVersion(harmonyQtVersion);
-                }
-            }
-        }
-    }
+    for (const auto &qmake : std::as_const(HarmonyConfig::getQmakeList()))
+        tryRegisterHarmonyQtVersion(FilePath::fromString(qmake));
 }
 
 void HarmonyConfigurations::removeOldToolchains()
@@ -1169,25 +1165,112 @@ static FilePath findOrRegisterDevecoCmake()
     return cmake;
 }
 
+static void patchKitNdkSdkIfMissing(Kit *k)
+{
+    if (RunDeviceTypeKitAspect::deviceTypeId(k) != Constants::HARMONY_DEVICE_TYPE)
+        return;
+    if (!k->value(Constants::HARMONY_KIT_NDK).isNull() && !k->value(Constants::HARMONY_KIT_SDK).isNull())
+        return;
+    if (!QtKitAspect::qtVersion(k))
+        return;
+    const FilePath ndkPath = HarmonyConfig::ndkLocation(HarmonyConfig::defaultSdk());
+    k->setValueSilently(Constants::HARMONY_KIT_NDK, ndkPath.toSettings());
+    k->setValueSilently(Constants::HARMONY_KIT_SDK, HarmonyConfig::defaultSdk().toSettings());
+}
+
+static QByteArray resolveOhosArch(const HarmonyQtVersion *ohQt, const ToolchainBundle &bundle)
+{
+    QByteArray a = abiToOhosNdkArchString(ohQt->targetAbi());
+    if (a.isEmpty())
+        a = abiToOhosNdkArchString(bundle.targetAbi());
+    return a;
+}
+
+static void applyHarmonyKitSettings(Kit *k, const ToolchainBundle &bundle,
+                                     const FilePath &expectedNdkPath,
+                                     const HarmonyQtVersion *ohQt)
+{
+    using namespace CMakeProjectManager;
+    auto cmakeConfig = CMakeConfigurationKitAspect::defaultConfiguration(k);
+    /* ** CMakeConfig 为 QMap：用 insert，无 append（Qt Creator 19+） */
+    cmakeConfig.insert(CMakeConfigItem("CMAKE_TOOLCHAIN_FILE", CMakeConfigItem::FILEPATH,
+                                       HarmonyConfig::toolchainFilePath(expectedNdkPath)
+                                           .toUserOutput().toUtf8()));
+    cmakeConfig.insert(CMakeConfigItem("CMAKE_FIND_ROOT_PATH", CMakeConfigItem::PATH,
+                                        QByteArrayLiteral("%{Qt:QT_INSTALL_PREFIX}")));
+    cmakeConfig.insert(CMakeConfigItem("OHOS_STL", CMakeConfigItem::STRING, QByteArrayLiteral("c++_shared")));
+
+    /*
+    ** targetAbi() 若未从 qdevice.pri 解析到，会得到无效 Abi → displayName 为 "unknown"，
+    ** ohos.toolchain.cmake 会报 unrecognized unknown。优先用 Qt 版本身 ABI，否则用工具链 Bundle。
+    */
+    const QByteArray rawOhosArch = resolveOhosArch(ohQt, bundle);
+    QByteArray ohosArch = normalizeOhosArchForSdkToolchain(rawOhosArch);
+    if (rawOhosArch.isEmpty()) {
+        Core::MessageManager::writeFlashing(
+            QObject::tr("Harmony Kit: Could not detect OHOS_ARCH from Qt or toolchain; "
+                        "defaulting CMake variable to %1. If configure still fails, add "
+                        "OHOS_ARCH in Kit CMake configuration or fix Qt mkspecs qdevice.pri.")
+                .arg(QString::fromLatin1(ohosArch)));
+    } else if (rawOhosArch != ohosArch) {
+        Core::MessageManager::writeFlashing(
+            QObject::tr("Harmony Kit: OHOS_ARCH value %1 is not valid for OpenHarmony "
+                        "ohos.toolchain.cmake (allowed: arm64-v8a, armeabi-v7a, x86_64). "
+                        "Using %2 instead. Remove conflicting -DOHOS_ARCH from the kit's "
+                        "additional CMake arguments if configure still fails.")
+                .arg(QString::fromLatin1(rawOhosArch), QString::fromLatin1(ohosArch)));
+    }
+    cmakeConfig.insert(CMakeConfigItem("OHOS_ARCH", CMakeConfigItem::STRING, ohosArch));
+    cmakeConfig.insert(CMakeConfigItem("OHOS_PLATFORM", CMakeConfigItem::STRING, QByteArrayLiteral("OHOS")));
+
+    k->setDetectionSource(DetectionSource(DetectionSource::FromSystem, QStringLiteral("HarmonyConfiguration")));
+    RunDeviceTypeKitAspect::setDeviceTypeId(k, Constants::HARMONY_DEVICE_TYPE);
+    ToolchainKitAspect::setBundle(k, bundle);
+    QtKitAspect::setQtVersion(k, ohQt);
+
+    /* ** 设置构建设备为默认桌面设备 */
+    BuildDeviceKitAspect::setDeviceId(k, DeviceManager::defaultDesktopDevice()->id());
+
+    CMakeConfigurationKitAspect::setConfiguration(k, cmakeConfig);
+    CMakeGeneratorKitAspect::setGenerator(k, QStringLiteral("Ninja"));
+
+    /* ** 设置粘性属性，防止用户意外修改关键设置 */
+    k->setSticky(QtKitAspect::id(), true);
+    k->setSticky(RunDeviceTypeKitAspect::id(), true);
+    k->setSticky(ToolchainKitAspect::id(), true);
+
+    /* ** 注册并设置 OHOS LLDB 调试器 */
+    const QVariant debuggerId = findOrRegisterOhosDebugger(expectedNdkPath);
+    if (!debuggerId.isNull())
+        Debugger::DebuggerKitAspect::setDebugger(k, debuggerId);
+
+    /* ** 注册并设置 DevEco Studio 内置 CMake */
+    const FilePath devecoCmake = findOrRegisterDevecoCmake();
+    if (!devecoCmake.isEmpty())
+        CMakeProjectManager::CMakeKitAspect::setCMakeExecutable(k, devecoCmake);
+
+    k->setUnexpandedDisplayName(QObject::tr("%1 for HarmonyOS %2 %3")
+                                    .arg(QLatin1String("Qt %{Qt:Version}"),
+                                         ohQt->supportOhVersion().toString(),
+                                         HarmonyConfig::displayName(ohQt->targetAbi())));
+
+    /* ** 设置 NDK 和 SDK 路径 */
+    k->setValueSilently(Constants::HARMONY_KIT_NDK, expectedNdkPath.toSettings());
+    k->setValueSilently(Constants::HARMONY_KIT_SDK, ohQt->qmakeFilePath().toSettings());
+    k->setValueSilently(Constants::HARMONY_KIT_MODULE_DEVICE_TYPES,
+                        QVariant::fromValue(HarmonyConfig::ohModuleDeviceTypes()));
+    k->setValueSilently(Constants::OHOS_ARCH, QString::fromLatin1(ohosArch));
+}
+
 void HarmonyConfigurations::updateAutomaticKitList()
 {
     /* ** 更新现有 Harmony Kit 的 NDK 和 SDK 设置 */
-    for (Kit *k : KitManager::kits()) {
-        if (RunDeviceTypeKitAspect::deviceTypeId(k) == Constants::HARMONY_DEVICE_TYPE) {
-            if (k->value(Constants::HARMONY_KIT_NDK).isNull() || k->value(Constants::HARMONY_KIT_SDK).isNull()) {
-                if (QtKitAspect::qtVersion(k)) {
-                    /* ** 设置 NDK 和 SDK 路径 */
-                    const FilePath ndkPath = HarmonyConfig::ndkLocation(HarmonyConfig::defaultSdk());
-                    k->setValueSilently(Constants::HARMONY_KIT_NDK, ndkPath.toSettings());
-                    k->setValueSilently(Constants::HARMONY_KIT_SDK, HarmonyConfig::defaultSdk().toSettings());
-                }
-            }
-        }
-    }
+    for (Kit *k : KitManager::kits())
+        patchKitNdkSdkIfMissing(k);
 
     /* ** 获取现有的 Harmony Kit 列表 */
     const QList<Kit *> existingKits = Utils::filtered(KitManager::kits(), [](Kit *k) {
-        Id deviceTypeId = RunDeviceTypeKitAspect::deviceTypeId(k);
+        const Id deviceTypeId = RunDeviceTypeKitAspect::deviceTypeId(k);
         return k->detectionSource().isAutoDetected() && !k->detectionSource().isSdkProvided()
                && deviceTypeId == Constants::HARMONY_DEVICE_TYPE;
     });
@@ -1197,12 +1280,10 @@ void HarmonyConfigurations::updateAutomaticKitList()
     const QtVersions qtVersions = QtVersionManager::versions([](const QtVersion *v) {
         return v->type() == Constants::HARMONY_QT_TYPE;
     });
-    
     for (const QtVersion *qtVersion : qtVersions) {
         const Abis qtAbis = qtVersion->qtAbis();
-        if (qtAbis.empty())
-            continue;
-        qtVersionsForArch[qtAbis.first()].append(qtVersion);
+        if (!qtAbis.empty())
+            qtVersionsForArch[qtAbis.first()].append(qtVersion);
     }
 
     /* ** 获取有效的工具链 Bundle */
@@ -1220,14 +1301,13 @@ void HarmonyConfigurations::updateAutomaticKitList()
     for (const ToolchainBundle &bundle : bundles) {
         const auto &versions = qtVersionsForArch.value(bundle.targetAbi());
         for (const QtVersion *qt : versions) {
-            /* ** 检查工具链的 NDK 位置是否与 Qt 版本匹配 */
             const auto tcApiVersion = bundle.get(&HarmonyToolchain::apiVersion);
             const auto expectedNdkPath = bundle.get(&HarmonyToolchain::ndkLocation);
             qCDebug(harmonyConfigLog)
                 << tr("Processing Qt %1 for HarmonyOS %2 with NDK %3")
                        .arg(qt->displayName(), bundle.targetAbi().toString(), expectedNdkPath.toUserOutput());
-            auto ohQt = static_cast<const HarmonyQtVersion *>(qt);
-            if(tcApiVersion.isNull() || ohQt->supportOhVersion() != tcApiVersion) {
+            const auto *ohQt = static_cast<const HarmonyQtVersion *>(qt);
+            if (tcApiVersion.isNull() || ohQt->supportOhVersion() != tcApiVersion) {
                 qCDebug(harmonyConfigLog)
                     << tr("Skipping Qt %1 for HarmonyOS %2: unsupported API version %3")
                            .arg(ohQt->displayName(), ohQt->supportOhVersion().toString(), tcApiVersion.toString());
@@ -1239,102 +1319,19 @@ void HarmonyConfigurations::updateAutomaticKitList()
              * 目前暂时只支持一个Harmony Qt版本对应一个Kit
              */
             Kit *existingKit = Utils::findOrDefault(existingKits, [qt](const Kit *k) {
-                return (qt == QtKitAspect::qtVersion(k));
+                return qt == QtKitAspect::qtVersion(k);
             });
 
-            /* ** Kit 初始化函数 */
-            const auto initializeKit = [&bundle, expectedNdkPath, ohQt](Kit *k) {
-
-                using namespace CMakeProjectManager;
-                auto cmakeConfig = CMakeConfigurationKitAspect::defaultConfiguration(k);
-                /* ** CMakeConfig 为 QMap：用 insert，无 append（Qt Creator 19+） */
-                cmakeConfig.insert(CMakeConfigItem("CMAKE_TOOLCHAIN_FILE", CMakeConfigItem::FILEPATH,
-                                                   HarmonyConfig::toolchainFilePath(expectedNdkPath)
-                                                       .toUserOutput()
-                                                       .toUtf8()));
-                cmakeConfig.insert(
-                    CMakeConfigItem("CMAKE_FIND_ROOT_PATH", CMakeConfigItem::PATH,
-                                    QByteArrayLiteral("%{Qt:QT_INSTALL_PREFIX}")));
-                cmakeConfig.insert(
-                    CMakeConfigItem("OHOS_STL", CMakeConfigItem::STRING, QByteArrayLiteral("c++_shared")));
-                /*
-                ** targetAbi() 若未从 qdevice.pri 解析到，会得到无效 Abi → displayName 为 "unknown"，
-                ** ohos.toolchain.cmake 会报 unrecognized unknown。优先用 Qt 版本身 ABI，否则用工具链 Bundle。
-                */
-                const QByteArray rawOhosArch = [&] {
-                    QByteArray a = abiToOhosNdkArchString(ohQt->targetAbi());
-                    if (a.isEmpty())
-                        a = abiToOhosNdkArchString(bundle.targetAbi());
-                    return a;
-                }();
-                QByteArray ohosArch = normalizeOhosArchForSdkToolchain(rawOhosArch);
-                if (rawOhosArch.isEmpty()) {
-                    Core::MessageManager::writeFlashing(
-                        QObject::tr("Harmony Kit: Could not detect OHOS_ARCH from Qt or toolchain; "
-                                    "defaulting CMake variable to %1. If configure still fails, add "
-                                    "OHOS_ARCH in Kit CMake configuration or fix Qt mkspecs qdevice.pri.")
-                            .arg(QString::fromLatin1(ohosArch)));
-                } else if (rawOhosArch != ohosArch) {
-                    Core::MessageManager::writeFlashing(
-                        QObject::tr("Harmony Kit: OHOS_ARCH value %1 is not valid for OpenHarmony "
-                                    "ohos.toolchain.cmake (allowed: arm64-v8a, armeabi-v7a, x86_64). "
-                                    "Using %2 instead. Remove conflicting -DOHOS_ARCH from the kit's "
-                                    "additional CMake arguments if configure still fails.")
-                            .arg(QString::fromLatin1(rawOhosArch), QString::fromLatin1(ohosArch)));
-                }
-                cmakeConfig.insert(
-                    CMakeConfigItem("OHOS_ARCH", CMakeConfigItem::STRING, ohosArch));
-                cmakeConfig.insert(
-                    CMakeConfigItem("OHOS_PLATFORM", CMakeConfigItem::STRING, QByteArrayLiteral("OHOS")));
-
-                k->setDetectionSource(DetectionSource(
-                    DetectionSource::FromSystem, QStringLiteral("HarmonyConfiguration")));
-                RunDeviceTypeKitAspect::setDeviceTypeId(k, Constants::HARMONY_DEVICE_TYPE);
-                ToolchainKitAspect::setBundle(k, bundle);
-                QtKitAspect::setQtVersion(k, ohQt);
-
-                /* ** 设置构建设备为默认桌面设备 */
-                BuildDeviceKitAspect::setDeviceId(k, DeviceManager::defaultDesktopDevice()->id());
-
-                CMakeConfigurationKitAspect::setConfiguration(k, cmakeConfig);
-                using namespace CMakeProjectManager;
-                CMakeGeneratorKitAspect::setGenerator(k, QStringLiteral("Ninja"));
-                
-                /* ** 设置粘性属性，防止用户意外修改关键设置 */
-                k->setSticky(QtKitAspect::id(), true);
-                k->setSticky(RunDeviceTypeKitAspect::id(), true);
-                k->setSticky(ToolchainKitAspect::id(), true);
-
-                /* ** 注册并设置 OHOS LLDB 调试器 */
-                const QVariant debuggerId = findOrRegisterOhosDebugger(expectedNdkPath);
-                if (!debuggerId.isNull())
-                    Debugger::DebuggerKitAspect::setDebugger(k, debuggerId);
-
-                /* ** 注册并设置 DevEco Studio 内置 CMake */
-                const FilePath devecoCmake = findOrRegisterDevecoCmake();
-                if (!devecoCmake.isEmpty())
-                    CMakeProjectManager::CMakeKitAspect::setCMakeExecutable(k, devecoCmake);
-
-                k->setUnexpandedDisplayName(QObject::tr("%1 for HarmonyOS %2 %3")
-                                                .arg(QLatin1String("Qt %{Qt:Version}"),
-                                                     ohQt->supportOhVersion().toString(),
-                                                     HarmonyConfig::displayName(ohQt->targetAbi())));
-
-                /* ** 设置 NDK 和 SDK 路径 */
-                k->setValueSilently(Constants::HARMONY_KIT_NDK, expectedNdkPath.toSettings());
-                k->setValueSilently(Constants::HARMONY_KIT_SDK, ohQt->qmakeFilePath().toSettings());
-                k->setValueSilently(Constants::HARMONY_KIT_MODULE_DEVICE_TYPES,
-                                    QVariant::fromValue(HarmonyConfig::ohModuleDeviceTypes()));
-                k->setValueSilently(Constants::OHOS_ARCH, QString::fromLatin1(ohosArch));
+            const auto initKit = [&bundle, expectedNdkPath, ohQt](Kit *k) {
+                applyHarmonyKitSettings(k, bundle, expectedNdkPath, ohQt);
             };
-
             if (existingKit) {
                 /* ** 更新现有 Kit */
-                initializeKit(existingKit);
+                initKit(existingKit);
                 unhandledKits.removeOne(existingKit);
             } else {
                 /* ** 注册新 Kit */
-                KitManager::registerKit(initializeKit);
+                KitManager::registerKit(initKit);
             }
         }
     }
