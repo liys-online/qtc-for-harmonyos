@@ -66,33 +66,33 @@ HarmonyCMakeSummaryWidget::HarmonyCMakeSummaryWidget(BuildConfiguration *bc)
 {
     setWindowTitle(Tr::tr("Harmony"));
 
-    m_qtLabel = new QLabel;
+    m_qtLabel = new QLabel(this);   // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_qtLabel->setTextInteractionFlags(Qt::TextBrowserInteraction);
     m_qtLabel->setWordWrap(true);
 
-    m_ndkLabel = new QLabel;
+    m_ndkLabel = new QLabel(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_ndkLabel->setTextInteractionFlags(Qt::TextBrowserInteraction);
     m_ndkLabel->setWordWrap(true);
 
-    m_kitOhosArchLabel = new QLabel;
+    m_kitOhosArchLabel = new QLabel(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_kitOhosArchLabel->setTextInteractionFlags(Qt::TextBrowserInteraction);
 
-    m_projectOhosArchLabel = new QLabel;
+    m_projectOhosArchLabel = new QLabel(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_projectOhosArchLabel->setTextInteractionFlags(Qt::TextBrowserInteraction);
     m_projectOhosArchLabel->setWordWrap(true);
 
-    m_toolchainLabel = new QLabel;
+    m_toolchainLabel = new QLabel(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_toolchainLabel->setTextInteractionFlags(Qt::TextBrowserInteraction);
     m_toolchainLabel->setWordWrap(true);
 
-    auto *harmonyPrefs = new QPushButton(Tr::tr("Open Harmony Settings…"));
+    auto *harmonyPrefs = new QPushButton(Tr::tr("Open Harmony Settings…"), this);  // NOSONAR (cpp:S5025)
     harmonyPrefs->setToolTip(
         Tr::tr("Open Harmony preferences (SDK paths, DevEco, ohpm, default device types)."));
     connect(harmonyPrefs, &QPushButton::clicked, this, [] {
         Core::ICore::showSettings(Constants::HARMONY_SETTINGS_ID);
     });
 
-    auto *kitPrefs = new QPushButton(Tr::tr("Configure Current Kit…"));
+    auto *kitPrefs = new QPushButton(Tr::tr("Configure Current Kit…"), this);  // NOSONAR (cpp:S5025)
     kitPrefs->setToolTip(Tr::tr("Open the Kits options page for this build configuration's kit."));
     connect(kitPrefs, &QPushButton::clicked, this, [this] {
         if (!m_bc)
@@ -101,7 +101,7 @@ HarmonyCMakeSummaryWidget::HarmonyCMakeSummaryWidget(BuildConfiguration *bc)
             Core::ICore::showSettings(ProjectExplorer::Constants::KITS_SETTINGS_PAGE_ID, k->id());
     });
 
-    auto *refreshBtn = new QPushButton(Tr::tr("Refresh"));
+    auto *refreshBtn = new QPushButton(Tr::tr("Refresh"), this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     refreshBtn->setToolTip(
         Tr::tr("Reload labels from the kit and CMake project data (for example after configuring CMake)."));
     connect(refreshBtn, &QPushButton::clicked, this, [this] { refresh(); });
