@@ -37,6 +37,7 @@ ArkTSDebugBridge::ArkTSDebugBridge(QObject *parent)
     , m_retryTimer(std::make_unique<QTimer>())
     , m_signalTimer(std::make_unique<QTimer>())
     , m_deadlineTimer(std::make_unique<QTimer>())
+    , m_cdtTimer(std::make_unique<QTimer>())
 {
     m_retryTimer->setSingleShot(true);
     m_signalTimer->setInterval(kSignalPollMs);
@@ -317,40 +318,42 @@ void ArkTSDebugBridge::onL2Connected()
 
 void ArkTSDebugBridge::sendCDTMessages()
 {
-    /*
-    ** 依次发送 Runtime.enable / Debugger.enable / Runtime.runIfWaitingForDebugger
-    ** 每条消息间隔 100ms
-    */
-    struct CdtMsg
-    {
-        const char *method;
-    };
-    static const std::array<CdtMsg, 3> kMsgs = {
-        CdtMsg{"Runtime.enable"},
-        CdtMsg{"Debugger.enable"},
-        CdtMsg{"Runtime.runIfWaitingForDebugger"},
+    m_cdtMsgIdx = 0;
+    m_cdtTimer->disconnect(this);
+    m_cdtTimer->setInterval(kCdtIntervalMs);
+    connect(m_cdtTimer.get(), &QTimer::timeout, this, &ArkTSDebugBridge::onCdtTimerTick);
+    m_cdtTimer->start();
+    onCdtTimerTick(); /* ** 立即发送第一条，timer 负责后续两条 */
+}
+
+void ArkTSDebugBridge::onCdtTimerTick()
+{
+    static constexpr std::array<const char *, 3> kCdtMethods = {
+        "Runtime.enable",
+        "Debugger.enable",
+        "Runtime.runIfWaitingForDebugger",
     };
 
-    /* ** 通过单次定时器链依次延迟发送 */
-    int delayMs = 0;
-    for (const auto &m : kMsgs) {
-        ++m_cdtMsgId;
-        const int     id     = m_cdtMsgId;
-        const QString method = QString::fromLatin1(m.method);
-        QTimer::singleShot(delayMs, this, [this, id, method] {
-            if (m_state != State::Running)
-                return;
-            const QString msg =
-                QStringLiteral("{\"id\":%1,\"method\":\"%2\",\"params\":{}}")
-                    .arg(id)
-                    .arg(method);
-            m_l2Socket->sendTextMessage(msg);
-            log(QStringLiteral("[BRIDGE] Sent CDT: %1").arg(msg));
-        });
-        delayMs += kCdtIntervalMs;
+    if (m_state != State::Running || m_cdtMsgIdx >= static_cast<int>(kCdtMethods.size())) {
+        m_cdtTimer->stop();
+        m_cdtTimer->disconnect(this);
+        return;
     }
 
-    log(QStringLiteral("[BRIDGE] Listening for Panda CDT events..."));
+    ++m_cdtMsgId;
+    const QString msg =
+        QStringLiteral("{\"id\":%1,\"method\":\"%2\",\"params\":{}}")
+            .arg(m_cdtMsgId)
+            .arg(QString::fromLatin1(kCdtMethods[m_cdtMsgIdx]));
+    m_l2Socket->sendTextMessage(msg);
+    log(QStringLiteral("[BRIDGE] Sent CDT: %1").arg(msg));
+    ++m_cdtMsgIdx;
+
+    if (m_cdtMsgIdx >= static_cast<int>(kCdtMethods.size())) {
+        m_cdtTimer->stop();
+        m_cdtTimer->disconnect(this);
+        log(QStringLiteral("[BRIDGE] Listening for Panda CDT events..."));
+    }
 }
 
 void ArkTSDebugBridge::onL2TextMessageReceived(const QString &message)
@@ -432,34 +435,49 @@ void ArkTSDebugBridge::fatalError(const QString &msg)
     cleanup(true);
 }
 
-void ArkTSDebugBridge::cleanup(bool emitFinished)
+void ArkTSDebugBridge::cleanupTimers() const
 {
-    const State prev = m_state;
-    m_state = State::Idle;
-
-    for (const auto &t : {m_retryTimer.get(), m_signalTimer.get(), m_deadlineTimer.get()}) {
+    for (const auto &t : {m_retryTimer.get(),
+                          m_signalTimer.get(),
+                          m_deadlineTimer.get(),
+                          m_cdtTimer.get()}) {
         t->stop();
         t->disconnect(this);
     }
+}
 
-    /* ** 清理 L2：先发 Debugger.disable 再优雅关闭，
-    ** 确保设备侧 ArkTS 调试端口被正确释放。 */
+void ArkTSDebugBridge::teardownL2Socket(State prev)
+{
     if (prev == State::Running
         && m_l2Socket->state() == QAbstractSocket::ConnectedState) {
         ++m_cdtMsgId;
         m_l2Socket->sendTextMessage(
-            QStringLiteral("{\"id\":%1,\"method\":\"Debugger.disable\",\"params\":{}}").arg(m_cdtMsgId));
+            QStringLiteral("{\"id\":%1,\"method\":\"Debugger.disable\",\"params\":{}}")
+                .arg(m_cdtMsgId));
         m_l2Socket->close();
     } else {
         m_l2Socket->abort();
     }
     m_l2Socket->disconnect(this);
+}
 
+void ArkTSDebugBridge::teardownL1Socket()
+{
     m_l1Socket->disconnect(this);
     if (m_l1Socket->state() == QAbstractSocket::ConnectedState)
         m_l1Socket->close();
     else
         m_l1Socket->abort();
+}
+
+void ArkTSDebugBridge::cleanup(bool emitFinished)
+{
+    const State prev = m_state;
+    m_state = State::Idle;
+
+    cleanupTimers();
+    teardownL2Socket(prev);
+    teardownL1Socket();
 
     if (emitFinished)
         emit finished();

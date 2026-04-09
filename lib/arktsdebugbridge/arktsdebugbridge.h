@@ -119,6 +119,7 @@ private:
     void onL2Error() const;
 
     void sendCDTMessages();
+    void onCdtTimerTick();
 
     /*
     ** 辅助工具
@@ -126,6 +127,9 @@ private:
     void log(const QString &msg);
     void fatalError(const QString &msg);
     void cleanup(bool emitFinished);
+    void cleanupTimers() const;
+    void teardownL2Socket(State prev);
+    void teardownL1Socket();
 
     /*
     ** 成员状态
@@ -141,10 +145,12 @@ private:
     std::unique_ptr<QTimer> m_retryTimer;    /* ** L1 / L2 重试时钟 */
     std::unique_ptr<QTimer> m_signalTimer;   /* ** 100ms 信号文件轮询定时器 */
     std::unique_ptr<QTimer> m_deadlineTimer; /* ** 分阶段超时看门狗 */
+    std::unique_ptr<QTimer> m_cdtTimer;      /* ** CDT 消息逐条发送定时器 */
 
     int m_l1Attempts = 0; /* ** 最多 60 次，间隔 500ms */
     int m_l2Attempts = 0; /* ** 最多 20 次，间隔 300ms */
     int m_cdtMsgId   = 0;
+    int m_cdtMsgIdx  = 0; /* ** CDT 消息发送进度（0-2） */
 };
 
 #endif // ARKTSDEBUGBRIDGE_H
