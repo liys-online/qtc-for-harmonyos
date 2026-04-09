@@ -11,7 +11,6 @@ int main(int argc, char *argv[])
     auto *ohPro = OhProjecteCreator::instance();
     QObject::connect(ohPro, &OhProjecteCreator::signalCreateFinished, [](bool success, const QString &msg){
         qDebug() << success << msg;
-        OhProjecteCreator::destroy();
         QCoreApplication::quit();
     });
     OhProjecteCreator::ProjecteInfo proInfo;

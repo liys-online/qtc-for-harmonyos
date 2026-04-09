@@ -15,83 +15,75 @@
  * @param index 当前处理的路径索引，初始调用时为 0
  * @return
  */
+
+/*
+ * 在数组叶节点写入 value：idxStr 为空则追加，否则按索引写入（越界时扩展）。
+ */
+static void setJsonArrayLeaf(QJsonArray &arr, const QString &idxStr, const QJsonValue &value)
+{
+    if (idxStr.isEmpty()) {
+        arr.append(value);
+        return;
+    }
+    const int idx = idxStr.toInt();
+    if (idx < arr.size()) {
+        arr[idx] = value;
+        return;
+    }
+    while (arr.size() < idx)
+        arr.append(QJsonValue());
+    arr.append(value);
+}
+
+/*
+ * 递归进入 obj[arrKey][idx] 这一数组元素（Object 类型），继续沿路径设置值。
+ */
+static bool setJsonArrayNested(QJsonObject &obj, const QString &arrKey, int idx,
+                               const QStringList &path, const QJsonValue &value, int nextIndex);
+
 bool setJsonValue(QJsonObject &obj, const QStringList &path, const QJsonValue &value, int index = 0)
 {
     if (index >= path.size())
         return false;
 
-    QString key = path[index];
-
-    /*
-     * 数组字段匹配正则，如 products[0] 或 products[]
-     */
-    QRegularExpression arrayRegex(R"(^(.*)\[(\d*)\]$)");
-    QRegularExpressionMatch match = arrayRegex.match(key);
+    const QString &key = path[index];
+    static const QRegularExpression arrayRegex(R"(^(.*)\[(\d*)\]$)");
+    const QRegularExpressionMatch match = arrayRegex.match(key);
 
     if (match.hasMatch()) {
-
-        /*
-         * 数组字段，可能是具体索引如 products[0]，也可能是追加如 products[]
-         */
-        QString arrKey = match.captured(1);
-        QString idxStr = match.captured(2);
-
-        QJsonArray arr = obj[arrKey].toArray();
+        const QString arrKey = match.captured(1);
+        const QString idxStr = match.captured(2);
 
         if (index == path.size() - 1) {
-            /*
-             * 最后一个字段，直接设置值
-             */
-            if (idxStr.isEmpty()) {
-                /*
-                 * [] → 追加
-                 */
-                arr.append(value);
-            } else {
-                int idx = idxStr.toInt();
-                if (idx < arr.size()) {
-                    arr[idx] = value;
-                } else {
-                    /*
-                     * 越界时扩展数组
-                     */
-                    while (arr.size() < idx) arr.append(QJsonValue());
-                    arr.append(value);
-                }
-            }
+            QJsonArray arr = obj[arrKey].toArray();
+            setJsonArrayLeaf(arr, idxStr, value);
             obj[arrKey] = arr;
             return true;
-        } else {
-            /*
-             * 递归进入数组元素
-             */
-            int idx = idxStr.toInt();
-            if (idx >= arr.size()) {
-                while (arr.size() <= idx) arr.append(QJsonObject());
-            }
-            QJsonValue elem = arr[idx];
-            if (!elem.isObject()) elem = QJsonObject();
-
-            QJsonObject childObj = elem.toObject();
-            bool ok = setJsonValue(childObj, path, value, index + 1);
-            arr[idx] = childObj;
-            obj[arrKey] = arr;
-            return ok;
         }
+        return setJsonArrayNested(obj, arrKey, idxStr.toInt(), path, value, index + 1);
     }
 
-    /*
-     * 普通Object字段
-     */
     if (index == path.size() - 1) {
         obj[key] = value;
         return true;
-    } else {
-        QJsonObject childObj = obj[key].toObject();
-        bool ok = setJsonValue(childObj, path, value, index + 1);
-        obj[key] = childObj;
-        return ok;
     }
+    QJsonObject childObj = obj[key].toObject();
+    bool ok = setJsonValue(childObj, path, value, index + 1);
+    obj[key] = childObj;
+    return ok;
+}
+
+static bool setJsonArrayNested(QJsonObject &obj, const QString &arrKey, int idx,
+                               const QStringList &path, const QJsonValue &value, int nextIndex)
+{
+    QJsonArray arr = obj[arrKey].toArray();
+    while (arr.size() <= idx)
+        arr.append(QJsonObject());
+    QJsonObject childObj = arr[idx].isObject() ? arr[idx].toObject() : QJsonObject();
+    const bool ok = setJsonValue(childObj, path, value, nextIndex);
+    arr[idx] = childObj;
+    obj[arrKey] = arr;
+    return ok;
 }
 /**
  * @brief modifyJsonFile 修改 JSON 文件中的指定字段，支持嵌套对象和数组
@@ -174,8 +166,8 @@ bool copyDir(const QString &srcPath, const QString &dstPath, bool overwrite = fa
 class OhProjecteCreatorPrivate
 {
 public:
-    OhProjecteCreatorPrivate() {}
-    ~OhProjecteCreatorPrivate() {}
+    OhProjecteCreatorPrivate() = default;
+    ~OhProjecteCreatorPrivate() = default;
     bool initProjectDir()
     {
         if (m_proInfo.projectPath.isEmpty()) {
@@ -387,7 +379,6 @@ public:
             file.commit();
         }
     }
-    static OhProjecteCreator *m_instance;
     OhProjecteCreator::ProjecteInfo m_proInfo;
     const QMap<int, QString> sdkVersionMap = {
         {20, "6.0.0"},
@@ -402,13 +393,10 @@ public:
     };
 };
 
-OhProjecteCreator *OhProjecteCreatorPrivate::m_instance = nullptr;
 OhProjecteCreator *OhProjecteCreator::instance()
 {
-
-    OhProjecteCreatorPrivate::m_instance = OhProjecteCreatorPrivate::m_instance ? OhProjecteCreatorPrivate::m_instance
-                                                                                : new OhProjecteCreator;
-    return OhProjecteCreatorPrivate::m_instance;
+    static OhProjecteCreator projecteCreator;
+    return &projecteCreator;
 }
 
 void OhProjecteCreator::create(const ProjecteInfo &projectPath)
@@ -485,14 +473,6 @@ int OhProjecteCreator::defaultApiLevel()
     return 15;
 }
 
-void OhProjecteCreator::destroy()
-{
-    if (OhProjecteCreatorPrivate::m_instance) {
-        delete OhProjecteCreatorPrivate::m_instance;
-        OhProjecteCreatorPrivate::m_instance = nullptr;
-    }
-}
-
 QList<int> OhProjecteCreator::availableApiLevels()
 {
     return OhProjecteCreator::instance()->m_p->sdkVersionMap.keys();
@@ -540,13 +520,12 @@ bool OhProjecteCreator::updateBuildProfileSdkVersions(const QString &ohproPath,
 
 OhProjecteCreator::OhProjecteCreator(QObject *parent)
     : QObject(parent),
-      m_p(new OhProjecteCreatorPrivate)
+    m_p(std::make_unique<OhProjecteCreatorPrivate>())
 {}
 
 OhProjecteCreator::~OhProjecteCreator()
 {
     qDebug() << "OhProjecteCreator destructor called.";
-    delete m_p;
 }
 
 OhProjecteCreator::ProjecteInfo::ProjecteInfo() {

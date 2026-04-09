@@ -37,7 +37,6 @@ public:
     static int apiLevelForVersion(const QString &version);
     static int latestApiLevel();
     static int defaultApiLevel();
-    static void destroy();
     static QList<int> availableApiLevels();
     /**
      * @brief 若 ohproPath/build-profile.json5 存在，就地更新
@@ -59,7 +58,7 @@ Q_SIGNALS:
 private:
     explicit OhProjecteCreator(QObject *parent = nullptr);
     ~OhProjecteCreator();
-    OhProjecteCreatorPrivate * const m_p = nullptr;
+    std::unique_ptr<OhProjecteCreatorPrivate> m_p = nullptr;
 };
 
 #endif // OHPROJECTECREATOR_H
