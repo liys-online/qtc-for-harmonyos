@@ -22,6 +22,35 @@ namespace {
 
 static constexpr char kExpectedSchema[] = "qt-for-openharmony.binary-catalog";
 
+static QVector<QtForOhRelease> catalogError(QString *errorOut, const QString &msg)
+{
+    if (errorOut)
+        *errorOut = msg;
+    return {};
+}
+
+static QVector<QtForOhReleaseAsset> parseReleaseAssets(const QJsonArray &assets)
+{
+    QVector<QtForOhReleaseAsset> result;
+    for (const QJsonValue &av : assets) {
+        if (!av.isObject())
+            continue;
+        const QJsonObject ao = av.toObject();
+        const QString name = ao.value(QStringLiteral("name")).toString();
+        const QUrl dl(ao.value(QStringLiteral("downloadUrl")).toString());
+        if (name.isEmpty() || !dl.isValid())
+            continue;
+        QtForOhReleaseAsset a;
+        a.name = name;
+        a.browserDownloadUrl = dl;
+        a.catalogPlatform = ao.value(QStringLiteral("platform")).toString();
+        a.catalogArch = ao.value(QStringLiteral("arch")).toString();
+        a.assetKind = ao.value(QStringLiteral("kind")).toString();
+        result.append(a);
+    }
+    return result;
+}
+
 QVector<QtForOhRelease> parseBinaryCatalogV1(const QByteArray &json, QString *errorMessage)
 {
     if (errorMessage)
@@ -29,43 +58,27 @@ QVector<QtForOhRelease> parseBinaryCatalogV1(const QByteArray &json, QString *er
 
     QJsonParseError pe{};
     const QJsonDocument doc = QJsonDocument::fromJson(json, &pe);
-    if (pe.error != QJsonParseError::NoError) {
-        if (errorMessage)
-            *errorMessage = pe.errorString();
-        return {};
-    }
+    if (pe.error != QJsonParseError::NoError)
+        return catalogError(errorMessage, pe.errorString());
 
-    if (!doc.isObject()) {
-        if (errorMessage)
-            *errorMessage = QStringLiteral("Catalog must be a JSON object.");
-        return {};
-    }
+    if (!doc.isObject())
+        return catalogError(errorMessage, QStringLiteral("Catalog must be a JSON object."));
 
     const QJsonObject root = doc.object();
     const QString schema = root.value(QStringLiteral("schema")).toString();
-    if (schema != QLatin1String(kExpectedSchema)) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("Unknown catalog schema: %1 (expected %2).")
-                                .arg(schema, QString::fromLatin1(kExpectedSchema));
-        }
-        return {};
-    }
+    if (schema != QLatin1String(kExpectedSchema))
+        return catalogError(errorMessage,
+                            QStringLiteral("Unknown catalog schema: %1 (expected %2).")
+                                .arg(schema, QString::fromLatin1(kExpectedSchema)));
 
     const int ver = root.value(QStringLiteral("schemaVersion")).toInt();
-    if (ver != 1) {
-        if (errorMessage) {
-            *errorMessage
-                = QStringLiteral("Unsupported schemaVersion %1 (this plugin supports v1 only).").arg(ver);
-        }
-        return {};
-    }
+    if (ver != 1)
+        return catalogError(errorMessage,
+                            QStringLiteral("Unsupported schemaVersion %1 (this plugin supports v1 only).").arg(ver));
 
     const QJsonValue relVal = root.value(QStringLiteral("releases"));
-    if (!relVal.isArray()) {
-        if (errorMessage)
-            *errorMessage = QStringLiteral("Missing or invalid \"releases\" array.");
-        return {};
-    }
+    if (!relVal.isArray())
+        return catalogError(errorMessage, QStringLiteral("Missing or invalid \"releases\" array."));
 
     QVector<QtForOhRelease> out;
     const QJsonArray releases = relVal.toArray();
@@ -85,25 +98,7 @@ QVector<QtForOhRelease> parseBinaryCatalogV1(const QByteArray &json, QString *er
         r.createdAt = ro.value(QStringLiteral("createdAt")).toString();
         r.body = ro.value(QStringLiteral("summary")).toString();
         r.qtVersion = ro.value(QStringLiteral("qtVersion")).toString();
-
-        const QJsonArray assets = ro.value(QStringLiteral("assets")).toArray();
-        for (const QJsonValue &av : assets) {
-            if (!av.isObject())
-                continue;
-            const QJsonObject ao = av.toObject();
-            const QString name = ao.value(QStringLiteral("name")).toString();
-            const QUrl dl(ao.value(QStringLiteral("downloadUrl")).toString());
-            if (name.isEmpty() || !dl.isValid())
-                continue;
-            QtForOhReleaseAsset a;
-            a.name = name;
-            a.browserDownloadUrl = dl;
-            a.catalogPlatform = ao.value(QStringLiteral("platform")).toString();
-            a.catalogArch = ao.value(QStringLiteral("arch")).toString();
-            a.assetKind = ao.value(QStringLiteral("kind")).toString();
-            r.assets.append(a);
-        }
-
+        r.assets = parseReleaseAssets(ro.value(QStringLiteral("assets")).toArray());
         out.append(r);
     }
 
