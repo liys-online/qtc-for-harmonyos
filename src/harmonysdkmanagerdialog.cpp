@@ -135,11 +135,11 @@ HarmonySdkManagerDialog::HarmonySdkManagerDialog(QWidget *parent)
     setWindowTitle(Tr::tr("OpenHarmony SDK Manager"));
     resize(900, 600);
 
-    m_pathsHintLabel = new QLabel;
+    m_pathsHintLabel = new QLabel(this);    // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_pathsHintLabel->setWordWrap(true);
     m_pathsHintLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
-    m_tree = new QTreeWidget;
+    m_tree = new QTreeWidget(this); // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_tree->setColumnCount(4);
     m_tree->setHeaderLabels({
         Tr::tr("Get"),
@@ -153,20 +153,20 @@ HarmonySdkManagerDialog::HarmonySdkManagerDialog(QWidget *parent)
     m_tree->setUniformRowHeights(true);
     m_tree->setRootIsDecorated(true);
 
-    m_log = new QPlainTextEdit;
+    m_log = new QPlainTextEdit(this);   // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_log->setReadOnly(true);
     m_log->setMaximumBlockCount(500);
 
-    m_progress = new QProgressBar;
+    m_progress = new QProgressBar(this);    // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_progress->setRange(0, 100);
     m_progress->setValue(0);
 
-    m_refreshBtn = new QPushButton(Tr::tr("Refresh List"));
-    m_downloadBtn = new QPushButton(Tr::tr("Download Selected"));
-    m_closeBtn = new QPushButton(Tr::tr("Close"));
+    m_refreshBtn = new QPushButton(Tr::tr("Refresh List"), this);   // NOSONAR (cpp:S5025) - parented, will auto-delete
+    m_downloadBtn = new QPushButton(Tr::tr("Download Selected"), this); // NOSONAR (cpp:S5025)
+    m_closeBtn = new QPushButton(Tr::tr("Close"), this);    // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_refreshBtn->setDefault(true);
 
-    m_listDownloader = new HarmonySdkDownloader(this);
+    m_listDownloader = new HarmonySdkDownloader(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     connect(m_listDownloader, &HarmonySdkDownloader::packageListFetched, this,
             &HarmonySdkManagerDialog::fillTree);
     connect(m_listDownloader, &HarmonySdkDownloader::fetchFailed, this, [this](const QString &err) {
@@ -264,7 +264,7 @@ void HarmonySdkManagerDialog::fillTree(const QVector<HarmonySdkPackageEntry> &en
 
     for (const QString &apiKey : std::as_const(apiKeys)) {
         const QVector<int> indices = byApi.value(apiKey);
-        auto *parent = new QTreeWidgetItem(m_tree);
+        auto *parent = new QTreeWidgetItem(m_tree); // NOSONAR (cpp:S5025) - parented, will auto-delete
         parent->setText(1, apiKey);
         parent->setText(2, Tr::tr("%1 component(s)").arg(indices.size()));
         parent->setFlags(parent->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsAutoTristate);
@@ -273,7 +273,7 @@ void HarmonySdkManagerDialog::fillTree(const QVector<HarmonySdkPackageEntry> &en
 
         for (int idx : indices) {
             const HarmonySdkPackageEntry &e = entries.at(idx);
-            auto *child = new QTreeWidgetItem(parent);
+            auto *child = new QTreeWidgetItem(parent);  // NOSONAR (cpp:S5025) - parented, will auto-delete
             child->setData(0, Qt::UserRole, idx);
             child->setFlags(child->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
             child->setCheckState(0, Qt::Unchecked);
