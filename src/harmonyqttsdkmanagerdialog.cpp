@@ -50,7 +50,7 @@ QString catalogPlatformForHost()
         return QStringLiteral("windows");
     if (HostOsInfo::isLinuxHost())
         return QStringLiteral("linux");
-    return QStringLiteral("linux");
+    return QStringLiteral("unknown");
 }
 
 bool shouldShowCatalogAssetForHost(const QtForOhReleaseAsset &asset)
