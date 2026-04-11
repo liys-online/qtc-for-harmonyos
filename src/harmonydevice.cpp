@@ -45,7 +45,7 @@ HarmonyDeviceWidget::HarmonyDeviceWidget(const IDevice::Ptr &device)
     : IDeviceWidget(device)
 {
     const auto dev = std::static_pointer_cast<HarmonyDevice>(device);
-    const auto formLayout = new QFormLayout(this);
+    const auto formLayout = new QFormLayout(this);    // NOSONAR - parented, will be owned by the caller
     formLayout->setFormAlignment(Qt::AlignLeft);
     formLayout->setContentsMargins(0, 0, 0, 0);
     setLayout(formLayout);
