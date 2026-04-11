@@ -103,6 +103,10 @@ private:
     void fillTree(const QVector<HarmonySdkPackageEntry> &entries);
     void onDownloadSelected();
     void startNextDownload();
+    void flushAndCloseDownloadFile(QNetworkReply *reply);
+    bool verifyDownloadChecksum(const FilePath &destPath, const HarmonySdkPackageEntry &e);
+    void extractDownloadedEntry(const FilePath &destPath, const HarmonySdkPackageEntry &e);
+    void onSingleDownloadFinished(const FilePath &destPath, const HarmonySdkPackageEntry &e);
     void onTreeItemChanged(QTreeWidgetItem *item, int column);
     void finishDownloadBatch();
     void refreshPathsHint();
@@ -358,6 +362,95 @@ void HarmonySdkManagerDialog::onDownloadSelected()
     startNextDownload();
 }
 
+void HarmonySdkManagerDialog::flushAndCloseDownloadFile(QNetworkReply *reply)
+{
+    if (!m_downloadFile)
+        return;
+    if (reply) {
+        const QByteArray tail = reply->readAll();
+        if (!tail.isEmpty())
+            m_downloadFile->write(tail);
+    }
+    m_downloadFile->flush();
+    m_downloadFile->close();
+}
+
+bool HarmonySdkManagerDialog::verifyDownloadChecksum(const FilePath &destPath,
+                                                      const HarmonySdkPackageEntry &e)
+{
+    const QByteArray digest = m_downloadHash ? m_downloadHash->result() : QByteArray();
+    const QString hex = QString::fromLatin1(digest.toHex());
+    const QString expected = e.archive.sha256Checksum.trimmed();
+    if (expected.isEmpty()) {
+        appendLog(Tr::tr("No checksum in index; skipped verification."));
+        return true;
+    }
+    if (hex.compare(expected, Qt::CaseInsensitive) == 0) {
+        appendLog(Tr::tr("SHA-256 OK."));
+        return true;
+    }
+    appendLog(Tr::tr("SHA-256 mismatch: expected %1, got %2").arg(expected, hex));
+    m_downloadFile.reset();
+    QFile::remove(destPath.toFSPathString());
+    return false;
+}
+
+void HarmonySdkManagerDialog::extractDownloadedEntry(const FilePath &destPath,
+                                                      const HarmonySdkPackageEntry &e)
+{
+    if (m_batchSdkRoot.isEmpty())
+        return;
+    QString apiKey = e.apiVersion.trimmed();
+    if (apiKey.isEmpty())
+        apiKey = QStringLiteral("unknown");
+    const FilePath extractRoot = m_batchSdkRoot.pathAppended(apiKey);
+    if (!extractRoot.exists() && !extractRoot.createDir()) {
+        appendLog(Tr::tr("Cannot create unpack directory: %1").arg(extractRoot.toUserOutput()));
+        return;
+    }
+    QString exErr;
+    if (extractHarmonySdkArchive(destPath, extractRoot, &exErr)) {
+        appendLog(Tr::tr("Extracted with tar into %1").arg(extractRoot.toUserOutput()));
+        m_batchApiVersions.insert(apiKey);
+    } else {
+        appendLog(Tr::tr("Extract failed for %1: %2").arg(destPath.fileName(), exErr));
+    }
+}
+
+void HarmonySdkManagerDialog::onSingleDownloadFinished(const FilePath &destPath,
+                                                        const HarmonySdkPackageEntry &e)
+{
+    QNetworkReply *reply = m_activeDownload;
+    m_activeDownload = nullptr;
+    flushAndCloseDownloadFile(reply);
+
+    if (!reply || reply->error() != QNetworkReply::NoError) {
+        appendLog(Tr::tr("Network error: %1").arg(reply ? reply->errorString() : QString()));
+        if (reply)
+            reply->deleteLater();
+        m_downloadFile.reset();
+        m_downloadHash.reset();
+        m_downloadQueueIndex++;
+        startNextDownload();
+        return;
+    }
+
+    if (!verifyDownloadChecksum(destPath, e)) {
+        reply->deleteLater();
+        m_downloadHash.reset();
+        m_downloadQueueIndex++;
+        startNextDownload();
+        return;
+    }
+
+    extractDownloadedEntry(destPath, e);
+    reply->deleteLater();
+    m_downloadFile.reset();
+    m_downloadHash.reset();
+    m_downloadQueueIndex++;
+    startNextDownload();
+}
+
 void HarmonySdkManagerDialog::startNextDownload()
 {
     if (m_activeDownload) {
@@ -381,7 +474,6 @@ void HarmonySdkManagerDialog::startNextDownload()
     const FilePath destPath = m_batchTempDir.pathAppended(fname);
 
     m_progress->setValue(0);
-
     appendLog(Tr::tr("Downloading [%1 / %2]: %3")
                   .arg(QString::number(m_downloadQueueIndex + 1),
                        QString::number(m_downloadRows.size()),
@@ -402,10 +494,7 @@ void HarmonySdkManagerDialog::startNextDownload()
 
     connect(m_activeDownload, &QNetworkReply::downloadProgress, this,
             [this](qint64 received, qint64 total) {
-                if (total > 0)
-                    m_progress->setValue(int(received * 100 / total));
-                else
-                    m_progress->setValue(0);
+                m_progress->setValue(total > 0 ? int(received * 100 / total) : 0);
             });
 
     connect(m_activeDownload, &QNetworkReply::readyRead, this, [this] {
@@ -417,78 +506,9 @@ void HarmonySdkManagerDialog::startNextDownload()
     });
 
     connect(m_activeDownload, &QNetworkReply::finished, this, [this, e, destPath] {
-        QPointer<HarmonySdkManagerDialog> guard(this);
-        if (!guard)
+        if (QPointer<HarmonySdkManagerDialog>(this).isNull())
             return;
-
-        QNetworkReply *reply = m_activeDownload;
-        m_activeDownload = nullptr;
-
-        if (m_downloadFile && reply) {
-            const QByteArray tail = reply->readAll();
-            if (!tail.isEmpty())
-                m_downloadFile->write(tail);
-            m_downloadFile->flush();
-            m_downloadFile->close();
-        } else if (m_downloadFile) {
-            m_downloadFile->flush();
-            m_downloadFile->close();
-        }
-
-        const bool netOk = reply->error() == QNetworkReply::NoError;
-        if (!netOk) {
-            appendLog(Tr::tr("Network error: %1").arg(reply->errorString()));
-            reply->deleteLater();
-            m_downloadFile.reset();
-            m_downloadHash.reset();
-            m_downloadQueueIndex++;
-            startNextDownload();
-            return;
-        }
-
-        const QByteArray digest = m_downloadHash ? m_downloadHash->result() : QByteArray();
-        const QString hex = QString::fromLatin1(digest.toHex());
-        const QString expected = e.archive.sha256Checksum.trimmed();
-        if (!expected.isEmpty()) {
-            if (hex.compare(expected, Qt::CaseInsensitive) == 0) {
-                appendLog(Tr::tr("SHA-256 OK."));
-            } else {
-                appendLog(Tr::tr("SHA-256 mismatch: expected %1, got %2").arg(expected, hex));
-                m_downloadFile.reset();
-                QFile::remove(destPath.toFSPathString());
-                reply->deleteLater();
-                m_downloadHash.reset();
-                m_downloadQueueIndex++;
-                startNextDownload();
-                return;
-            }
-        } else {
-            appendLog(Tr::tr("No checksum in index; skipped verification."));
-        }
-
-        if (guard && !m_batchSdkRoot.isEmpty()) {
-            QString apiKey = e.apiVersion.trimmed();
-            if (apiKey.isEmpty())
-                apiKey = QStringLiteral("unknown");
-            const FilePath extractRoot = m_batchSdkRoot.pathAppended(apiKey);
-            if (!extractRoot.exists() && !extractRoot.createDir()) {
-                appendLog(Tr::tr("Cannot create unpack directory: %1").arg(extractRoot.toUserOutput()));
-            } else {
-                QString exErr;
-                if (extractHarmonySdkArchive(destPath, extractRoot, &exErr)) {
-                    appendLog(Tr::tr("Extracted with tar into %1").arg(extractRoot.toUserOutput()));
-                    m_batchApiVersions.insert(apiKey);
-                } else {
-                    appendLog(Tr::tr("Extract failed for %1: %2").arg(destPath.fileName(), exErr));
-                }
-            }
-        }
-
-        reply->deleteLater();
-        m_downloadFile.reset();
-        m_downloadHash.reset();
-        m_downloadQueueIndex++;
-        startNextDownload();
+        onSingleDownloadFinished(destPath, e);
     });
 }
 
