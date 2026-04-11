@@ -10,7 +10,7 @@
 #include <QTextStream>
 using namespace Utils;
 namespace Ohos::Internal {
-HarmonyQtVersion::HarmonyQtVersion() {}
+HarmonyQtVersion::HarmonyQtVersion() = default;
 
 bool HarmonyQtVersion::supportsMultipleQtAbis() const
 {
@@ -57,18 +57,19 @@ QString HarmonyQtVersion::description() const
 
 QVersionNumber HarmonyQtVersion::supportOhVersion() const
 {
-    if (FilePath qconfigHeader = headerPath().pathAppended(Constants::Q_CONFIG_H); qconfigHeader.exists())
-    {
-        if (QFile qconfigFile(qconfigHeader.toFSPathString()); qconfigFile.open(QIODevice::ReadOnly))
-        {
-            QTextStream in(&qconfigFile);
-            while (!in.atEnd())
-            {
-                if (const QString line = in.readLine(); line.contains(Constants::OHOS_SDK_VERSION))
-                    return QVersionNumber::fromString(line.simplified().split(' ').last());
-            }
-            qconfigFile.close();
-        }
+    const FilePath qconfigHeader = headerPath().pathAppended(Constants::Q_CONFIG_H);
+    if (!qconfigHeader.exists())
+        return QVersionNumber();
+
+    QFile qconfigFile(qconfigHeader.toFSPathString());
+    if (!qconfigFile.open(QIODevice::ReadOnly))
+        return QVersionNumber();
+
+    QTextStream in(&qconfigFile);
+    while (!in.atEnd()) {
+        const QString line = in.readLine();
+        if (line.contains(Constants::OHOS_SDK_VERSION))
+            return QVersionNumber::fromString(line.simplified().split(' ').last());
     }
     return QVersionNumber();
 }
@@ -154,7 +155,7 @@ class HarmonyQtVersionFactory : public QtSupport::QtVersionFactory
 public:
     HarmonyQtVersionFactory()
     {
-        setQtVersionCreator([] { return new HarmonyQtVersion; });
+        setQtVersionCreator([] { return new HarmonyQtVersion; }); // NOSONAR - factory pattern
         setSupportedType(Constants::HARMONY_QT_TYPE);
         setPriority(90);
 
