@@ -71,6 +71,7 @@ static bool hasRegisteredValidHarmonySdk()
 
 namespace Ohos::Internal {
 
+using namespace ProjectExplorer;
 class HarmonyDeployConfigurationFactory final : public DeployConfigurationFactory
 {
 public:

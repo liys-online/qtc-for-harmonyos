@@ -5,8 +5,6 @@
 
 #include <QHash>
 
-using namespace Utils;
-using namespace ProjectExplorer;
 class QListWidget;
 class QPushButton;
 class QLineEdit;
@@ -60,13 +58,13 @@ private:
      * 检查SDK项
      * @param sdkLocation
      */
-    void checkSdkItem(const FilePath &sdkLocation);
+    void checkSdkItem(const Utils::FilePath &sdkLocation);
     /**
      * @brief checkQmakeItem
      * 检查Qmake项
      * @param qmakeLocation
      */
-    void checkQmakeItem(const FilePath &qmakeLocation);
+    void checkQmakeItem(const Utils::FilePath &qmakeLocation);
     /**
      * @brief isDefaultSdkSelected
      * 是否选择了默认SDK
@@ -88,7 +86,7 @@ private:
      * 查找GCC工具链
      * @return
      */
-    Toolchain *findGccToolChain() const;
+    ProjectExplorer::Toolchain *findGccToolChain() const;
 
 private Q_SLOTS:
     /**
@@ -110,13 +108,13 @@ private Q_SLOTS:
      * @brief m_makePathChooser
      * Make路径选择器
      */
-    PathChooser *m_makePathChooser = nullptr;
+    Utils::PathChooser *m_makePathChooser = nullptr;
     /**
      * @brief m_devecoStudioPathChooser
      * Deveco Studio路径选择器
      */
-    PathChooser *m_devecoStudioPathChooser = nullptr;
-    PathChooser *m_ohosSdkRootChooser = nullptr;
+    Utils::PathChooser *m_devecoStudioPathChooser = nullptr;
+    Utils::PathChooser *m_ohosSdkRootChooser = nullptr;
     QLineEdit *m_ohpmRegistryEdit = nullptr;
     QCheckBox *m_ohpmStrictSslCheck = nullptr;
     QWidget *m_ohModuleDeviceTypesWidget = nullptr;
