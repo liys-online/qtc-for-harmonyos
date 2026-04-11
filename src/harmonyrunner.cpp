@@ -379,7 +379,7 @@ public:
                         script += hilogFilter;
                     }
 
-                    auto *client = new HdcSocketClient(runControl);
+                    auto *client = new HdcSocketClient(runControl); // NOSONAR (cpp:S5025) - parented, will auto-delete
                     QObject::connect(client, &HdcSocketClient::lineReceived, runControl,
                         [runControl](const QString &line) {
                             runControl->postMessage(line, hilogLineFormat(line));
