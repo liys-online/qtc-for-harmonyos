@@ -31,6 +31,9 @@
 #include <QStandardPaths>
 #include <QFileDialog>
 
+using namespace Utils;
+using namespace ProjectExplorer;
+
 namespace Ohos::Internal {
 
 class SummaryWidget : public QWidget
@@ -51,12 +54,12 @@ public:
         m_detailsWidget(detailsWidget)
     {
         QTC_CHECK(m_detailsWidget);
-        auto layout = new QVBoxLayout(this);
+        auto layout = new QVBoxLayout(this);    // NOSONAR (cpp:S5025) - parented, will auto-delete
         layout->setContentsMargins(22, 0, 0, 12);
         layout->setSpacing(4);
         for (auto itr = validationPoints.cbegin(); itr != validationPoints.cend(); ++itr) {
             RowData data;
-            data.m_infoLabel = new InfoLabel(itr.value());
+            data.m_infoLabel = new InfoLabel(itr.value(), InfoLabel::Information, this);    // NOSONAR (cpp:S5025)
             data.m_validText = itr.value();
             layout->addWidget(data.m_infoLabel);
             m_validationData[itr.key()] = data;
@@ -132,30 +135,33 @@ HarmonySettingsWidget::HarmonySettingsWidget()
 {
     setWindowTitle(Tr::tr("Harmony Configuration"));
 
-    auto infoLabel = new InfoLabel(Tr::tr("All changes on this page take effect immediately."));
+    auto infoLabel = new InfoLabel( // NOSONAR (cpp:S5025) - parented, will auto-delete
+        Tr::tr("All changes on this page take effect immediately."),
+        InfoLabel::Information,
+        this);
     infoLabel->setFilled(true);
 
     const QIcon downloadIcon = Icons::ONLINE.icon();
     const bool showMakeControls = false;
 
-    auto *makeLocationLabel = new QLabel(Tr::tr("Make location:"));
+    auto *makeLocationLabel = new QLabel(Tr::tr("Make location:"), this);   // NOSONAR (cpp:S5025)
     makeLocationLabel->setVisible(showMakeControls);
 
-    m_makePathChooser = new PathChooser;
+    m_makePathChooser = new PathChooser(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_makePathChooser->setFilePath(HarmonyConfig::makeLocation());
     m_makePathChooser->setPromptDialogTitle(Tr::tr("Select Make Location"));
     m_makePathChooser->setVisible(showMakeControls);
-    auto downloadmake = new QToolButton;
+    auto downloadmake = new QToolButton(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     downloadmake->setIcon(downloadIcon);
     downloadmake->setToolTip(Tr::tr("Open mingw download URL in the system's browser."));
     downloadmake->setVisible(showMakeControls);
-    m_devecoStudioPathChooser = new PathChooser;
+    m_devecoStudioPathChooser = new PathChooser(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     if (HarmonyConfig::devecoStudioLocation().isEmpty())
         HarmonyConfig::tryAutoDetectDevecoStudio();
     m_devecoStudioPathChooser->setFilePath(HarmonyConfig::devecoStudioLocation());
     m_devecoStudioPathChooser->setPromptDialogTitle(Tr::tr("Select Deveco Studio Folder"));
 
-    m_ohosSdkRootChooser = new PathChooser;
+    m_ohosSdkRootChooser = new PathChooser(this);   // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_ohosSdkRootChooser->setExpectedKind(PathChooser::Directory);
     if (HarmonyConfig::ohosSdkRoot().isEmpty())
         HarmonyConfig::setOhosSdkRoot(HarmonyConfig::defaultOhosSdkPath());
@@ -165,24 +171,24 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         Tr::tr("Root directory for SDK Manager: archives download to .temp/ here, and unpack to "
                "<API version>/ subfolders (same layout idea as the Android SDK location)."));
 
-    m_ohpmRegistryEdit = new QLineEdit;
+    m_ohpmRegistryEdit = new QLineEdit(this);   // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_ohpmRegistryEdit->setPlaceholderText(HarmonyConfig::defaultOhpmRegistryUrl());
     m_ohpmRegistryEdit->setToolTip(
         Tr::tr("Passed to ohpm as --registry. Leave empty to use the default (%1).")
             .arg(HarmonyConfig::defaultOhpmRegistryUrl()));
-    m_ohpmStrictSslCheck = new QCheckBox(
-        Tr::tr("Verify TLS certificates when ohpm downloads packages (--strict_ssl)"));
+    m_ohpmStrictSslCheck = new QCheckBox(   // NOSONAR (cpp:S5025) - parented, will auto-delete
+        Tr::tr("Verify TLS certificates when ohpm downloads packages (--strict_ssl)"), this);
     m_ohpmStrictSslCheck->setToolTip(
         Tr::tr("Turn off only if your registry uses HTTPS with a private CA (prefer installing the "
                "CA system-wide)."));
 
-    m_ohModuleDeviceTypesWidget = new QWidget;
+    m_ohModuleDeviceTypesWidget = new QWidget(this);    // NOSONAR (cpp:S5025) - parented, will auto-delete
     {
-        auto *grid = new QGridLayout(m_ohModuleDeviceTypesWidget);
+        auto *grid = new QGridLayout(m_ohModuleDeviceTypesWidget);  // NOSONAR (cpp:S5025) - parented, will auto-delete
         grid->setContentsMargins(0, 0, 0, 0);
         int i = 0;
         for (const QString &id : ohModuleDeviceTypePresetIds()) {
-            auto *cb = new QCheckBox(id);
+            auto *cb = new QCheckBox(id, this); // NOSONAR (cpp:S5025) - parented, will auto-delete
             cb->setToolTip(
                 Tr::tr("When checked, \"%1\" is included in the default ohpro module.json5 \"deviceTypes\" "
                        "for new Kits and templates. Empty selection uses \"2in1\".")
@@ -198,54 +204,54 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         Tr::tr("Default ohpro module.json5 \"deviceTypes\". Kits pick this up when refreshed; leave only "
                "\"2in1\" or clear all for the legacy default."));
 
-    auto downloadSdkToolButton = new QToolButton;
+    auto downloadSdkToolButton = new QToolButton(this); // NOSONAR (cpp:S5025) - parented, will auto-delete
     downloadSdkToolButton->setIcon(downloadIcon);
     downloadSdkToolButton->setToolTip(Tr::tr("Open OpenHarmony SDK download URL in the system's browser."));
 
-    auto addSDKButton = new QPushButton(Tr::tr("Add..."));
+    auto addSDKButton = new QPushButton(Tr::tr("Add..."), this);    // NOSONAR (cpp:S5025) - parented, will auto-delete
     addSDKButton->setToolTip(Tr::tr("Add the selected SDK. Toolchains will be created automatically."));
-    auto removeSDKButton = new QPushButton(Tr::tr("Remove"));
+    auto removeSDKButton = new QPushButton(Tr::tr("Remove"), this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     removeSDKButton->setEnabled(false);
     removeSDKButton->setToolTip(Tr::tr("Remove the selected SDK if it has been added manually."));
 
-    auto manageSdkPackagesBtn = new QPushButton(Tr::tr("Manage SDK Packages…"));
+    auto manageSdkPackagesBtn = new QPushButton(Tr::tr("Manage SDK Packages…"), this);  // NOSONAR (cpp:S5025)
     manageSdkPackagesBtn->setToolTip(
         Tr::tr("Download OpenHarmony SDK components using the official package index (same API as the "
                "Qt for OHOS build scripts)."));
 
-    m_makeDefaultSdkButton = new QPushButton;
+    m_makeDefaultSdkButton = new QPushButton(this); // NOSONAR (cpp:S5025) - parented, will auto-delete
 
-    m_sdkListWidget = new QListWidget;
+    m_sdkListWidget = new QListWidget(this);    // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_sdkListWidget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
     m_sdkListWidget->setIconSize(QSize(16, 16));
     m_sdkListWidget->setResizeMode(QListView::Adjust);
     m_sdkListWidget->setModelColumn(0);
     m_sdkListWidget->setSortingEnabled(false);
 
-    auto downloadDevecoStudio = new QToolButton;
+    auto downloadDevecoStudio = new QToolButton(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     downloadDevecoStudio->setIcon(downloadIcon);
     downloadDevecoStudio->setToolTip(Tr::tr("Open Deveco Studio download URL in the system's browser."));
 
-    m_qmakeListWidget = new QListWidget;
+    m_qmakeListWidget = new QListWidget(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_qmakeListWidget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
     m_qmakeListWidget->setIconSize(QSize(16, 16));
     m_qmakeListWidget->setResizeMode(QListView::Adjust);
     m_qmakeListWidget->setModelColumn(0);
     m_qmakeListWidget->setSortingEnabled(false);
 
-    auto addQmakeButton = new QPushButton(Tr::tr("Add..."));
+    auto addQmakeButton = new QPushButton(Tr::tr("Add..."), this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     addQmakeButton->setToolTip(Tr::tr("Add the selected qmake. Toolchains will be created automatically."));
-    auto removeQmakeButton = new QPushButton(Tr::tr("Remove"));
+    auto removeQmakeButton = new QPushButton(Tr::tr("Remove"), this);   // NOSONAR (cpp:S5025) - parented
     removeQmakeButton->setEnabled(false);
 
-    auto downloadQtForHarmony = new QToolButton;
+    auto downloadQtForHarmony = new QToolButton(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     downloadQtForHarmony->setIcon(downloadIcon);
     downloadQtForHarmony->setToolTip(Tr::tr("Open Qt for Harmony download URL in the system's browser."));
-    auto manageQtOhSdkBtn = new QPushButton(Tr::tr("Manage Qt for OpenHarmony SDK…"));
+    auto manageQtOhSdkBtn = new QPushButton(Tr::tr("Manage Qt for OpenHarmony SDK…"), this);    // NOSONAR (cpp:S5025)
     manageQtOhSdkBtn->setToolTip(
         Tr::tr("Browse Qt for OpenHarmony packages (online catalog)."));
-    auto qtForHarmonyDetailsWidget = new DetailsWidget;
-    auto harmonyDetailsWidget = new DetailsWidget;
+    auto qtForHarmonyDetailsWidget = new DetailsWidget(this);   // NOSONAR (cpp:S5025) - parented, will auto-delete
+    auto harmonyDetailsWidget = new DetailsWidget(this);    // NOSONAR (cpp:S5025) - parented, will auto-delete
     const QMap<int, QString> harmonyValidationPoints = {
         {DevecoPathExistsAndWritableRow, Tr::tr("Deveco Studio path exists and is writable")},
         {OhosSdkManagerRootRow, Tr::tr("HarmonyOS SDK location exists and is writable")},
@@ -254,14 +260,18 @@ HarmonySettingsWidget::HarmonySettingsWidget()
         {SdkToolsInstalledRow, Tr::tr("SDK tools installed")},
         {AllEssentialsInstalledRow, Tr::tr("All essentials installed")},
     };
-    m_harmonySummary = new SummaryWidget(harmonyValidationPoints, Tr::tr("Harmony settings are OK."),
-                                         Tr::tr("Harmony settings have errors."), harmonyDetailsWidget);
+    m_harmonySummary = new SummaryWidget(harmonyValidationPoints,   // NOSONAR (cpp:S5025) - parented, will auto-delete
+                                         Tr::tr("Harmony settings are OK."),
+                                         Tr::tr("Harmony settings have errors."),
+                                         harmonyDetailsWidget);
 
     const QMap<int, QString> qtForHarmonyValidationPoints = {
         {QMakeToolsInstalledRow, Tr::tr("Qt for Harmony qmake exists")},
     };
-    qtForHarmonySummary = new SummaryWidget(qtForHarmonyValidationPoints, Tr::tr("Qt for Harmony settings are OK."),
-                                            Tr::tr("Qt for Harmony settings have errors."), qtForHarmonyDetailsWidget);
+    qtForHarmonySummary = new SummaryWidget(qtForHarmonyValidationPoints,   // NOSONAR (cpp:S5025)
+                                            Tr::tr("Qt for Harmony settings are OK."),
+                                            Tr::tr("Qt for Harmony settings have errors."),
+                                            qtForHarmonyDetailsWidget);
     using namespace Layouting;
 
     Column {
@@ -421,7 +431,7 @@ void HarmonySettingsWidget::updateSdkList()
     m_sdkListWidget->clear();
     const QStringList sdkList = HarmonyConfig::getSdkList();
     for (const QString &sdk : sdkList) {
-        m_sdkListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), sdk));
+        m_sdkListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), sdk)); // NOSONAR (cpp:S5025)
     }
 }
 
@@ -430,7 +440,7 @@ void HarmonySettingsWidget::reloadQmakeListFromConfig()
     m_qmakeListWidget->clear();
     for (const QString &qmake : HarmonyConfig::getQmakeList()) {
         if (!qmake.isEmpty())
-            m_qmakeListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), qmake));
+            m_qmakeListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), qmake)); // NOSONAR (cpp:S5025)
     }
 
     bool hasValid = false;
@@ -504,7 +514,7 @@ void HarmonySettingsWidget::checkSdkItem(const FilePath &sdkLocation)
         QString path = sdkLocation.path();
         HarmonyConfig::addSdk(path);
         if (m_sdkListWidget->findItems(path, Qt::MatchExactly).size() == 0) {
-            m_sdkListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), path));
+            m_sdkListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), path));    // NOSONAR (cpp:S5025)
             if (HarmonyConfig::defaultSdk().isEmpty()) {
                 HarmonyConfig::setdefaultSdk(sdkLocation);
             }
@@ -538,7 +548,7 @@ void HarmonySettingsWidget::checkQmakeItem(const FilePath &qmakeLocation)
         QString path = qmakeLocation.path();
         HarmonyConfig::addQmake(path);
         if (m_qmakeListWidget->findItems(path, Qt::MatchExactly).size() == 0) {
-            m_qmakeListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), path));
+            m_qmakeListWidget->addItem(new QListWidgetItem(Icons::UNLOCKED.icon(), path));  // NOSONAR (cpp:S5025)
         }
     }
     else
@@ -723,7 +733,7 @@ HarmonySettingsPage::HarmonySettingsPage()
     setDisplayName(Tr::tr("HarmonyOS"));
     setCategory(ProjectExplorer::Constants::SDK_SETTINGS_CATEGORY);
     setAutoApply(); // 与 Android 设置页一致；多数选项已即时写入 HarmonyConfig
-    setWidgetCreator([] { return new HarmonySettingsWidget; });
+    setWidgetCreator([] { return new HarmonySettingsWidget; }); // NOSONAR (cpp:S5025) - parented, will auto-delete
 }
 
 void setupHarmonySettingsPage()
