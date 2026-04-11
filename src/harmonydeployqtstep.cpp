@@ -95,6 +95,15 @@ private:
     void stdError(const QString &line);
 
     void reportWarningOrError(const QString &message, Task::TaskType type);
+
+    // deployRecipe helpers
+    SetupResult uninstallSetup(Process &process);
+    void uninstallDone(const Process &process);
+    SetupResult installSetupHap(Process &process, DeployErrorFlags *flagsPtr);
+    SetupResult installSetup(Process &process, DeployErrorFlags *flagsPtr);
+    bool installDone(const Process &process, DeployErrorFlags *flagsPtr);
+    SetupResult askForUninstallSetup(DeployErrorFlags *flagsPtr);
+    static QString buildUninstallErrorMessage(const DeployErrorFlags &errorFlags);
     QString m_serialNumber;
     FilePath m_hapPath;
 
@@ -295,180 +304,203 @@ GroupItem HarmonyDeployQtStep::runRecipe()
     };
 }
 
+SetupResult HarmonyDeployQtStep::uninstallSetup(Process &)
+{
+    if (m_hapPath.isEmpty() || !m_uninstallPreviousPackageRun)
+        return SetupResult::StopWithSuccess;
+
+    QTC_ASSERT(buildConfiguration()->activeRunConfiguration(), return SetupResult::StopWithError);
+
+    const QString packageName = Internal::packageName(buildConfiguration());
+    if (packageName.isEmpty()) {
+        reportWarningOrError(
+            Tr::tr("Cannot read the application bundle name from \"%1\".\n"
+                   "Ensure AppScope/app.json5 exists and contains app.bundleName.")
+                .arg((harmonyBuildDirectory(buildConfiguration()) / "AppScope" / "app.json5")
+                         .toUserOutput()),
+            Task::Error);
+        return SetupResult::StopWithError;
+    }
+
+    const QString msg = Tr::tr("Uninstalling the previous package \"%1\".").arg(packageName);
+    qCDebug(harmonyDeployLog) << msg;
+    emit addOutput(msg, OutputFormat::NormalMessage);
+
+    QStringList uargs = hdcSelector(m_serialNumber);
+    uargs << QStringLiteral("uninstall") << packageName;
+    const HdcShellSyncResult r = HdcSocketClient::runSyncWithCliFallback(
+        m_serialNumber,
+        QStringLiteral("uninstall ") + packageName,
+        m_hdcPath.toUserOutput(),
+        uargs,
+        120000);
+    if (r.isOk()) {
+        const QString t = r.standardOutput.trimmed();
+        for (const QString &rawLine : t.split('\n')) {
+            const QString ln = rawLine.trimmed();
+            if (!ln.isEmpty())
+                emit addOutput(ln, OutputFormat::Stdout, DontAppendNewline);
+        }
+        return SetupResult::StopWithSuccess;
+    }
+    reportWarningOrError(r.errorMessage, Task::Warning);
+    return SetupResult::StopWithSuccess;
+}
+
+void HarmonyDeployQtStep::uninstallDone(const Process &process)
+{
+    if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0)
+        reportWarningOrError(process.exitMessage(), Task::Warning);
+}
+
+SetupResult HarmonyDeployQtStep::installSetupHap(Process &process, DeployErrorFlags *flagsPtr)
+{
+    QTC_ASSERT(buildConfiguration()->activeRunConfiguration(), return SetupResult::StopWithError);
+
+    QStringList iargs = hdcSelector(m_serialNumber);
+    iargs << QStringLiteral("install") << m_hapPath.nativePath();
+
+    const auto rejectSock = [](const HdcShellSyncResult &sock) -> bool {
+        if (!sock.isOk())
+            return false;
+        DeployErrorFlags f = NoError;
+        for (const QString &rawLine : sock.standardOutput.split('\n')) {
+            const QString ln = rawLine.trimmed();
+            if (!ln.isEmpty())
+                f |= parseDeployErrors(ln);
+        }
+        return f != NoError;
+    };
+
+    const HdcShellSyncResult r = HdcSocketClient::runSyncWithCliFallback(
+        m_serialNumber,
+        QStringLiteral("install ") + m_hapPath.nativePath(),
+        m_hdcPath.toUserOutput(),
+        iargs,
+        600000,
+        {},
+        rejectSock);
+    if (r.isOk()) {
+        for (const QString &rawLine : r.standardOutput.split('\n')) {
+            const QString ln = rawLine.trimmed();
+            if (!ln.isEmpty()) {
+                *flagsPtr |= parseDeployErrors(ln);
+                emit addOutput(ln, OutputFormat::Stdout, DontAppendNewline);
+            }
+        }
+        return SetupResult::StopWithSuccess;
+    }
+    reportWarningOrError(r.errorMessage, Task::Error);
+    Q_UNUSED(process)
+    return SetupResult::StopWithError;
+}
+
+SetupResult HarmonyDeployQtStep::installSetup(Process &process, DeployErrorFlags *flagsPtr)
+{
+    CommandLine cmd(m_command);
+    if (!m_hapPath.isEmpty())
+        return installSetupHap(process, flagsPtr);
+
+    cmd.addArgs(m_harmonydeployqtArgs.arguments(), CommandLine::Raw);
+    cmd.addArg(m_uninstallPreviousPackageRun ? QString("--install") : QString("--reinstall"));
+    if (!m_serialNumber.isEmpty() && !m_serialNumber.startsWith("????"))
+        cmd.addArgs({"--device", m_serialNumber});
+
+    process.setCommand(cmd);
+    process.setWorkingDirectory(m_workingDirectory);
+    process.setEnvironment(m_environment);
+    process.setUseCtrlCStub(true);
+    process.setStdOutLineCallback([this, flagsPtr](const QString &line) {
+        *flagsPtr |= parseDeployErrors(line);
+        stdOutput(line);
+    });
+    process.setStdErrLineCallback([this, flagsPtr](const QString &line) {
+        *flagsPtr |= parseDeployErrors(line);
+        stdError(line);
+    });
+    emit addOutput(Tr::tr("Starting: \"%1\"").arg(cmd.toUserOutput()), OutputFormat::NormalMessage);
+    return SetupResult::Continue;
+}
+
+bool HarmonyDeployQtStep::installDone(const Process &process, DeployErrorFlags *flagsPtr)
+{
+    const QProcess::ExitStatus exitStatus = process.exitStatus();
+    const int exitCode = process.exitCode();
+
+    if (exitStatus == QProcess::NormalExit && exitCode == 0) {
+        emit addOutput(Tr::tr("The process \"%1\" exited normally.").arg(m_command.toUserOutput()),
+                       OutputFormat::NormalMessage);
+    } else if (exitStatus == QProcess::NormalExit) {
+        reportWarningOrError(Tr::tr("The process \"%1\" exited with code %2.")
+                                 .arg(m_command.toUserOutput(), QString::number(exitCode)),
+                             Task::Error);
+    } else {
+        reportWarningOrError(Tr::tr("The process \"%1\" crashed.").arg(m_command.toUserOutput()),
+                             Task::Error);
+    }
+
+    if (*flagsPtr != NoError) {
+        if (m_uninstallPreviousPackageRun) {
+            reportWarningOrError(
+                Tr::tr("Installing the app failed even after uninstalling the previous one."),
+                Task::Error);
+            *flagsPtr = NoError;
+            return false;
+        }
+    } else if (exitCode != 0 || exitStatus != QProcess::NormalExit) {
+        /*
+        ** 当未检测到 deployError 代码但 adb 工具失败时，将 deployError 设置为 Failure；
+        ** 否则转发已检测到的 deployError。
+        */
+        reportWarningOrError(Tr::tr("Installing the app failed with an unknown error."), Task::Error);
+        return false;
+    }
+    return true;
+}
+
+SetupResult HarmonyDeployQtStep::askForUninstallSetup(DeployErrorFlags *flagsPtr)
+{
+    QString uninstallMsg = Tr::tr("Deployment failed with the following errors:") + "\n\n";
+    uninstallMsg += buildUninstallErrorMessage(*flagsPtr);
+    uninstallMsg += '\n';
+    uninstallMsg.append(Tr::tr("Uninstalling the installed package may solve the issue.") + '\n');
+    uninstallMsg.append(Tr::tr("Do you want to uninstall the existing package?"));
+
+    if (QMessageBox::critical(Core::ICore::dialogParent(), Tr::tr("Install failed"), uninstallMsg,
+                              QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes) {
+        m_uninstallPreviousPackageRun = true;
+        return SetupResult::Continue;
+    }
+    return SetupResult::StopWithSuccess;
+}
+
+QString HarmonyDeployQtStep::buildUninstallErrorMessage(const DeployErrorFlags &errorFlags)
+{
+    QString msg;
+    if (errorFlags & InconsistentCertificates)
+        msg += InstallFailedInconsistentCertificatesString + '\n';
+    if (errorFlags & UpdateIncompatible)
+        msg += InstallFailedUpdateIncompatible + '\n';
+    if (errorFlags & PermissionModelDowngrade)
+        msg += InstallFailedPermissionModelDowngrade + '\n';
+    if (errorFlags & VersionDowngrade)
+        msg += InstallFailedVersionDowngrade + '\n';
+    return msg;
+}
+
 Group HarmonyDeployQtStep::deployRecipe()
 {
     const Storage<DeployErrorFlags> storage;
-    const auto onUninstallSetup = [this](Process &process) {
-        if (m_hapPath.isEmpty())
-            return SetupResult::StopWithSuccess;
-        if (!m_uninstallPreviousPackageRun)
-            return SetupResult::StopWithSuccess;
-
-        QTC_ASSERT(buildConfiguration()->activeRunConfiguration(), return SetupResult::StopWithError);
-
-        const QString packageName = Internal::packageName(buildConfiguration());
-        if (packageName.isEmpty()) {
-            reportWarningOrError(
-                Tr::tr("Cannot read the application bundle name from \"%1\".\n"
-                       "Ensure AppScope/app.json5 exists and contains app.bundleName.")
-                    .arg((harmonyBuildDirectory(buildConfiguration()) / "AppScope" / "app.json5")
-                             .toUserOutput()),
-                Task::Error);
-            return SetupResult::StopWithError;
-        }
-        const QString msg = Tr::tr("Uninstalling the previous package \"%1\".").arg(packageName);
-        qCDebug(harmonyDeployLog) << msg;
-        emit addOutput(msg, OutputFormat::NormalMessage);
-
-        QStringList uargs = hdcSelector(m_serialNumber);
-        uargs << QStringLiteral("uninstall") << packageName;
-        const HdcShellSyncResult r = HdcSocketClient::runSyncWithCliFallback(
-            m_serialNumber,
-            QStringLiteral("uninstall ") + packageName,
-            m_hdcPath.toUserOutput(),
-            uargs,
-            120000);
-        if (r.isOk()) {
-            const QString t = r.standardOutput.trimmed();
-            if (!t.isEmpty()) {
-                for (QString ln : t.split('\n')) {
-                    ln = ln.trimmed();
-                    if (!ln.isEmpty())
-                        emit addOutput(ln, OutputFormat::Stdout, DontAppendNewline);
-                }
-            }
-            return SetupResult::StopWithSuccess;
-        }
-        reportWarningOrError(r.errorMessage, Task::Warning);
-        return SetupResult::StopWithSuccess;
+    const auto onUninstallSetup = [this](Process &p) { return uninstallSetup(p); };
+    const auto onUninstallDone  = [this](const Process &p) { uninstallDone(p); };
+    const auto onInstallSetup   = [this, storage](Process &p) {
+        return installSetup(p, storage.activeStorage());
     };
-    const auto onUninstallDone = [this](const Process &process) {
-        if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0)
-            reportWarningOrError(process.exitMessage(), Task::Warning);
+    const auto onInstallDone    = [this, storage](const Process &p) {
+        return installDone(p, storage.activeStorage());
     };
-
-    const auto onInstallSetup = [this, storage](Process &process) {
-        CommandLine cmd(m_command);
-        if (m_hapPath.isEmpty()) {
-            cmd.addArgs(m_harmonydeployqtArgs.arguments(), CommandLine::Raw);
-            if (m_uninstallPreviousPackageRun)
-                cmd.addArg("--install");
-            else
-                cmd.addArg("--reinstall");
-
-            if (!m_serialNumber.isEmpty() && !m_serialNumber.startsWith("????"))
-                cmd.addArgs({"--device", m_serialNumber});
-        } else {
-            QTC_ASSERT(buildConfiguration()->activeRunConfiguration(), return SetupResult::StopWithError);
-            QStringList iargs = hdcSelector(m_serialNumber);
-            iargs << QStringLiteral("install") << m_hapPath.nativePath();
-            const auto rejectSock = [](const HdcShellSyncResult &sock) -> bool {
-                if (!sock.isOk())
-                    return false;
-                DeployErrorFlags f = NoError;
-                for (QString ln : sock.standardOutput.split('\n')) {
-                    ln = ln.trimmed();
-                    if (!ln.isEmpty())
-                        f |= parseDeployErrors(ln);
-                }
-                return f != NoError;
-            };
-            const HdcShellSyncResult r = HdcSocketClient::runSyncWithCliFallback(
-                m_serialNumber,
-                QStringLiteral("install ") + m_hapPath.nativePath(),
-                m_hdcPath.toUserOutput(),
-                iargs,
-                600000,
-                {},
-                rejectSock);
-            if (r.isOk()) {
-                DeployErrorFlags *flagsPtr = storage.activeStorage();
-                for (QString ln : r.standardOutput.split('\n')) {
-                    ln = ln.trimmed();
-                    if (!ln.isEmpty()) {
-                        *flagsPtr |= parseDeployErrors(ln);
-                        emit addOutput(ln, OutputFormat::Stdout, DontAppendNewline);
-                    }
-                }
-                return SetupResult::StopWithSuccess;
-            }
-            reportWarningOrError(r.errorMessage, Task::Error);
-            return SetupResult::StopWithError;
-        }
-
-        process.setCommand(cmd);
-        process.setWorkingDirectory(m_workingDirectory);
-        process.setEnvironment(m_environment);
-        process.setUseCtrlCStub(true);
-
-        DeployErrorFlags *flagsPtr = storage.activeStorage();
-        process.setStdOutLineCallback([this, flagsPtr](const QString &line) {
-            *flagsPtr |= parseDeployErrors(line);
-            stdOutput(line);
-        });
-        process.setStdErrLineCallback([this, flagsPtr](const QString &line) {
-            *flagsPtr |= parseDeployErrors(line);
-            stdError(line);
-        });
-        emit addOutput(Tr::tr("Starting: \"%1\"").arg(cmd.toUserOutput()), OutputFormat::NormalMessage);
-        return SetupResult::Continue;
-    };
-    const auto onInstallDone = [this, storage](const Process &process) {
-        const QProcess::ExitStatus exitStatus = process.exitStatus();
-        const int exitCode = process.exitCode();
-
-        if (exitStatus == QProcess::NormalExit && exitCode == 0) {
-            emit addOutput(Tr::tr("The process \"%1\" exited normally.").arg(m_command.toUserOutput()),
-                           OutputFormat::NormalMessage);
-        } else if (exitStatus == QProcess::NormalExit) {
-            const QString error = Tr::tr("The process \"%1\" exited with code %2.")
-            .arg(m_command.toUserOutput(), QString::number(exitCode));
-            reportWarningOrError(error, Task::Error);
-        } else {
-            const QString error = Tr::tr("The process \"%1\" crashed.").arg(m_command.toUserOutput());
-            reportWarningOrError(error, Task::Error);
-        }
-
-        if (*storage != NoError) {
-            if (m_uninstallPreviousPackageRun) {
-                reportWarningOrError(
-                    Tr::tr("Installing the app failed even after uninstalling the previous one."),
-                    Task::Error);
-                *storage = NoError;
-                return false;
-            }
-        } else if (exitCode != 0 || exitStatus != QProcess::NormalExit) {
-            /*
-            ** 当未检测到 deployError 代码但 adb 工具失败时，将 deployError 设置为 Failure；
-            ** 否则转发已检测到的 deployError。
-            */
-            reportWarningOrError(Tr::tr("Installing the app failed with an unknown error."), Task::Error);
-            return false;
-        }
-        return true;
-    };
-
-    const auto onAskForUninstallSetup = [this, storage] {
-        const DeployErrorFlags &errorFlags = *storage;
-        QString uninstallMsg = Tr::tr("Deployment failed with the following errors:") + "\n\n";
-        if (errorFlags & InconsistentCertificates)
-            uninstallMsg += InstallFailedInconsistentCertificatesString + '\n';
-        if (errorFlags & UpdateIncompatible)
-            uninstallMsg += InstallFailedUpdateIncompatible + '\n';
-        if (errorFlags & PermissionModelDowngrade)
-            uninstallMsg += InstallFailedPermissionModelDowngrade + '\n';
-        if (errorFlags & VersionDowngrade)
-            uninstallMsg += InstallFailedVersionDowngrade + '\n';
-        uninstallMsg += '\n';
-        uninstallMsg.append(Tr::tr("Uninstalling the installed package may solve the issue.") + '\n');
-        uninstallMsg.append(Tr::tr("Do you want to uninstall the existing package?"));
-
-        if (QMessageBox::critical(Core::ICore::dialogParent(), Tr::tr("Install failed"), uninstallMsg,
-                                  QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes) {
-            m_uninstallPreviousPackageRun = true;
-            return SetupResult::Continue;
-        }
-        return SetupResult::StopWithSuccess;
+    const auto onAskForUninstall = [this, storage] {
+        return askForUninstallSetup(storage.activeStorage());
     };
 
     return Group {
@@ -479,7 +511,7 @@ Group HarmonyDeployQtStep::deployRecipe()
             onGroupDone(DoneResult::Success)
         },
         If ([storage] { return *storage != NoError; }) >> Then {
-            onGroupSetup(onAskForUninstallSetup),
+            onGroupSetup(onAskForUninstall),
             ProcessTask(onUninstallSetup, onUninstallDone, CallDone::OnError).withTimeout(2min),
             ProcessTask(onInstallSetup, onInstallDone),
             onGroupDone(DoneResult::Success)
