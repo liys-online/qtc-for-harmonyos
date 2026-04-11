@@ -53,6 +53,94 @@ bool HarmonyHvigorOhpmOutputParser::looksLikeWarning(const QString &message)
            || m.startsWith(QLatin1String("warn"));
 }
 
+std::optional<OutputLineParser::Result> HarmonyHvigorOhpmOutputParser::tryCompilePattern(
+    const QString &trimmed,
+    const QRegularExpression &re,
+    int capFile, int capLine, int capCol,
+    int capDesc, bool hasColumn)
+{
+    const QRegularExpressionMatch match = re.match(trimmed);
+    if (!match.hasMatch())
+        return std::nullopt;
+
+    bool okLine = false;
+    const int lineNo = match.capturedView(capLine).toInt(&okLine);
+    if (!okLine)
+        return std::nullopt;
+
+    int colNo = 0;
+    if (hasColumn) {
+        bool okCol = false;
+        colNo = match.capturedView(capCol).toInt(&okCol);
+        if (!okCol)
+            colNo = 0;
+    }
+
+    const QString desc = match.captured(capDesc).trimmed();
+    if (desc.isEmpty())
+        return std::nullopt;
+
+    const Task::TaskType taskType = looksLikeWarning(desc) ? Task::Warning : Task::Error;
+    const FilePath file = absoluteFilePath(FilePath::fromUserInput(match.captured(capFile)));
+    CompileTask task(taskType, desc, file, lineNo, hasColumn ? colNo : 0);
+    LinkSpecs linkSpecs;
+    if (file.isAbsolutePath())
+        addLinkSpecForAbsoluteFilePath(linkSpecs, file, lineNo, task.column(), match, capFile);
+    scheduleTask(task, 1);
+    return Result{Status::Done, linkSpecs};
+}
+
+std::optional<OutputLineParser::Result> HarmonyHvigorOhpmOutputParser::tryAtFileLine(
+    const QString &trimmed)
+{
+    const QRegularExpressionMatch m = kAtFile.match(trimmed);
+    if (!m.hasMatch())
+        return std::nullopt;
+    const QString rawPath = m.captured(1).trimmed();
+    if (rawPath.isEmpty())
+        return std::nullopt;
+    const FilePath file = absoluteFilePath(FilePath::fromUserInput(rawPath));
+    CompileTask task(Task::Error, trimmed, file, -1, 0);
+    LinkSpecs linkSpecs;
+    if (file.isAbsolutePath())
+        addLinkSpecForAbsoluteFilePath(linkSpecs, file, -1, 0, m, 1);
+    scheduleTask(task, 1);
+    return Result{Status::Done, linkSpecs};
+}
+
+std::optional<OutputLineParser::Result> HarmonyHvigorOhpmOutputParser::tryNpmErrLine(
+    const QString &trimmed)
+{
+    const QRegularExpressionMatch m = kNpmErrPath.match(trimmed);
+    if (!m.hasMatch())
+        return std::nullopt;
+    const QString rawPath = m.captured(1).trimmed();
+    if (rawPath.isEmpty() || rawPath.startsWith(QLatin1Char('<')))
+        return std::nullopt;
+    const FilePath file = absoluteFilePath(FilePath::fromUserInput(rawPath));
+    CompileTask task(Task::Error, trimmed, file, -1, 0);
+    LinkSpecs linkSpecs;
+    if (file.isAbsolutePath())
+        addLinkSpecForAbsoluteFilePath(linkSpecs, file, -1, 0, m, 1);
+    scheduleTask(task, 1);
+    return Result{Status::Done, linkSpecs};
+}
+
+std::optional<OutputLineParser::Result> HarmonyHvigorOhpmOutputParser::trySummaryErrorLine(
+    const QString &trimmed)
+{
+    QRegularExpressionMatch m = kHvigorErrorPrefix.match(trimmed);
+    if (!m.hasMatch())
+        m = kOhpmErrorLine.match(trimmed);
+    if (!m.hasMatch())
+        return std::nullopt;
+    const QString desc = m.captured(1).trimmed();
+    if (desc.isEmpty())
+        return std::nullopt;
+    scheduleTask(BuildSystemTask(Task::Error, desc), 1);
+    return Result{Status::Done, {}};
+}
+
 OutputLineParser::Result HarmonyHvigorOhpmOutputParser::handleLine(const QString &line,
                                                                    OutputFormat type)
 {
@@ -61,96 +149,22 @@ OutputLineParser::Result HarmonyHvigorOhpmOutputParser::handleLine(const QString
     if (trimmed.isEmpty())
         return Status::NotHandled;
 
-    auto tryCompilePattern = [&](const QRegularExpression &re, int capFile, int capLine, int capCol,
-                                 int capDesc, bool hasColumn) -> std::optional<OutputLineParser::Result> {
-        const QRegularExpressionMatch match = re.match(trimmed);
-        if (!match.hasMatch())
-            return std::nullopt;
-
-        bool okLine = false;
-        const int lineNo = match.capturedView(capLine).toInt(&okLine);
-        if (!okLine)
-            return std::nullopt;
-
-        int colNo = 0;
-        if (hasColumn) {
-            bool okCol = false;
-            colNo = match.capturedView(capCol).toInt(&okCol);
-            if (!okCol)
-                colNo = 0;
-        }
-
-        const QString rawPath = match.captured(capFile);
-        const QString desc = match.captured(capDesc).trimmed();
-        if (desc.isEmpty())
-            return std::nullopt;
-
-        const Task::TaskType taskType = looksLikeWarning(desc) ? Task::Warning : Task::Error;
-        const FilePath file = absoluteFilePath(FilePath::fromUserInput(rawPath));
-        CompileTask task(taskType, desc, file, lineNo, hasColumn ? colNo : 0);
-        LinkSpecs linkSpecs;
-        if (file.isAbsolutePath())
-            addLinkSpecForAbsoluteFilePath(linkSpecs, file, lineNo, task.column(), match, capFile);
-        scheduleTask(task, 1);
-        return OutputLineParser::Result{Status::Done, linkSpecs};
-    };
-
     /* ** 分组：文件、行、列、描述 */
-    if (auto r = tryCompilePattern(kPathLineColMessage, 1, 2, 3, 4, true))
+    if (auto r = tryCompilePattern(trimmed, kPathLineColMessage, 1, 2, 3, 4, true))
         return *r;
     /* ** 分组：文件、行、描述 */
-    if (auto r = tryCompilePattern(kPathLineMessage, 1, 2, -1, 3, false))
+    if (auto r = tryCompilePattern(trimmed, kPathLineMessage, 1, 2, -1, 3, false))
         return *r;
     /* ** 分组：文件、行、列、描述 */
-    if (auto r = tryCompilePattern(kPathParenLineCol, 1, 2, 3, 4, true))
+    if (auto r = tryCompilePattern(trimmed, kPathParenLineCol, 1, 2, 3, 4, true))
         return *r;
 
-    {
-        const QRegularExpressionMatch atMatch = kAtFile.match(trimmed);
-        if (atMatch.hasMatch()) {
-            const QString rawPath = atMatch.captured(1).trimmed();
-            if (!rawPath.isEmpty()) {
-                const FilePath file = absoluteFilePath(FilePath::fromUserInput(rawPath));
-                const QString desc = trimmed;
-                CompileTask task(Task::Error, desc, file, -1, 0);
-                LinkSpecs linkSpecs;
-                if (file.isAbsolutePath())
-                    addLinkSpecForAbsoluteFilePath(linkSpecs, file, -1, 0, atMatch, 1);
-                scheduleTask(task, 1);
-                return {Status::Done, linkSpecs};
-            }
-        }
-    }
-
-    {
-        const QRegularExpressionMatch npmMatch = kNpmErrPath.match(trimmed);
-        if (npmMatch.hasMatch()) {
-            const QString rawPath = npmMatch.captured(1).trimmed();
-            if (!rawPath.isEmpty() && !rawPath.startsWith(QLatin1Char('<'))) {
-                const FilePath file = absoluteFilePath(FilePath::fromUserInput(rawPath));
-                const QString desc = trimmed;
-                CompileTask task(Task::Error, desc, file, -1, 0);
-                LinkSpecs linkSpecs;
-                if (file.isAbsolutePath())
-                    addLinkSpecForAbsoluteFilePath(linkSpecs, file, -1, 0, npmMatch, 1);
-                scheduleTask(task, 1);
-                return {Status::Done, linkSpecs};
-            }
-        }
-    }
-
-    {
-        QRegularExpressionMatch m = kHvigorErrorPrefix.match(trimmed);
-        if (!m.hasMatch())
-            m = kOhpmErrorLine.match(trimmed);
-        if (m.hasMatch()) {
-            const QString desc = m.captured(1).trimmed();
-            if (!desc.isEmpty()) {
-                scheduleTask(BuildSystemTask(Task::Error, desc), 1);
-                return {Status::Done, {}};
-            }
-        }
-    }
+    if (auto r = tryAtFileLine(trimmed))
+        return *r;
+    if (auto r = tryNpmErrLine(trimmed))
+        return *r;
+    if (auto r = trySummaryErrorLine(trimmed))
+        return *r;
 
     return Status::NotHandled;
 }

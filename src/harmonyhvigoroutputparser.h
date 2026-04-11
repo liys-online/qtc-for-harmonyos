@@ -27,6 +27,14 @@ public:
 
 private:
     static bool looksLikeWarning(const QString &message);
+
+    std::optional<Result> tryCompilePattern(const QString &trimmed,
+                                            const QRegularExpression &re,
+                                            int capFile, int capLine, int capCol,
+                                            int capDesc, bool hasColumn);
+    std::optional<Result> tryAtFileLine(const QString &trimmed);
+    std::optional<Result> tryNpmErrLine(const QString &trimmed);
+    std::optional<Result> trySummaryErrorLine(const QString &trimmed);
 };
 
 } // namespace Ohos::Internal
