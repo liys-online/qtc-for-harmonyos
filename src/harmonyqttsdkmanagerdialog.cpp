@@ -116,6 +116,9 @@ private:
     void onTreeItemChanged(QTreeWidgetItem *item, int column);
     void onDownloadSelected();
     void startNextDownload();
+    void flushAndCloseDownloadFile(QNetworkReply *reply);
+    void handleDownloadExtract(const FilePath &destPath, const QtForOhRelease &rel);
+    void onSingleDownloadFinished(const FilePath &destPath, const QtForOhRelease &rel);
     void finishDownloadBatch();
     void tryRegisterExtractedQtOhQmake(const FilePath &extractRoot);
     FilePath defaultInstallRoot() const;
@@ -155,24 +158,24 @@ HarmonyQtOhSdkManagerDialog::HarmonyQtOhSdkManagerDialog(QWidget *parent)
     setWindowTitle(Tr::tr("Qt for OpenHarmony SDK Manager"));
     resize(920, 620);
 
-    m_hintLabel = new QLabel;
+    m_hintLabel = new QLabel(this);  // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_hintLabel->setWordWrap(true);
     m_hintLabel->setTextFormat(Qt::RichText);
     m_hintLabel->setTextInteractionFlags(Qt::TextBrowserInteraction);
     m_hintLabel->setOpenExternalLinks(true);
 
-    m_openGitCodeBtn = new QPushButton(Tr::tr("Open GitCode Releases Page…"));
+    m_openGitCodeBtn = new QPushButton(Tr::tr("Open GitCode Releases Page…"), this);  // NOSONAR (cpp:S5025)
     connect(m_openGitCodeBtn, &QPushButton::clicked, this, [] {
         QDesktopServices::openUrl(QUrl(QString::fromLatin1(
             "https://gitcode.com/openharmony-sig/qt/releases")));
     });
 
-    m_installRootChooser = new PathChooser;
+    m_installRootChooser = new PathChooser(this);   // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_installRootChooser->setExpectedKind(PathChooser::Directory);
     m_installRootChooser->setPromptDialogTitle(Tr::tr("Select Qt for OpenHarmony Install Root"));
     m_installRootChooser->setFilePath(defaultInstallRoot());
 
-    m_tree = new QTreeWidget;
+    m_tree = new QTreeWidget(this); // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_tree->setColumnCount(5);
     m_tree->setHeaderLabels({
         Tr::tr("Get"),
@@ -186,20 +189,20 @@ HarmonyQtOhSdkManagerDialog::HarmonyQtOhSdkManagerDialog(QWidget *parent)
     m_tree->setAlternatingRowColors(true);
     m_tree->setRootIsDecorated(true);
 
-    m_log = new QPlainTextEdit;
+    m_log = new QPlainTextEdit(this);   // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_log->setReadOnly(true);
     m_log->setMaximumBlockCount(400);
 
-    m_progress = new QProgressBar;
+    m_progress = new QProgressBar(this);    // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_progress->setRange(0, 100);
     m_progress->setValue(0);
 
-    m_refreshBtn = new QPushButton(Tr::tr("Refresh List"));
-    m_downloadBtn = new QPushButton(Tr::tr("Download Selected"));
-    m_closeBtn = new QPushButton(Tr::tr("Close"));
+    m_refreshBtn = new QPushButton(Tr::tr("Refresh List"), this);   // NOSONAR (cpp:S5025) - parented, will auto-delete
+    m_downloadBtn = new QPushButton(Tr::tr("Download Selected"), this); // NOSONAR (cpp:S5025)
+    m_closeBtn = new QPushButton(Tr::tr("Close"), this);    // NOSONAR (cpp:S5025) - parented, will auto-delete
     m_refreshBtn->setDefault(true);
 
-    m_listDownloader = new HarmonyQtOhReleasesDownloader(this);
+    m_listDownloader = new HarmonyQtOhReleasesDownloader(this); // NOSONAR (cpp:S5025) - parented, will auto-delete
     connect(m_listDownloader, &HarmonyQtOhReleasesDownloader::releasesFetched, this,
             &HarmonyQtOhSdkManagerDialog::fillTree);
     connect(m_listDownloader, &HarmonyQtOhReleasesDownloader::fetchFailed, this,
@@ -284,7 +287,7 @@ void HarmonyQtOhSdkManagerDialog::fillTree(const QVector<QtForOhRelease> &releas
             continue;
 
         ++releasesShown;
-        auto *parent = new QTreeWidgetItem(m_tree);
+        auto *parent = new QTreeWidgetItem(m_tree); // NOSONAR (cpp:S5025) - parented, will auto-delete
         const QString relLabel = rel.title.isEmpty() ? rel.tagName : rel.title;
         parent->setText(1, relLabel);
         parent->setText(2, QStringLiteral("%2 %3") .arg(QString::number(visibleAssets), Tr::tr("file(s)")));
@@ -295,7 +298,7 @@ void HarmonyQtOhSdkManagerDialog::fillTree(const QVector<QtForOhRelease> &releas
             const QtForOhReleaseAsset &as = rel.assets.at(ai);
             if (!shouldShowCatalogAssetForHost(as))
                 continue;
-            auto *ch = new QTreeWidgetItem(parent);
+            auto *ch = new QTreeWidgetItem(parent); // NOSONAR (cpp:S5025) - parented, will auto-delete
             ch->setData(0, Qt::UserRole, ri);
             ch->setData(0, Qt::UserRole + 1, ai);
             ch->setFlags(ch->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
@@ -382,6 +385,66 @@ void HarmonyQtOhSdkManagerDialog::onDownloadSelected()
     startNextDownload();
 }
 
+void HarmonyQtOhSdkManagerDialog::flushAndCloseDownloadFile(QNetworkReply *reply)
+{
+    if (!m_downloadFile)
+        return;
+    if (reply) {
+        const QByteArray tail = reply->readAll();
+        if (!tail.isEmpty())
+            m_downloadFile->write(tail);
+    }
+    m_downloadFile->flush();
+    m_downloadFile->close();
+}
+
+void HarmonyQtOhSdkManagerDialog::handleDownloadExtract(const FilePath &destPath,
+                                                         const QtForOhRelease &rel)
+{
+    if (destPath.fileName().toLower().contains(QLatin1String(".7z"))) {
+        appendLog(Tr::tr("Skipping automatic extract for 7z; merge parts with 7-Zip if needed, "
+                         "then extract manually."));
+        return;
+    }
+    const FilePath extractRoot = m_batchInstallRoot.pathAppended(safeFileName(rel.tagName));
+    if (!extractRoot.exists() && !extractRoot.createDir()) {
+        appendLog(Tr::tr("Cannot create unpack directory: %1").arg(extractRoot.toUserOutput()));
+        return;
+    }
+    QString exErr;
+    if (extractHarmonySdkArchive(destPath, extractRoot, &exErr)) {
+        appendLog(Tr::tr("Extracted into %1").arg(extractRoot.toUserOutput()));
+        tryRegisterExtractedQtOhQmake(extractRoot);
+    } else {
+        appendLog(Tr::tr("Extract skipped or failed: %1").arg(exErr));
+    }
+}
+
+void HarmonyQtOhSdkManagerDialog::onSingleDownloadFinished(const FilePath &destPath,
+                                                            const QtForOhRelease &rel)
+{
+    QNetworkReply *reply = m_activeDownload;
+    m_activeDownload = nullptr;
+    flushAndCloseDownloadFile(reply);
+
+    if (!reply || reply->error() != QNetworkReply::NoError) {
+        appendLog(Tr::tr("Network error: %1").arg(reply ? reply->errorString() : QString()));
+        if (reply)
+            reply->deleteLater();
+        m_downloadFile.reset();
+        QFile::remove(destPath.toFSPathString());
+        m_downloadIndex++;
+        startNextDownload();
+        return;
+    }
+    reply->deleteLater();
+    appendLog(Tr::tr("Saved: %1").arg(destPath.toUserOutput()));
+    handleDownloadExtract(destPath, rel);
+    m_downloadFile.reset();
+    m_downloadIndex++;
+    startNextDownload();
+}
+
 void HarmonyQtOhSdkManagerDialog::startNextDownload()
 {
     if (m_activeDownload) {
@@ -426,10 +489,7 @@ void HarmonyQtOhSdkManagerDialog::startNextDownload()
 
     connect(m_activeDownload, &QNetworkReply::downloadProgress, this,
             [this](qint64 received, qint64 total) {
-                if (total > 0)
-                    m_progress->setValue(int(received * 100 / total));
-                else
-                    m_progress->setValue(0);
+                m_progress->setValue(total > 0 ? int(received * 100 / total) : 0);
             });
 
     connect(m_activeDownload, &QNetworkReply::readyRead, this, [this] {
@@ -438,64 +498,10 @@ void HarmonyQtOhSdkManagerDialog::startNextDownload()
         m_downloadFile->write(m_activeDownload->readAll());
     });
 
-    connect(m_activeDownload, &QNetworkReply::finished, this, [this, destPath, rel, as] {
-        QPointer<HarmonyQtOhSdkManagerDialog> guard(this);
-        if (!guard)
+    connect(m_activeDownload, &QNetworkReply::finished, this, [this, destPath, rel] {
+        if (QPointer<HarmonyQtOhSdkManagerDialog>(this).isNull())
             return;
-
-        QNetworkReply *reply = m_activeDownload;
-        m_activeDownload = nullptr;
-
-        if (m_downloadFile && reply) {
-            const QByteArray tail = reply->readAll();
-            if (!tail.isEmpty())
-                m_downloadFile->write(tail);
-            m_downloadFile->flush();
-            m_downloadFile->close();
-        } else if (m_downloadFile) {
-            m_downloadFile->flush();
-            m_downloadFile->close();
-        }
-
-        const bool netOk = reply->error() == QNetworkReply::NoError;
-        if (!netOk) {
-            appendLog(Tr::tr("Network error: %1").arg(reply->errorString()));
-            reply->deleteLater();
-            m_downloadFile.reset();
-            QFile::remove(destPath.toFSPathString());
-            m_downloadIndex++;
-            startNextDownload();
-            return;
-        }
-        reply->deleteLater();
-        appendLog(Tr::tr("Saved: %1").arg(destPath.toUserOutput()));
-
-        const QString lower = destPath.fileName().toLower();
-        const bool maybe7z = lower.contains(QLatin1String(".7z"));
-        if (maybe7z) {
-            appendLog(Tr::tr("Skipping automatic extract for 7z; merge parts with 7-Zip if needed, "
-                             "then extract manually."));
-        } else {
-            const FilePath extractRoot = m_batchInstallRoot.pathAppended(
-                safeFileName(rel.tagName));
-            if (!extractRoot.exists() && !extractRoot.createDir()) {
-                appendLog(
-                    Tr::tr("Cannot create unpack directory: %1").arg(extractRoot.toUserOutput()));
-            } else {
-                QString exErr;
-                const bool extracted = extractHarmonySdkArchive(destPath, extractRoot, &exErr);
-                if (extracted) {
-                    appendLog(Tr::tr("Extracted into %1").arg(extractRoot.toUserOutput()));
-                    tryRegisterExtractedQtOhQmake(extractRoot);
-                } else {
-                    appendLog(Tr::tr("Extract skipped or failed: %1").arg(exErr));
-                }
-            }
-        }
-
-        m_downloadFile.reset();
-        m_downloadIndex++;
-        startNextDownload();
+        onSingleDownloadFinished(destPath, rel);
     });
 }
 
