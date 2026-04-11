@@ -98,6 +98,29 @@ static FilePaths collectShallowNestedArchives(const FilePath &destDir)
     return archives;
 }
 
+static bool extractAndRemoveNestedArchive(const FilePath &arch, QString *errorMessage)
+{
+    if (!arch.isReadableFile())
+        return true; // skip, not an error
+
+    const FilePath unpackInto = arch.parentDir();
+    if (!unpackInto.isReadableDir() && !unpackInto.createDir()) {
+        if (errorMessage)
+            *errorMessage = Ohos::Tr::tr("Cannot create folder for nested archive: %1")
+                                .arg(unpackInto.toUserOutput());
+        return false;
+    }
+    if (!extractHarmonySdkArchiveOnce(arch, unpackInto, errorMessage))
+        return false;
+    if (!QFile::remove(arch.toFSPathString())) {
+        if (errorMessage)
+            *errorMessage = Ohos::Tr::tr("Could not remove nested archive after extracting: %1")
+                                .arg(arch.toUserOutput());
+        return false;
+    }
+    return true;
+}
+
 /**
  * Unpack tar-supported archives found as files in @p destDir or as files in its immediate
  * subdirectories (common wrapper layout). Each archive is unpacked into its parent directory,
@@ -107,7 +130,6 @@ bool extractNestedArchivesShallow(const FilePath &destDir, int maxRounds, QStrin
 {
     for (int round = 0; round < maxRounds; ++round) {
         FilePaths archives = collectShallowNestedArchives(destDir);
-
         if (archives.isEmpty())
             return true;
 
@@ -116,33 +138,15 @@ bool extractNestedArchivesShallow(const FilePath &destDir, int maxRounds, QStrin
         });
 
         for (const FilePath &arch : std::as_const(archives)) {
-            if (!arch.isReadableFile())
-                continue;
-            const FilePath unpackInto = arch.parentDir();
-            if (!unpackInto.isReadableDir() && !unpackInto.createDir()) {
-                if (errorMessage) {
-                    *errorMessage = Ohos::Tr::tr("Cannot create folder for nested archive: %1")
-                                        .arg(unpackInto.toUserOutput());
-                }
+            if (!extractAndRemoveNestedArchive(arch, errorMessage))
                 return false;
-            }
-            if (!extractHarmonySdkArchiveOnce(arch, unpackInto, errorMessage))
-                return false;
-            if (!QFile::remove(arch.toFSPathString())) {
-                if (errorMessage) {
-                    *errorMessage = Ohos::Tr::tr("Could not remove nested archive after extracting: %1")
-                                        .arg(arch.toUserOutput());
-                }
-                return false;
-            }
         }
     }
 
-    if (errorMessage) {
+    if (errorMessage)
         *errorMessage = Ohos::Tr::tr("Nested unpacking stopped after %1 round(s); archives may still "
                                       "be present under %2.")
                             .arg(QString::number(maxRounds), destDir.toUserOutput());
-    }
     return false;
 }
 
