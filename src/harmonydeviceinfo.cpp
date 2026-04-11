@@ -4,7 +4,7 @@ using namespace ProjectExplorer;
 
 namespace Ohos::Internal {
 
-HarmonyDeviceInfo::HarmonyDeviceInfo() {}
+HarmonyDeviceInfo::HarmonyDeviceInfo() = default;
 
 bool HarmonyDeviceInfo::isValid() const
 {
