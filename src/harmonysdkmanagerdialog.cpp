@@ -109,6 +109,10 @@ private:
     void onSingleDownloadFinished(const FilePath &destPath, const HarmonySdkPackageEntry &e);
     void onTreeItemChanged(QTreeWidgetItem *item, int column);
     void finishDownloadBatch();
+    FilePaths collectValidSdkRoots(const FilePath &configRoot) const;
+    void handleSingleSdkRoot(const FilePath &sdkRoot);
+    void handleMultipleSdkRoots(const FilePaths &validRoots);
+    void handleNoSdkRootsFound(const FilePath &configRoot);
     void refreshPathsHint();
 
     QLabel *m_pathsHintLabel = nullptr;
@@ -512,6 +516,97 @@ void HarmonySdkManagerDialog::startNextDownload()
     });
 }
 
+static QString joinPaths(const FilePaths &paths)
+{
+    QStringList sl;
+    sl.reserve(paths.size());
+    for (const FilePath &p : paths)
+        sl << p.toUserOutput();
+    return sl.join(QLatin1Char('\n'));
+}
+
+FilePaths HarmonySdkManagerDialog::collectValidSdkRoots(const FilePath &configRoot) const
+{
+    FilePaths validRoots;
+    if (configRoot.isEmpty())
+        return validRoots;
+    for (const QString &api : std::as_const(m_batchApiVersions)) {
+        const FilePath apiDir = configRoot.pathAppended(api);
+        FilePath detected = findOhosSdkRootUnder(apiDir);
+        if (detected.isEmpty() && HarmonyConfig::isValidSdk(apiDir))
+            detected = apiDir;
+        if (!detected.isEmpty() && !validRoots.contains(detected))
+            validRoots.append(detected);
+    }
+    return validRoots;
+}
+
+void HarmonySdkManagerDialog::handleSingleSdkRoot(const FilePath &sdkRoot)
+{
+    appendLog(Tr::tr("Detected SDK root: %1").arg(sdkRoot.toUserOutput()));
+    if (!HarmonyConfig::isValidSdk(sdkRoot)) {
+        QMessageBox::warning(this, Tr::tr("Download"),
+                             Tr::tr("Downloads finished, but the path does not look like a complete SDK:\n%1")
+                                 .arg(sdkRoot.toUserOutput()));
+        return;
+    }
+    QMessageBox mbox(QMessageBox::Information,
+                     Tr::tr("Download"),
+                     Tr::tr("Downloads finished.\n\n"
+                            "An OpenHarmony SDK was detected at:\n%1\n\n"
+                            "Add it to the Harmony SDK list now?")
+                         .arg(sdkRoot.toUserOutput()),
+                     QMessageBox::NoButton, this);
+    const auto *addBtn  = mbox.addButton(Tr::tr("Add to SDK List"),       QMessageBox::AcceptRole);
+    const auto *openBtn = mbox.addButton(Tr::tr("Open Harmony Settings"), QMessageBox::ActionRole);
+    mbox.addButton(QMessageBox::Close);
+    mbox.exec();
+    if (mbox.clickedButton() == addBtn) {
+        HarmonyConfig::addSdk(sdkRoot.toUserOutput());
+        HarmonyConfigurations::applyConfig();
+        appendLog(Tr::tr("SDK path registered: %1").arg(sdkRoot.toUserOutput()));
+        QMessageBox::information(this, Tr::tr("Harmony SDK"),
+                                 Tr::tr("The SDK was added. Kits and toolchains will refresh."));
+    } else if (mbox.clickedButton() == openBtn) {
+        Core::ICore::showSettings(Id(Constants::HARMONY_SETTINGS_ID));
+    }
+}
+
+void HarmonySdkManagerDialog::handleMultipleSdkRoots(const FilePaths &validRoots)
+{
+    appendLog(Tr::tr("Multiple SDK roots detected."));
+    QMessageBox mbox(QMessageBox::Information,
+                     Tr::tr("Download"),
+                     Tr::tr("Downloads finished.\n\n"
+                            "Multiple SDK roots were detected:\n%1\n\n"
+                            "Add each path under Harmony settings if needed.")
+                         .arg(joinPaths(validRoots)),
+                     QMessageBox::NoButton, this);
+    const auto *openBtn = mbox.addButton(Tr::tr("Open Harmony Settings"), QMessageBox::AcceptRole);
+    mbox.addButton(QMessageBox::Close);
+    mbox.exec();
+    if (mbox.clickedButton() == openBtn)
+        Core::ICore::showSettings(Id(Constants::HARMONY_SETTINGS_ID));
+}
+
+void HarmonySdkManagerDialog::handleNoSdkRootsFound(const FilePath &configRoot)
+{
+    const QString msg = !configRoot.isEmpty()
+        ? Tr::tr("Downloads finished.\n\n"
+                 "No complete SDK root was found under:\n%1/<API version>/\n\n"
+                 "If archives use another layout, merge manually, "
+                 "then use Harmony settings \u2192 Add\u2026").arg(configRoot.toUserOutput())
+        : Tr::tr("Downloads finished.\n\n"
+                 "Enable extraction or add the SDK path under Harmony settings.");
+    QMessageBox mbox(QMessageBox::Information, Tr::tr("Download"), msg,
+                     QMessageBox::NoButton, this);
+    const auto *openBtn = mbox.addButton(Tr::tr("Open Harmony Settings"), QMessageBox::AcceptRole);
+    mbox.addButton(QMessageBox::Close);
+    mbox.exec();
+    if (mbox.clickedButton() == openBtn)
+        Core::ICore::showSettings(Id(Constants::HARMONY_SETTINGS_ID));
+}
+
 void HarmonySdkManagerDialog::finishDownloadBatch()
 {
     m_progress->setValue(100);
@@ -521,98 +616,17 @@ void HarmonySdkManagerDialog::finishDownloadBatch()
                                     ? HarmonyConfig::effectiveOhosSdkRoot().cleanPath()
                                     : m_batchSdkRoot;
 
-    if (!configRoot.isEmpty()) {
-        if (HarmonyConfig::registerDownloadedSdksUnder(configRoot) > 0)
-            HarmonyConfigurations::applyConfig();
-    }
+    if (!configRoot.isEmpty() && HarmonyConfig::registerDownloadedSdksUnder(configRoot) > 0)
+        HarmonyConfigurations::applyConfig();
 
-    FilePaths validRoots;
-    if (!configRoot.isEmpty()) {
-        for (const QString &api : std::as_const(m_batchApiVersions)) {
-            const FilePath apiDir = configRoot.pathAppended(api);
-            FilePath detected = findOhosSdkRootUnder(apiDir);
-            if (detected.isEmpty() && HarmonyConfig::isValidSdk(apiDir))
-                detected = apiDir;
-            if (!detected.isEmpty() && !validRoots.contains(detected))
-                validRoots.append(detected);
-        }
-    }
+    const FilePaths validRoots = collectValidSdkRoots(configRoot);
 
-    const auto joinPaths = [](const FilePaths &paths) -> QString {
-        QStringList sl;
-        sl.reserve(paths.size());
-        for (const FilePath &p : paths)
-            sl << p.toUserOutput();
-        return sl.join(QLatin1Char('\n'));
-    };
-
-    if (validRoots.size() == 1) {
-        const FilePath sdkRoot = validRoots.first();
-        appendLog(Tr::tr("Detected SDK root: %1").arg(sdkRoot.toUserOutput()));
-        if (HarmonyConfig::isValidSdk(sdkRoot)) {
-            QMessageBox mbox(QMessageBox::Information,
-                             Tr::tr("Download"),
-                             Tr::tr("Downloads finished.\n\n"
-                                    "An OpenHarmony SDK was detected at:\n%1\n\n"
-                                    "Add it to the Harmony SDK list now?")
-                                 .arg(sdkRoot.toUserOutput()),
-                             QMessageBox::NoButton,
-                             this);
-            const auto *addBtn = mbox.addButton(Tr::tr("Add to SDK List"), QMessageBox::AcceptRole);
-            const auto *openBtn = mbox.addButton(Tr::tr("Open Harmony Settings"), QMessageBox::ActionRole);
-            mbox.addButton(QMessageBox::Close);
-            mbox.exec();
-
-            if (mbox.clickedButton() == addBtn) {
-                HarmonyConfig::addSdk(sdkRoot.toUserOutput());
-                HarmonyConfigurations::applyConfig();
-                appendLog(Tr::tr("SDK path registered: %1").arg(sdkRoot.toUserOutput()));
-                QMessageBox::information(this, Tr::tr("Harmony SDK"),
-                                         Tr::tr("The SDK was added. Kits and toolchains will refresh."));
-            } else if (mbox.clickedButton() == openBtn) {
-                Core::ICore::showSettings(Id(Constants::HARMONY_SETTINGS_ID));
-            }
-        } else {
-            QMessageBox::warning(
-                this,
-                Tr::tr("Download"),
-                Tr::tr("Downloads finished, but the path does not look like a complete SDK:\n%1")
-                    .arg(sdkRoot.toUserOutput()));
-        }
-    } else if (validRoots.size() > 1) {
-        appendLog(Tr::tr("Multiple SDK roots detected."));
-        QMessageBox mbox(QMessageBox::Information,
-                         Tr::tr("Download"),
-                         Tr::tr("Downloads finished.\n\n"
-                                "Multiple SDK roots were detected:\n%1\n\n"
-                                "Add each path under Harmony settings if needed.")
-                             .arg(joinPaths(validRoots)),
-                         QMessageBox::NoButton,
-                         this);
-        const auto *openBtn = mbox.addButton(Tr::tr("Open Harmony Settings"), QMessageBox::AcceptRole);
-        mbox.addButton(QMessageBox::Close);
-        mbox.exec();
-        if (mbox.clickedButton() == openBtn)
-            Core::ICore::showSettings(Id(Constants::HARMONY_SETTINGS_ID));
-    } else {
-        QMessageBox mbox(QMessageBox::Information,
-                         Tr::tr("Download"),
-                         !configRoot.isEmpty()
-                             ? Tr::tr("Downloads finished.\n\n"
-                                      "No complete SDK root was found under:\n%1/<API version>/\n\n"
-                                      "If archives use another layout, merge manually, "
-                                      "then use Harmony settings → Add…")
-                                   .arg(configRoot.toUserOutput())
-                             : Tr::tr("Downloads finished.\n\n"
-                                      "Enable extraction or add the SDK path under Harmony settings."),
-                         QMessageBox::NoButton,
-                         this);
-        const auto *openBtn = mbox.addButton(Tr::tr("Open Harmony Settings"), QMessageBox::AcceptRole);
-        mbox.addButton(QMessageBox::Close);
-        mbox.exec();
-        if (mbox.clickedButton() == openBtn)
-            Core::ICore::showSettings(Id(Constants::HARMONY_SETTINGS_ID));
-    }
+    if (validRoots.size() == 1)
+        handleSingleSdkRoot(validRoots.first());
+    else if (validRoots.size() > 1)
+        handleMultipleSdkRoots(validRoots);
+    else
+        handleNoSdkRootsFound(configRoot);
 
     m_batchSdkRoot = {};
     m_batchTempDir = {};
