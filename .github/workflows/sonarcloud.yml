@@ -23,7 +23,7 @@ jobs:
           fetch-depth: 0  # SonarCloud 需要完整历史以进行 blame / new-code 分析
 
       - name: Install build dependencies
-        run: brew install ninja p7zip gcovr
+        run: brew install ninja p7zip
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -61,73 +61,15 @@ jobs:
           echo "root=${QTC_ROOT}" >> "${GITHUB_OUTPUT}"
           echo "Qt Creator CMake prefix: ${QTC_ROOT}"
 
-      - name: Build with coverage flags
+      - name: Build
         run: |
           cmake -S . -B build \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}" \
             -DQtCreator='${{ steps.qtc.outputs.root }}' \
-            -DWITH_TESTS=ON \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -G Ninja
           cmake --build build --parallel
-
-      # - name: Run tests to collect coverage data
-      #   run: |
-      #     export QT_QPA_PLATFORM=offscreen
-      #     QTC_ROOT="${{ steps.qtc.outputs.root }}"
-      #     # macOS 动态库搜索路径
-      #     export DYLD_LIBRARY_PATH="${QTC_ROOT}/lib/qtcreator/plugins:${QTC_ROOT}/lib/qtcreator:${QT_ROOT_DIR}/lib${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}"
-      #     export DYLD_FRAMEWORK_PATH="${QTC_ROOT}/lib/qtcreator:${QT_ROOT_DIR}/lib${DYLD_FRAMEWORK_PATH:+:${DYLD_FRAMEWORK_PATH}}"
-
-      #     TESTS=(
-      #       build/test/usbmonitortest/usbmonitortest
-      #       build/test/hdcsocketclienttest/hdcsocketclienttest
-      #       build/test/ohprocreatetest/ohprocreatetest
-      #     )
-      #     for t in "${TESTS[@]}"; do
-      #       if [ -x "${t}" ]; then
-      #         # 打印动态库依赖，便于排查加载崩溃问题
-      #         echo "[otool -L] dependencies for ${t}:"
-      #         otool -L "${t}" 2>/dev/null || true
-      #         echo "Running: ${t}"
-      #         "${t}" || echo "[warning] exit code $? (non-blocking, coverage data still written)"
-      #       else
-      #         echo "[skip] not found: ${t}"
-      #       fi
-      #     done
-
-      # - name: Generate coverage.xml (gcovr sonarqube format)
-      #   run: |
-      #     cd build
-      #     gcovr \
-      #       --gcov-executable "xcrun llvm-cov gcov" \
-      #       --root "${GITHUB_WORKSPACE}" \
-      #       --filter "${GITHUB_WORKSPACE}/lib/" \
-      #       --exclude ".*_test\.cpp" \
-      #       --exclude ".*/3rdparty/.*" \
-      #       --exclude ".*/moc_.*" \
-      #       --sonarqube "${GITHUB_WORKSPACE}/coverage.xml"
-
-      #     # 移除无子元素的空 <file/> 标签——新版 SonarScanner 解析时会报错
-      #     python3 - "${GITHUB_WORKSPACE}/coverage.xml" << 'PYEOF'
-      #     import sys, xml.etree.ElementTree as ET
-      #     path = sys.argv[1]
-      #     tree = ET.parse(path)
-      #     root = tree.getroot()
-      #     for child in [c for c in root if c.tag == 'file' and len(c) == 0]:
-      #         root.remove(child)
-      #     try:
-      #         ET.indent(root, space='  ')
-      #     except AttributeError:
-      #         pass
-      #     with open(path, 'w', encoding='utf-8') as f:
-      #         f.write('<?xml version="1.0" encoding="utf-8"?>\n')
-      #         f.write(ET.tostring(root, encoding='unicode'))
-      #         f.write('\n')
-      #     PYEOF
-
-      #     echo "coverage.xml generated: ${GITHUB_WORKSPACE}/coverage.xml"
 
       - name: Reset stale CFamily AutoScan properties
         # 清除服务端遗留的 customTargetSystem=windows 等 AutoScan 属性。
