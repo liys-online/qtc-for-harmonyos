@@ -171,6 +171,9 @@ gcovr \
     --exclude ".*_test\.cpp" \
     --exclude ".*/3rdparty/.*" \
     --exclude ".*/moc_.*" \
+    --exclude-throw-branches \
+    --exclude-unreachable-branches \
+    --sonarqube-metric line \
     --sonarqube "${COVERAGE_OUT}"
 
 # gcovr --sonarqube 不支持 --xml-pretty，用 python3 格式化并清理空 <file/> 元素
