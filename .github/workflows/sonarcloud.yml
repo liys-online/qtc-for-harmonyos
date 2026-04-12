@@ -23,9 +23,7 @@ jobs:
           fetch-depth: 0  # SonarCloud 需要完整历史以进行 blame / new-code 分析
 
       - name: Install build dependencies
-        run: |
-          brew install ninja p7zip
-          pip3 install gcovr
+        run: brew install ninja p7zip gcovr
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
