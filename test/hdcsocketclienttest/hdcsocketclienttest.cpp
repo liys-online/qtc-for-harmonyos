@@ -6,6 +6,7 @@
 
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QTimer>
 
 #include <QSignalSpy>
 #include <QTest>
@@ -152,7 +153,17 @@ private slots:
     void testRunSyncWithCliFallback_hdcNotFound();
     void testRunSyncWithCliFallback_envCli_noHdc();
     void testRunSyncWithCliFallback_rejectOk();
-};
+    // ── isRunning + 特殊帧场景 ────────────────────────────────────────────
+    void testStreaming_zeroFrame();
+    void testStreaming_splitFrame();
+    void testRunShellSync_zeroFrame();
+    void testRunShellSync_splitHandshake();
+    void testRunShellSync_splitFrame();
+
+    // ── runSyncWithCliFallback CLI（QProcess）路径 ────────────────────────
+    void testRunSyncWithCliFallback_cli_success();
+    void testRunSyncWithCliFallback_cli_exitNonZero();
+    void testRunSyncWithCliFallback_cli_timeout();};
 
 // ════════════════════════════════════════════════════════════════════════════
 // 协议层
@@ -247,19 +258,27 @@ void HdcSocketClientTest::testMockStreaming_lineReceived()
 
 void HdcSocketClientTest::testStreaming_alreadyRunning()
 {
-    // start() 在 phase != Idle 时应直接返回（覆盖第二次调用的早返回分支）
+    // 校验 isRunning()，并确认 start() 在 phase != Idle 时直接返回
     QTcpServer server;
     QVERIFY(server.listen(QHostAddress::LocalHost, 0));
     EnvHdcPort env(quint16(server.serverPort()));
-    QObject::connect(&server, &QTcpServer::newConnection, &server,
-                     [&server]() { server.nextPendingConnection(); });
+    // 服务端发送有效握手，让客户端进入 Streaming 阶段
+    QObject::connect(&server, &QTcpServer::newConnection, &server, [&server]() {
+        QTcpSocket *peer = server.nextPendingConnection();
+        peer->setParent(&server);
+        peer->write(makeValidHandshake());
+    });
 
     HdcSocketClient client;
+    QVERIFY(!client.isRunning()); // 尚未启动
+    QSignalSpy startedSpy(&client, &HdcSocketClient::started);
     client.start(QStringLiteral("s1"), QStringLiteral("shell cmd"));
-    QTest::qWait(50); // 让连接建立
+    QVERIFY(QTest::qWaitFor([&startedSpy] { return startedSpy.size() >= 1; }, 5000));
+    QVERIFY(client.isRunning()); // 进入 Streaming 后应为 true
     // 第二次 start() 应被忽略（不崩溃，发出警告日志）
     client.start(QStringLiteral("s2"), QStringLiteral("shell cmd2"));
     client.stop();
+    QVERIFY(!client.isRunning()); // stop() 后应为 false
 }
 
 void HdcSocketClientTest::testStreaming_badHandshake()
@@ -612,6 +631,232 @@ void HdcSocketClientTest::testRunSyncWithCliFallback_rejectOk()
         [](const HdcShellSyncResult &) { return true; }); // 始终拒绝 socket 结果
     QVERIFY(notified);
     QCOMPARE(r.code, HdcShellSyncResult::Code::CliFailed);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 零帧 / 分帧 — streaming
+// ════════════════════════════════════════════════════════════════════════════
+
+void HdcSocketClientTest::testStreaming_zeroFrame()
+{
+    // 服务端先发 size=0 的空帧，再发正常帧
+    // 覆盖 processStreamFrames 中 pendingPayload==0 → continue 分支（行 175-176）
+    QTcpServer server;
+    QVERIFY(server.listen(QHostAddress::LocalHost, 0));
+    EnvHdcPort env(quint16(server.serverPort()));
+    QObject::connect(&server, &QTcpServer::newConnection, &server, [&server]() {
+        QTcpSocket *peer = server.nextPendingConnection();
+        peer->setParent(&server);
+        peer->write(makeValidHandshake());
+        auto acc = std::make_shared<QByteArray>();
+        auto replied = std::make_shared<bool>(false);
+        QObject::connect(peer, &QTcpSocket::readyRead, peer, [peer, acc, replied]() {
+            *acc += peer->readAll();
+            if (*replied || acc->size() < handshakeSize)
+                return;
+            *replied = true;
+            // 先发零帧
+            quint32 zero = 0;
+            peer->write(reinterpret_cast<const char *>(&zero), 4);
+            // 再发正常帧
+            const QByteArray pay = "after-zero\n";
+            quint32 belen = qToBigEndian(quint32(pay.size()));
+            peer->write(reinterpret_cast<const char *>(&belen), 4);
+            peer->write(pay);
+        });
+    });
+
+    HdcSocketClient client;
+    QSignalSpy startedSpy(&client, &HdcSocketClient::started);
+    QSignalSpy lineSpy(&client, &HdcSocketClient::lineReceived);
+    client.start(QStringLiteral("s1"), QStringLiteral("shell zero frame test"));
+    QVERIFY(QTest::qWaitFor([&startedSpy] { return startedSpy.size() >= 1; }, 5000));
+    QVERIFY(QTest::qWaitFor([&lineSpy] { return lineSpy.size() >= 1; }, 5000));
+    QCOMPARE(lineSpy.first().first().toString(), QStringLiteral("after-zero"));
+    client.stop();
+}
+
+void HdcSocketClientTest::testStreaming_splitFrame()
+{
+    // 服务端先发帧头（4 字节），30ms 后再发 payload
+    // 覆盖 processStreamFrames readBuf < pendingPayload → break 分支（行 187）
+    QTcpServer server;
+    QVERIFY(server.listen(QHostAddress::LocalHost, 0));
+    EnvHdcPort env(quint16(server.serverPort()));
+    QObject::connect(&server, &QTcpServer::newConnection, &server, [&server]() {
+        QTcpSocket *peer = server.nextPendingConnection();
+        peer->setParent(&server);
+        peer->write(makeValidHandshake());
+        auto acc = std::make_shared<QByteArray>();
+        auto replied = std::make_shared<bool>(false);
+        QObject::connect(peer, &QTcpSocket::readyRead, peer, [peer, acc, replied]() {
+            *acc += peer->readAll();
+            if (*replied || acc->size() < handshakeSize)
+                return;
+            *replied = true;
+            const QByteArray pay = "split-payload\n";
+            quint32 belen = qToBigEndian(quint32(pay.size()));
+            // 先只发帧头
+            peer->write(reinterpret_cast<const char *>(&belen), 4);
+            peer->flush();
+            // 30ms 后发 payload，让客户端先触发一次不完整的 readyRead
+            QTimer::singleShot(30, peer, [peer, pay]() {
+                peer->write(pay);
+                peer->disconnectFromHost();
+            });
+        });
+    });
+
+    HdcSocketClient client;
+    QSignalSpy lineSpy(&client, &HdcSocketClient::lineReceived);
+    QSignalSpy finishedSpy(&client, &HdcSocketClient::finished);
+    client.start(QStringLiteral("s1"), QStringLiteral("shell split frame test"));
+    QVERIFY(QTest::qWaitFor([&finishedSpy] { return finishedSpy.size() >= 1; }, 5000));
+    QCOMPARE(lineSpy.size(), 1);
+    QCOMPARE(lineSpy.first().first().toString(), QStringLiteral("split-payload"));
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 零帧 / 分帧 / 分握手 — sync
+// ════════════════════════════════════════════════════════════════════════════
+
+void HdcSocketClientTest::testRunShellSync_zeroFrame()
+{
+    // 同步模式：服务端先发 size=0 空帧，再发正常帧
+    // 覆盖 syncProcessOneFrame pendingPayload==0 → return true 分支（行 284-285）
+    QTcpServer server;
+    QVERIFY(server.listen(QHostAddress::LocalHost, 0));
+    EnvHdcPort env(quint16(server.serverPort()));
+    QObject::connect(&server, &QTcpServer::newConnection, &server, [&server]() {
+        QTcpSocket *peer = server.nextPendingConnection();
+        peer->setParent(&server);
+        peer->write(makeValidHandshake());
+        auto acc = std::make_shared<QByteArray>();
+        auto replied = std::make_shared<bool>(false);
+        QObject::connect(peer, &QTcpSocket::readyRead, peer, [peer, acc, replied]() {
+            *acc += peer->readAll();
+            if (*replied || acc->size() < handshakeSize)
+                return;
+            *replied = true;
+            quint32 zero = 0;
+            peer->write(reinterpret_cast<const char *>(&zero), 4);
+            const QByteArray pay = "zf-sync-ok";
+            quint32 belen = qToBigEndian(quint32(pay.size()));
+            peer->write(reinterpret_cast<const char *>(&belen), 4);
+            peer->write(pay);
+            peer->disconnectFromHost();
+        });
+    });
+
+    const HdcShellSyncResult r = HdcSocketClient::runShellSync(
+        QStringLiteral("s1"), QStringLiteral("shell zero frame sync test"), 5000);
+    QVERIFY(r.isOk());
+    QCOMPARE(r.standardOutput, QStringLiteral("zf-sync-ok"));
+}
+
+void HdcSocketClientTest::testRunShellSync_splitHandshake()
+{
+    // 服务端先发握手前 10 字节，40ms 后发剩余字节
+    // 覆盖 syncProcessHandshake readBuf < handshakeSize → return false（行 256）
+    QTcpServer server;
+    QVERIFY(server.listen(QHostAddress::LocalHost, 0));
+    EnvHdcPort env(quint16(server.serverPort()));
+    QObject::connect(&server, &QTcpServer::newConnection, &server, [&server]() {
+        QTcpSocket *peer = server.nextPendingConnection();
+        peer->setParent(&server);
+        const QByteArray hs = makeValidHandshake();
+        peer->write(hs.left(10));
+        peer->flush();
+        QTimer::singleShot(40, peer, [peer, hs]() {
+            auto acc = std::make_shared<QByteArray>();
+            auto replied = std::make_shared<bool>(false);
+            QObject::connect(peer, &QTcpSocket::readyRead, peer, [peer, acc, replied]() {
+                *acc += peer->readAll();
+                if (*replied || acc->size() < handshakeSize)
+                    return;
+                *replied = true;
+                const QByteArray pay = "split-hs-ok";
+                quint32 belen = qToBigEndian(quint32(pay.size()));
+                peer->write(reinterpret_cast<const char *>(&belen), 4);
+                peer->write(pay);
+                peer->disconnectFromHost();
+            });
+            peer->write(hs.mid(10));
+        });
+    });
+
+    const HdcShellSyncResult r = HdcSocketClient::runShellSync(
+        QStringLiteral("s1"), QStringLiteral("shell split handshake test"), 5000);
+    QVERIFY(r.isOk());
+    QCOMPARE(r.standardOutput, QStringLiteral("split-hs-ok"));
+}
+
+void HdcSocketClientTest::testRunShellSync_splitFrame()
+{
+    // 服务端先发帧头，30ms 后发 payload
+    // 覆盖 syncProcessOneFrame readBuf < pendingPayload → return false（行 298）
+    QTcpServer server;
+    QVERIFY(server.listen(QHostAddress::LocalHost, 0));
+    EnvHdcPort env(quint16(server.serverPort()));
+    QObject::connect(&server, &QTcpServer::newConnection, &server, [&server]() {
+        QTcpSocket *peer = server.nextPendingConnection();
+        peer->setParent(&server);
+        peer->write(makeValidHandshake());
+        auto acc = std::make_shared<QByteArray>();
+        auto replied = std::make_shared<bool>(false);
+        QObject::connect(peer, &QTcpSocket::readyRead, peer, [peer, acc, replied]() {
+            *acc += peer->readAll();
+            if (*replied || acc->size() < handshakeSize)
+                return;
+            *replied = true;
+            const QByteArray pay = "sync-split-payload";
+            quint32 belen = qToBigEndian(quint32(pay.size()));
+            peer->write(reinterpret_cast<const char *>(&belen), 4);
+            peer->flush();
+            QTimer::singleShot(30, peer, [peer, pay]() {
+                peer->write(pay);
+                peer->disconnectFromHost();
+            });
+        });
+    });
+
+    const HdcShellSyncResult r = HdcSocketClient::runShellSync(
+        QStringLiteral("s1"), QStringLiteral("shell split frame sync test"), 5000);
+    QVERIFY(r.isOk());
+    QCOMPARE(r.standardOutput, QStringLiteral("sync-split-payload"));
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// runSyncWithCliFallback — QProcess 路径
+// ════════════════════════════════════════════════════════════════════════════
+
+void HdcSocketClientTest::testRunSyncWithCliFallback_cli_success()
+{
+    // QTC_HARMONY_HDC_USE_CLI=1 → 跳过 socket，直接运行 /usr/bin/true
+    // 覆盖 QProcess 正常启动→完成→exitCode==0 → Ok 路径（行 474-479, 492, 498, 506-507）
+    EnvVar cliEnv("QTC_HARMONY_HDC_USE_CLI", "1");
+    const HdcShellSyncResult r = HdcSocketClient::runSyncWithCliFallback(
+        "d1", "cmd", "/usr/bin/true", {}, 5000);
+    QVERIFY(r.isOk());
+}
+
+void HdcSocketClientTest::testRunSyncWithCliFallback_cli_exitNonZero()
+{
+    // /usr/bin/false 退出码 1 → CliFailed（行 499-504）
+    EnvVar cliEnv("QTC_HARMONY_HDC_USE_CLI", "1");
+    const HdcShellSyncResult r = HdcSocketClient::runSyncWithCliFallback(
+        "d1", "cmd", "/usr/bin/false", {}, 5000);
+    QCOMPARE(r.code, HdcShellSyncResult::Code::CliFailed);
+    QVERIFY(r.errorMessage.contains(QLatin1String("1")));
+}
+
+void HdcSocketClientTest::testRunSyncWithCliFallback_cli_timeout()
+{
+    // /bin/sleep 60 配合 500ms 超时 → Timeout（行 485-490）
+    EnvVar cliEnv("QTC_HARMONY_HDC_USE_CLI", "1");
+    const HdcShellSyncResult r = HdcSocketClient::runSyncWithCliFallback(
+        "d1", "cmd", "/bin/sleep", {QStringLiteral("60")}, 500);
+    QCOMPARE(r.code, HdcShellSyncResult::Code::Timeout);
 }
 
 QTEST_MAIN(HdcSocketClientTest)
