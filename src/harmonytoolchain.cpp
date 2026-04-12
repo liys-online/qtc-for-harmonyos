@@ -158,6 +158,22 @@ static Result<ProjectExplorer::Macros> gccPredefinedMacros(
     return predefinedMacros;
 }
 
+static void appendHeaderPath(const FilePath &gcc,
+                             QByteArray line,
+                             HeaderPathType kind,
+                             HeaderPaths &paths)
+{
+    line = line.trimmed();
+    const int index = line.indexOf(" (framework directory)");
+    if (index != -1) {
+        line.truncate(index);
+        kind = HeaderPathType::Framework;
+    }
+    const FilePath headerPath = gcc.withNewPath(QString::fromUtf8(line)).canonicalPath();
+    if (!headerPath.isEmpty())
+        paths.append({headerPath, kind});
+}
+
 static HeaderPaths gccHeaderPaths(const FilePath &gcc,
                                   const QStringList &arguments,
                                   const Environment &env)
@@ -182,22 +198,8 @@ static HeaderPaths gccHeaderPaths(const FilePath &gcc,
             line = cpp.readLine();
             if (line.startsWith("#include")) {
                 kind = HeaderPathType::BuiltIn;
-            } else if (! line.isEmpty() && QChar(line.at(0)).isSpace()) {
-                HeaderPathType thisHeaderKind = kind;
-
-                line = line.trimmed();
-
-                const int index = line.indexOf(" (framework directory)");
-                if (index != -1) {
-                    line.truncate(index);
-                    thisHeaderKind = HeaderPathType::Framework;
-                }
-
-                const FilePath headerPath
-                    = gcc.withNewPath(QString::fromUtf8(line)).canonicalPath();
-
-                if (!headerPath.isEmpty())
-                    builtInHeaderPaths.append({headerPath, thisHeaderKind});
+            } else if (!line.isEmpty() && QChar(line.at(0)).isSpace()) {
+                appendHeaderPath(gcc, line, kind, builtInHeaderPaths);
             } else if (line.startsWith("End of search list.")) {
                 break;
             } else {
@@ -452,13 +454,14 @@ QList<OutputLineParser *> HarmonyToolchain::createOutputParsers() const
     return ClangParser::clangParserSuite();
 }
 
+template<typename ReinterpretOptions, typename ExtraHeaderPathsFunction>
 static HeaderPaths builtInHeaderPaths(const Environment &env,
                                       const FilePath &compilerCommand,
                                       const QStringList &platformCodeGenFlags,
-                                      std::function<QStringList(const QStringList &options)> reinterpretOptions,
+                                      ReinterpretOptions reinterpretOptions,
                                       GccToolchain::HeaderPathsCache headerCache,
                                       Id languageId,
-                                      std::function<void(HeaderPaths &)> extraHeaderPathsFunction,
+                                      ExtraHeaderPathsFunction extraHeaderPathsFunction,
                                       const QStringList &flags,
                                       const FilePath &sysRoot,
                                       const QString &originalTargetTriple)
@@ -722,37 +725,39 @@ void HarmonyToolchain::syncAutodetectedWithParentToolchains()
     /* ** 仅订阅自动检测的工具链。 */
     ToolchainManager *tcManager = ToolchainManager::instance();
     m_mingwToolchainAddedConnection
-        = connect(tcManager, &ToolchainManager::toolchainsRegistered, this,
-                  [this](const Toolchains &toolchains) {
-                      if (mingwToolchainFromId(m_parentToolchainId))
-                          return;
-                      for (Toolchain * const tc : toolchains) {
-                          if (tc->typeId() == ProjectExplorer::Constants::MINGW_TOOLCHAIN_TYPEID) {
-                              m_parentToolchainId = tc->id();
-                              break;
-                          }
-                      }
-                  });
+        = connect(tcManager, &ToolchainManager::toolchainsRegistered,
+                  this, &HarmonyToolchain::onMingwToolchainsRegistered);
     m_thisToolchainRemovedConnection
-        = connect(tcManager, &ToolchainManager::toolchainsDeregistered, this,
-                  [this](const Toolchains &toolchains) {
-                      bool updateParentId = false;
-                      for (Toolchain * const tc : toolchains) {
-                          if (tc == this) {
-                              QObject::disconnect(m_thisToolchainRemovedConnection);
-                              QObject::disconnect(m_mingwToolchainAddedConnection);
-                              break;
-                          } else if (m_parentToolchainId == tc->id()) {
-                              updateParentId = true;
-                              break;
-                          }
-                      }
-                      if (updateParentId) {
-                          const Toolchains mingwTCs = mingwToolchains();
-                          m_parentToolchainId = mingwTCs.isEmpty() ? QByteArray()
-                                                                   : mingwTCs.front()->id();
-                      }
-                  });
+        = connect(tcManager, &ToolchainManager::toolchainsDeregistered,
+                  this, &HarmonyToolchain::onMingwToolchainsDeregistered);
+}
+
+void HarmonyToolchain::onMingwToolchainsRegistered(const Toolchains &toolchains)
+{
+    if (mingwToolchainFromId(m_parentToolchainId))
+        return;
+    for (Toolchain * const tc : toolchains) {
+        if (tc->typeId() == ProjectExplorer::Constants::MINGW_TOOLCHAIN_TYPEID) {
+            m_parentToolchainId = tc->id();
+            break;
+        }
+    }
+}
+
+void HarmonyToolchain::onMingwToolchainsDeregistered(const Toolchains &toolchains)
+{
+    if (toolchains.contains(this)) {
+        QObject::disconnect(m_thisToolchainRemovedConnection);
+        QObject::disconnect(m_mingwToolchainAddedConnection);
+        return;
+    }
+    const bool parentRemoved = Utils::anyOf(toolchains, [this](const Toolchain *tc) {
+        return m_parentToolchainId == tc->id();
+    });
+    if (parentRemoved) {
+        const Toolchains mingwTCs = mingwToolchains();
+        m_parentToolchainId = mingwTCs.isEmpty() ? QByteArray() : mingwTCs.front()->id();
+    }
 }
 
 static Abis guessGccAbi(const QString &m, const ProjectExplorer::Macros &macros)
@@ -829,29 +834,28 @@ HarmonyToolchain::DetectedAbisResult HarmonyToolchain::detectSupportedAbis() con
                        platformCodeGenFlags());
 }
 
+/* ** 从编译器路径推断 NDK 目录。
+** 典型路径结构：.../native/llvm/bin/clang → .../native
+** 备用结构：    .../native/llvm/...       → .../native（基于 /llvm/ 分割） */
+static FilePath inferNdkLocation(const QString &compilerPath)
+{
+    QStringList parts = compilerPath.split("/native/llvm/");
+    if (parts.size() > 1)
+        return FilePath::fromString(parts.first() + "/native");
+
+    parts = compilerPath.split("/llvm/");
+    const QString basePath = parts.size() > 1 ? parts.first() : QString();
+    if (basePath.endsWith("/native"))
+        return FilePath::fromString(basePath);
+
+    return {};
+}
+
 FilePath HarmonyToolchain::ndkLocation() const
 {
     /* ** 如果 NDK 位置为空，尝试从编译器路径推断 */
-    if (m_ndkLocation.isEmpty()) {
-        const QString compilerPath = compilerCommand().toFSPathString();
-        
-        /* ** HarmonyOS NDK 的典型路径结构：.../native/llvm/bin/clang */
-        QStringList ndkParts = compilerPath.split("/native/llvm/");
-        if (ndkParts.size() > 1) {
-            QString inferredNdkLocation = ndkParts.first() + "/native";
-            m_ndkLocation = FilePath::fromString(inferredNdkLocation);
-        } else {
-            /* ** 备用方案：尝试其他可能的路径模式 */
-            ndkParts = compilerPath.split("/llvm/");
-            if (ndkParts.size() > 1) {
-                /* ** 检查是否在 native 目录下 */
-                QString basePath = ndkParts.first();
-                if (basePath.endsWith("/native")) {
-                    m_ndkLocation = FilePath::fromString(basePath);
-                }
-            }
-        }
-    }
+    if (m_ndkLocation.isEmpty())
+        m_ndkLocation = inferNdkLocation(compilerCommand().toFSPathString());
     return m_ndkLocation;
 }
 
@@ -892,7 +896,7 @@ public:
         setSupportedLanguages(
             {ProjectExplorer::Constants::C_LANGUAGE_ID,
              ProjectExplorer::Constants::CXX_LANGUAGE_ID});
-        setToolchainConstructor([] { return new HarmonyToolchain; });
+        setToolchainConstructor([] { return new HarmonyToolchain; });   // NOSONAR (cpp:S5025)
     }
 private:
     std::unique_ptr<ToolchainConfigWidget> createConfigurationWidget(
@@ -912,6 +916,40 @@ static FilePath clangPlusPlusPath(const FilePath &clangPath)
     return clangPath.parentDir().pathAppended(clangPath.baseName() + "++").withExecutableSuffix();
 }
 
+/* ** 查找或创建一个工具链条目，并将其重置到给定的编译器路径。 */
+static Toolchain *processToolchain(const FilePath &compilerCommand,
+                                   const Id &lang,
+                                   const QString &target,
+                                   const Abi &abi,
+                                   const FilePath &ndkLocation,
+                                   const QString &displayName,
+                                   const ToolchainList &alreadyKnown,
+                                   QList<Toolchain *> &newToolchains)
+{
+    Toolchain *tc = findToolchain(compilerCommand, lang, target, alreadyKnown);
+    if (tc) {
+        if (tc->displayName() != displayName)
+            tc->setDisplayName(displayName);
+    } else {
+        qCDebug(harmonyToolchainLog) << "New Clang toolchain found" << abi.toString() << lang
+                                     << "for NDK" << ndkLocation;
+        auto atc = new HarmonyToolchain();  // NOSONAR (cpp:S5025) - 交由 ToolchainManager 管理生命周期
+        atc->setNdkLocation(ndkLocation);
+        atc->setOriginalTargetTriple(target);
+        atc->setLanguage(lang);
+        atc->setTargetAbi(abi);
+        atc->setPlatformCodeGenFlags({"-target", target});
+        atc->setPlatformLinkerFlags({"-target", target});
+        atc->setDisplayName(displayName);
+        tc = atc;
+        newToolchains << tc;
+    }
+    if (auto gccTc = dynamic_cast<HarmonyToolchain *>(tc))
+        gccTc->resetToolchain(compilerCommand);
+    tc->setDetectionSource(DetectionSource(DetectionSource::FromSdk));
+    return tc;
+}
+
 ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown,
                                           const QList<FilePath> &ndkLocations,
                                           const bool isCustom)
@@ -923,65 +961,35 @@ ToolchainList autodetectToolchainsFromNdk(const ToolchainList &alreadyKnown,
         ProjectExplorer::Constants::C_LANGUAGE_ID
     };
 
-    for (const FilePath &ndkLocation : ndkLocations)
-    {
+    for (const FilePath &ndkLocation : ndkLocations) {
         const FilePath clangPath = HarmonyConfig::clangPathFromNdk(ndkLocation);
         if (!clangPath.exists())
-        {
             qCDebug(harmonyToolchainLog) << "Clang toolchains detection fails. Can not find Clang" << clangPath;
-        }
-        for (const Id &lang : LanguageIds)
-        {
+
+        for (const Id &lang : LanguageIds) {
             FilePath compilerCommand = clangPath;
             if (lang == ProjectExplorer::Constants::CXX_LANGUAGE_ID)
                 compilerCommand = clangPlusPlusPath(clangPath);
 
-            if (!compilerCommand.exists())
-            {
+            if (!compilerCommand.exists()) {
                 qCDebug(harmonyToolchainLog) << "Skipping Clang toolchain. Can not find compiler" << compilerCommand;
                 continue;
             }
 
+            const QPair<QVersionNumber, QVersionNumber> versionPair
+                = HarmonyConfig::getVersion(HarmonyConfig::releaseFile(ndkLocation));
+            const QString customStr = isCustom ? "Custom " : QString();
+
             auto targetItr = clangTargets().constBegin();
-            while (targetItr != clangTargets().constEnd())
-            {
+            while (targetItr != clangTargets().constEnd()) {
                 const Abi &abi = targetItr.value();
                 const QString target = targetItr.key();
-                Toolchain *tc = findToolchain(compilerCommand, lang, target, alreadyKnown);
-
-                const QString customStr = isCustom ? "Custom " : QString();
-                QPair<QVersionNumber, QVersionNumber> versionPair = HarmonyConfig::getVersion(HarmonyConfig::releaseFile(ndkLocation));
                 const QString displayName(customStr + QString("Harmony Clang (%1, API %2 %3)")
-                                                          .arg(HarmonyConfig::displayName(abi),
-                                                               versionPair.first.toString(),
-                                                               versionPair.second.toString()));
-                if(tc)
-                {
-                    if (tc->displayName() != displayName)
-                    {
-                        tc->setDisplayName(displayName);
-                    }
-                }
-                else
-                {
-                    qCDebug(harmonyToolchainLog) << "New Clang toolchain found" << abi.toString() << lang
-                                          << "for NDK" << ndkLocation;
-                    auto atc = new HarmonyToolchain();
-                    atc->setNdkLocation(ndkLocation);
-                    atc->setOriginalTargetTriple(target);
-                    atc->setLanguage(lang);
-                    atc->setTargetAbi(clangTargets().value(target));
-                    atc->setPlatformCodeGenFlags({"-target", target});
-                    atc->setPlatformLinkerFlags({"-target", target});
-                    atc->setDisplayName(displayName);
-                    tc = atc;
-
-                    newToolchains << tc;
-                }
-
-                if (auto gccTc = dynamic_cast<HarmonyToolchain*>(tc))
-                    gccTc->resetToolchain(compilerCommand);
-                tc->setDetectionSource(DetectionSource(DetectionSource::FromSdk));
+                                              .arg(HarmonyConfig::displayName(abi),
+                                                   versionPair.first.toString(),
+                                                   versionPair.second.toString()));
+                processToolchain(compilerCommand, lang, target, abi,
+                                 ndkLocation, displayName, alreadyKnown, newToolchains);
                 ++targetItr;
             }
         }

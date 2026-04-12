@@ -33,8 +33,9 @@ public:
     class DetectedAbisResult {
     public:
         DetectedAbisResult() = default;
-        DetectedAbisResult(const ProjectExplorer::Abis &supportedAbis, const QString &originalTargetTriple = {}) :
-            supportedAbis(supportedAbis),
+        explicit DetectedAbisResult(const ProjectExplorer::Abis &supportedAbis,
+                                    const QString &originalTargetTriple = {})
+            :supportedAbis(supportedAbis),
             originalTargetTriple(originalTargetTriple)
         { }
 
@@ -82,14 +83,16 @@ protected:
     QString defaultDisplayName() const;
     Utils::LanguageExtensions defaultLanguageExtensions() const;
     virtual DetectedAbisResult detectSupportedAbis() const;
+private:
     QStringList m_platformCodeGenFlags = {};
     QStringList m_platformLinkerFlags = {};
 
     OptionsReinterpreter m_optionsReinterpreter = [](const QStringList &v) { return v; };
-    mutable ExtraHeaderPathsFunction m_extraHeaderPathsFunction = [](ProjectExplorer::HeaderPaths &) {};
+    mutable ExtraHeaderPathsFunction m_extraHeaderPathsFunction = [](ProjectExplorer::HeaderPaths &) { return; };
 
-private:
     void syncAutodetectedWithParentToolchains();
+    void onMingwToolchainsRegistered(const ProjectExplorer::Toolchains &toolchains);
+    void onMingwToolchainsDeregistered(const ProjectExplorer::Toolchains &toolchains);
     mutable ProjectExplorer::Abis m_supportedAbis;
     mutable QString m_originalTargetTriple;
     mutable Utils::FilePath m_ndkLocation;
