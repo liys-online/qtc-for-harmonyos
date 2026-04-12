@@ -99,37 +99,37 @@ jobs:
             fi
           done
 
-      - name: Generate coverage.xml (gcovr sonarqube format)
-        run: |
-          cd build
-          gcovr \
-            --gcov-executable "xcrun llvm-cov gcov" \
-            --root "${GITHUB_WORKSPACE}" \
-            --filter "${GITHUB_WORKSPACE}/lib/" \
-            --exclude ".*_test\.cpp" \
-            --exclude ".*/3rdparty/.*" \
-            --exclude ".*/moc_.*" \
-            --sonarqube "${GITHUB_WORKSPACE}/coverage.xml"
+      # - name: Generate coverage.xml (gcovr sonarqube format)
+      #   run: |
+      #     cd build
+      #     gcovr \
+      #       --gcov-executable "xcrun llvm-cov gcov" \
+      #       --root "${GITHUB_WORKSPACE}" \
+      #       --filter "${GITHUB_WORKSPACE}/lib/" \
+      #       --exclude ".*_test\.cpp" \
+      #       --exclude ".*/3rdparty/.*" \
+      #       --exclude ".*/moc_.*" \
+      #       --sonarqube "${GITHUB_WORKSPACE}/coverage.xml"
 
-          # 移除无子元素的空 <file/> 标签——新版 SonarScanner 解析时会报错
-          python3 - "${GITHUB_WORKSPACE}/coverage.xml" << 'PYEOF'
-          import sys, xml.etree.ElementTree as ET
-          path = sys.argv[1]
-          tree = ET.parse(path)
-          root = tree.getroot()
-          for child in [c for c in root if c.tag == 'file' and len(c) == 0]:
-              root.remove(child)
-          try:
-              ET.indent(root, space='  ')
-          except AttributeError:
-              pass
-          with open(path, 'w', encoding='utf-8') as f:
-              f.write('<?xml version="1.0" encoding="utf-8"?>\n')
-              f.write(ET.tostring(root, encoding='unicode'))
-              f.write('\n')
-          PYEOF
+      #     # 移除无子元素的空 <file/> 标签——新版 SonarScanner 解析时会报错
+      #     python3 - "${GITHUB_WORKSPACE}/coverage.xml" << 'PYEOF'
+      #     import sys, xml.etree.ElementTree as ET
+      #     path = sys.argv[1]
+      #     tree = ET.parse(path)
+      #     root = tree.getroot()
+      #     for child in [c for c in root if c.tag == 'file' and len(c) == 0]:
+      #         root.remove(child)
+      #     try:
+      #         ET.indent(root, space='  ')
+      #     except AttributeError:
+      #         pass
+      #     with open(path, 'w', encoding='utf-8') as f:
+      #         f.write('<?xml version="1.0" encoding="utf-8"?>\n')
+      #         f.write(ET.tostring(root, encoding='unicode'))
+      #         f.write('\n')
+      #     PYEOF
 
-          echo "coverage.xml generated: ${GITHUB_WORKSPACE}/coverage.xml"
+      #     echo "coverage.xml generated: ${GITHUB_WORKSPACE}/coverage.xml"
 
       - name: Reset stale CFamily AutoScan properties
         # 清除服务端遗留的 customTargetSystem=windows 等 AutoScan 属性。
