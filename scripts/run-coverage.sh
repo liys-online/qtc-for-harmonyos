@@ -177,30 +177,18 @@ gcovr \
 # （无 <lineToCover> 子元素的 header 文件在新版 SonarCloud scanner 中会导致解析错误）
 python3 - "${COVERAGE_OUT}" <<'PYEOF'
 import sys, xml.etree.ElementTree as ET
-
 path = sys.argv[1]
-ET.register_namespace('', '')
 tree = ET.parse(path)
 root = tree.getroot()
-
-# 移除没有任何 <lineToCover> 子元素的 <file> 节点
-to_remove = [child for child in root if child.tag == 'file' and len(child) == 0]
-for child in to_remove:
+for child in [c for c in root if c.tag == 'file' and len(c) == 0]:
     root.remove(child)
-
-# 写回，手动补 XML 声明（ET 默认不加）
-xml_str = ET.tostring(root, encoding='unicode', xml_declaration=False)
-
-# 格式化缩进（Python 3.9+）
 try:
     ET.indent(root, space='  ')
-    xml_str = ET.tostring(root, encoding='unicode', xml_declaration=False)
 except AttributeError:
-    pass  # Python < 3.9，跳过格式化
-
+    pass
 with open(path, 'w', encoding='utf-8') as f:
     f.write('<?xml version="1.0" encoding="utf-8"?>\n')
-    f.write(xml_str)
+    f.write(ET.tostring(root, encoding='unicode'))
     f.write('\n')
 PYEOF
 
