@@ -246,8 +246,8 @@ static void syncOnTimeout(ShellSyncCtx &ctx)
     ctx.result.code           = HdcShellSyncResult::Code::Timeout;
     ctx.result.errorMessage   = HdcSocketClient::tr("hdc shell sync: timeout after %1 ms").arg(ctx.timeoutMs);
     ctx.result.standardOutput = QString::fromUtf8(ctx.outputUtf8);
-    ctx.socket->abort();
     syncQuitOnce(ctx);
+    ctx.socket->abort();
 }
 
 static bool syncProcessHandshake(ShellSyncCtx &ctx)
@@ -260,8 +260,8 @@ static bool syncProcessHandshake(ShellSyncCtx &ctx)
         ctx.result.code         = HdcShellSyncResult::Code::HandshakeFailed;
         ctx.result.errorMessage = HdcSocketClient::tr("hdc daemon handshake verification failed (expected OHOS HDC).");
         qCWarning(hdcSocketLog) << ctx.result.errorMessage;
-        ctx.socket->abort();
         syncQuitOnce(ctx);
+        ctx.socket->abort();
         return false;
     }
     ctx.socket->write(HdcSocketProtocol::buildHeadPacket(ctx.serial));
@@ -289,8 +289,8 @@ static bool syncProcessOneFrame(ShellSyncCtx &ctx)
             ctx.result.errorMessage   = HdcSocketClient::tr("hdc shell sync: invalid frame size (%1).").arg(ctx.pendingPayload);
             ctx.result.standardOutput = QString::fromUtf8(ctx.outputUtf8);
             qCWarning(hdcSocketLog) << ctx.result.errorMessage;
-            ctx.socket->abort();
             syncQuitOnce(ctx);
+            ctx.socket->abort();
             return false;
         }
     }
