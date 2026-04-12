@@ -406,60 +406,63 @@ FilePath pickHapInOutputDir(const FilePath &outputDir, const QString &moduleName
     return haps.front();
 }
 
+static void appendDiagnostic(QStringList *diagnostic, const QString &msg)
+{
+    if (diagnostic)
+        diagnostic->append(msg);
+}
+
+static FilePath tryOneModule(const FilePath &ohProRoot,
+                             const QJsonObject &mo,
+                             const QString &phase,
+                             QStringList *diagnostic)
+{
+    const QString moduleName = mo.value(QStringLiteral("name")).toString();
+    const FilePath modRoot = moduleRootFromBuildProfileEntry(ohProRoot, mo);
+    if (moduleName.isEmpty() || modRoot.isEmpty()) {
+        appendDiagnostic(diagnostic, QStringLiteral("[%1] skip (missing module name or path).").arg(phase));
+        return {};
+    }
+    const FilePath outputDir = modRoot.pathAppended(kOutputsRelative);
+    appendDiagnostic(diagnostic,
+                     QStringLiteral("[%1] module \"%2\" → %3")
+                         .arg(phase, moduleName, outputDir.toUserOutput()));
+    return pickHapInOutputDir(outputDir, moduleName);
+}
+
 FilePath resolveFromBuildProfileModules(const FilePath &ohProRoot, QStringList *diagnostic)
 {
     const FilePath profilePath = ohProRoot.pathAppended(QStringLiteral("build-profile.json5"));
     if (!profilePath.isReadableFile()) {
-        if (diagnostic)
-            diagnostic->append(QStringLiteral("No readable build-profile.json5 — using entry + scan fallbacks."));
+        appendDiagnostic(diagnostic, QStringLiteral("No readable build-profile.json5 — using entry + scan fallbacks."));
         return {};
     }
 
     const Result<QByteArray> content = profilePath.fileContents();
     if (!content) {
-        if (diagnostic)
-            diagnostic->append(QStringLiteral("Could not read build-profile.json5."));
+        appendDiagnostic(diagnostic, QStringLiteral("Could not read build-profile.json5."));
         return {};
     }
 
     QJsonParseError parseError{};
     const QJsonDocument doc = QJsonDocument::fromJson(*content, &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-        if (diagnostic) {
-            diagnostic->append(QStringLiteral("build-profile.json5: JSON error: %1")
-                                   .arg(parseError.errorString()));
-        }
+        appendDiagnostic(diagnostic, QStringLiteral("build-profile.json5: JSON error: %1")
+                                         .arg(parseError.errorString()));
         return {};
     }
 
     const QJsonArray modules = doc.object().value(QStringLiteral("modules")).toArray();
     if (modules.isEmpty()) {
-        if (diagnostic)
-            diagnostic->append(QStringLiteral("build-profile.json5: empty modules[] — using entry fallbacks."));
+        appendDiagnostic(diagnostic, QStringLiteral("build-profile.json5: empty modules[] — using entry fallbacks."));
         return {};
     }
-
-    const auto tryOneModule = [&](const QJsonObject &mo, const QString &phase) -> FilePath {
-        const QString moduleName = mo.value(QStringLiteral("name")).toString();
-        const FilePath modRoot = moduleRootFromBuildProfileEntry(ohProRoot, mo);
-        if (moduleName.isEmpty() || modRoot.isEmpty()) {
-            if (diagnostic)
-                diagnostic->append(QStringLiteral("[%1] skip (missing module name or path).").arg(phase));
-            return {};
-        }
-        const FilePath outputDir = modRoot.pathAppended(kOutputsRelative);
-        if (diagnostic) {
-            diagnostic->append(
-                QStringLiteral("[%1] module \"%2\" → %3").arg(phase, moduleName, outputDir.toUserOutput()));
-        }
-        return pickHapInOutputDir(outputDir, moduleName);
-    };
 
     for (const QJsonValue &mv : modules) {
         const QJsonObject mo = mv.toObject();
         if (mo.value(QStringLiteral("type")).toString() != QStringLiteral("entry"))
             continue;
-        const FilePath found = tryOneModule(mo, QStringLiteral("entry-type"));
+        const FilePath found = tryOneModule(ohProRoot, mo, QStringLiteral("entry-type"), diagnostic);
         if (!found.isEmpty())
             return found;
     }
@@ -468,7 +471,7 @@ FilePath resolveFromBuildProfileModules(const FilePath &ohProRoot, QStringList *
         const QJsonObject mo = mv.toObject();
         if (mo.value(QStringLiteral("type")).toString() == QStringLiteral("entry"))
             continue;
-        const FilePath found = tryOneModule(mo, QStringLiteral("other-module"));
+        const FilePath found = tryOneModule(ohProRoot, mo, QStringLiteral("other-module"), diagnostic);
         if (!found.isEmpty())
             return found;
     }
