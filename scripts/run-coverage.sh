@@ -197,6 +197,36 @@ PYEOF
 
 echo "覆盖率报告已写入：${COVERAGE_OUT}"
 
+# ── 打印各文件覆盖率统计 ──────────────────────────────────────────────────────
+
+python3 - "${COVERAGE_OUT}" <<'PYEOF'
+import sys, xml.etree.ElementTree as ET
+tree = ET.parse(sys.argv[1])
+root = tree.getroot()
+files = root.findall('file')
+if not files:
+    print("（coverage.xml 中无文件数据）")
+    sys.exit(0)
+header = "%-58s %12s  %6s" % ("文件", "覆盖行/总行", "行覆盖率")
+print()
+print(header)
+print("-" * len(header))
+total_cov, total_all = 0, 0
+for f in files:
+    path = f.get('path', '')
+    lines = f.findall('lineToCover')
+    covered = sum(1 for l in lines if l.get('covered') == 'true')
+    n = len(lines)
+    pct = "%.1f%%" % (100 * covered / n) if n else "n/a"
+    print("%-58s %6d/%-6d  %6s" % (path, covered, n, pct))
+    total_cov += covered
+    total_all += n
+if total_all:
+    print("-" * len(header))
+    print("%-58s %6d/%-6d  %6s" % ("合计", total_cov, total_all,
+                                    "%.1f%%" % (100 * total_cov / total_all)))
+PYEOF
+
 # ── 提示 git 操作 ─────────────────────────────────────────────────────────────
 
 echo ""
