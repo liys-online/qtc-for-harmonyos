@@ -11,11 +11,11 @@ on:
 
 env:
   QT_VERSION: "6.10.2"
-  QTC_SOURCE_BASE_LINUX: "https://download.qt.io/official_releases/qtcreator/19.0/19.0.0/installer_source/linux_x64"
+  QTC_SOURCE_BASE_MAC: "https://download.qt.io/official_releases/qtcreator/19.0/19.0.0/installer_source/mac_x64"
 
 jobs:
   sonarcloud:
-    runs-on: ubuntu-24.04
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,22 +24,21 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build p7zip-full libudev-dev libsecret-1-0
-          pip install gcovr
+          brew install ninja p7zip
+          pip3 install gcovr
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
           target: desktop
-          arch: linux_gcc_64
+          arch: clang_64
           modules: "qtwebsockets"
           cache: true
 
       - name: Download and extract Qt Creator 19 (runtime + dev SDK)
         env:
-          QTC_BASE: ${{ env.QTC_SOURCE_BASE_LINUX }}
+          QTC_BASE: ${{ env.QTC_SOURCE_BASE_MAC }}
         run: |
           set -eu
           mkdir -p qtcreator-dev
@@ -81,8 +80,9 @@ jobs:
         run: |
           export QT_QPA_PLATFORM=offscreen
           QTC_ROOT="${{ steps.qtc.outputs.root }}"
-          # 运行时需要找到 Qt Creator 的共享库（Linux 无 .app bundle，需显式设置）
-          export LD_LIBRARY_PATH="${QTC_ROOT}/lib/qtcreator/plugins:${QTC_ROOT}/lib/qtcreator:${QT_ROOT_DIR}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+          # macOS 动态库搜索路径
+          export DYLD_LIBRARY_PATH="${QTC_ROOT}/lib/qtcreator/plugins:${QTC_ROOT}/lib/qtcreator:${QT_ROOT_DIR}/lib${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}"
+          export DYLD_FRAMEWORK_PATH="${QTC_ROOT}/lib/qtcreator:${QT_ROOT_DIR}/lib${DYLD_FRAMEWORK_PATH:+:${DYLD_FRAMEWORK_PATH}}"
 
           TESTS=(
             build/test/usbmonitortest/usbmonitortest
@@ -91,12 +91,9 @@ jobs:
           )
           for t in "${TESTS[@]}"; do
             if [ -x "${t}" ]; then
-              # 打印缺失的动态库，便于排查加载崩溃问题
-              missing=$(ldd "${t}" 2>/dev/null | grep "not found" || true)
-              if [ -n "${missing}" ]; then
-                echo "[ldd] missing libraries for ${t}:"
-                echo "${missing}"
-              fi
+              # 打印动态库依赖，便于排查加载崩溃问题
+              echo "[otool -L] dependencies for ${t}:"
+              otool -L "${t}" 2>/dev/null || true
               echo "Running: ${t}"
               "${t}" || echo "[warning] exit code $? (non-blocking, coverage data still written)"
             else
@@ -108,6 +105,7 @@ jobs:
         run: |
           cd build
           gcovr \
+            --gcov-executable "xcrun llvm-cov gcov" \
             --root "${GITHUB_WORKSPACE}" \
             --filter "${GITHUB_WORKSPACE}/lib/" \
             --exclude ".*_test\.cpp" \
