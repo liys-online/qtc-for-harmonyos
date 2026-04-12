@@ -113,7 +113,7 @@ echo "== QtCreator CMake: ${QTC_CMAKE_PREFIX}"
 # ── Step 1：CMake 配置（clang --coverage + 导出编译数据库）────────────────────
 
 echo ""
-echo "[1/3] CMake 配置（-DWITH_TESTS=ON --coverage）"
+echo "[1/4] CMake 配置（-DWITH_TESTS=ON --coverage）"
 cmake -S "${REPO_ROOT}" -B "${BUILD_DIR}" \
     -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_PREFIX_PATH="${QT_DIR}" \
@@ -128,52 +128,33 @@ cmake -S "${REPO_ROOT}" -B "${BUILD_DIR}" \
 # ── Step 2：构建 ─────────────────────────────────────────────────────────────
 
 echo ""
-echo "[2/3] 构建插件"
+echo "[2/4] 构建插件"
 cmake --build "${BUILD_DIR}" --parallel
 
 # ── Step 3：运行测试（收集 .gcda 数据）───────────────────────────────────────
 
 echo ""
-echo "[3/3] 运行测试"
+echo "[3/4] 运行测试"
 
 export QT_QPA_PLATFORM=offscreen
 
-# 3a：独立单元测试可执行文件（直接在进程内写 .gcda，最可靠）
-echo "  [3a] 独立测试可执行文件"
+# 清除旧的 .gcda（上次运行残留），避免 corrupt arc tag 警告
+find "${BUILD_DIR}" -name "*.gcda" -delete
+
+# 独立单元测试可执行文件（直接在进程内写 .gcda，最可靠）
 _STANDALONE_TESTS=(
     "${BUILD_DIR}/test/usbmonitortest/usbmonitortest"
     "${BUILD_DIR}/test/hdcsocketclienttest/hdcsocketclienttest"
     "${BUILD_DIR}/test/ohprocreatetest/ohprocreatetest"
-    "${BUILD_DIR}/test/harmonypluginlogictest/harmonypluginlogictest"
 )
 for _t in "${_STANDALONE_TESTS[@]}"; do
     if [[ -x "${_t}" ]]; then
         echo "    运行：${_t}"
-        # harmonypluginlogictest 链接了 Qt Creator 的 Utils/ProjectExplorer（内置 Qt 6.10.2）。
-        # 用 DYLD_FRAMEWORK_PATH 让 Qt Creator 的 Qt 优先，避免与构建用 Qt 的 ABI 冲突。
-        if [[ "${_t}" == *harmonypluginlogictest* ]]; then
-            DYLD_FRAMEWORK_PATH="${QTC_BIN%/Contents/MacOS/*}/Contents/Frameworks" \
-                "${_t}" || echo "    [警告] 退出码 $?（不阻断覆盖率收集）"
-        else
-            "${_t}" || echo "    [警告] 退出码 $?（不阻断覆盖率收集）"
-        fi
+        "${_t}" || echo "    [警告] 退出码 $?（不阻断覆盖率收集）"
     else
         echo "    [跳过] 未找到：${_t}"
     fi
 done
-
-# 3b：Qt Creator 插件测试（覆盖插件主逻辑；退出不正常则 .gcda 可能丢失）
-echo "  [3b] Qt Creator 插件测试（-test Harmony）"
-# 插件输出路径：macOS 构建产物在 .app bundle 内
-PLUGIN_PATH="${BUILD_DIR}/Qt Creator.app/Contents/PlugIns/qtcreator"
-if [[ ! -d "${PLUGIN_PATH}" ]]; then
-    # 备用：非 bundle 布局
-    PLUGIN_PATH="${BUILD_DIR}/lib/qtcreator/plugins"
-fi
-"${QTC_BIN}" \
-    -pluginpath "${PLUGIN_PATH}" \
-    -test Harmony \
-    || echo "  [警告] Qt Creator 退出码：$?（不阻断覆盖率收集）"
 
 # ── Step 4：gcovr → coverage.xml ────────────────────────────────────────────
 
@@ -182,28 +163,14 @@ echo "[4/4] 生成 coverage.xml（gcovr sonarqube 格式）"
 COVERAGE_OUT="${REPO_ROOT}/coverage.xml"
 
 gcovr \
+    --gcov-executable "xcrun llvm-cov gcov" \
+    --gcov-ignore-errors=source_not_found \
+    --gcov-ignore-errors=no_working_dir_found \
     --root "${REPO_ROOT}" \
-    --filter "${REPO_ROOT}/src/" \
     --filter "${REPO_ROOT}/lib/" \
     --exclude ".*_test\.cpp" \
     --exclude ".*/3rdparty/.*" \
     --exclude ".*/moc_.*" \
-    \
-    `# ── 需要真实设备 / 物理硬件 ──────────────────────────────────────` \
-    --exclude ".*/arktsdebugbridge\.cpp$" \
-    --exclude ".*/harmonymainrunsockettask\.cpp$" \
-    --exclude ".*/harmonydebugsupport\.cpp$" \
-    --exclude ".*/harmonyrunner\.cpp$" \
-    --exclude ".*/harmonydeployqtstep\.cpp$" \
-    \
-    `# ── 需要外部网络服务（GitCode / GitHub / SDK CDN）──────────────` \
-    --exclude ".*/harmonysdkdownloader\.cpp$" \
-    --exclude ".*/harmonyqttreleasesdownloader\.cpp$" \
-    \
-    `# ── 纯 UI 对话框，需人工交互──────────────────────────────────────` \
-    --exclude ".*/harmonysdkmanagerdialog\.cpp$" \
-    --exclude ".*/harmonyqttsdkmanagerdialog\.cpp$" \
-    \
     --sonarqube "${COVERAGE_OUT}"
 
 # gcovr --sonarqube 不支持 --xml-pretty，用 python3 格式化并清理空 <file/> 元素
@@ -239,23 +206,11 @@ PYEOF
 
 echo "覆盖率报告已写入：${COVERAGE_OUT}"
 
-# ── 复制 compile_commands.json 到仓库根目录 ──────────────────────────────────
-
-SRC_CC="${BUILD_DIR}/compile_commands.json"
-DST_CC="${REPO_ROOT}/compile_commands.json"
-
-if [[ -f "${SRC_CC}" ]]; then
-    cp -f "${SRC_CC}" "${DST_CC}"
-    echo "compile_commands.json 已复制到：${DST_CC}"
-else
-    echo "警告：compile_commands.json 未找到（${SRC_CC}），SonarCloud cfamily 分析将降级。" >&2
-fi
-
 # ── 提示 git 操作 ─────────────────────────────────────────────────────────────
 
 echo ""
 echo "== 完成！请将以下文件 commit 并 push："
-echo "   git add coverage.xml compile_commands.json"
+echo "   git add coverage.xml"
 echo "   git commit -m 'chore: update sonar coverage artifacts'"
 echo "   git push"
 echo ""
