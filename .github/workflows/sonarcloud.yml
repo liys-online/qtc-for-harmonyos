@@ -68,8 +68,6 @@ jobs:
             -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}" \
             -DQtCreator='${{ steps.qtc.outputs.root }}' \
             -DWITH_TESTS=ON \
-            # -DCMAKE_CXX_FLAGS="--coverage" \
-            # -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -G Ninja
           cmake --build build --parallel
