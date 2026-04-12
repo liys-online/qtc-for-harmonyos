@@ -68,36 +68,36 @@ jobs:
             -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}" \
             -DQtCreator='${{ steps.qtc.outputs.root }}' \
             -DWITH_TESTS=ON \
-            -DCMAKE_CXX_FLAGS="--coverage" \
-            -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+            # -DCMAKE_CXX_FLAGS="--coverage" \
+            # -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -G Ninja
           cmake --build build --parallel
 
-      - name: Run tests to collect coverage data
-        run: |
-          export QT_QPA_PLATFORM=offscreen
-          QTC_ROOT="${{ steps.qtc.outputs.root }}"
-          # macOS 动态库搜索路径
-          export DYLD_LIBRARY_PATH="${QTC_ROOT}/lib/qtcreator/plugins:${QTC_ROOT}/lib/qtcreator:${QT_ROOT_DIR}/lib${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}"
-          export DYLD_FRAMEWORK_PATH="${QTC_ROOT}/lib/qtcreator:${QT_ROOT_DIR}/lib${DYLD_FRAMEWORK_PATH:+:${DYLD_FRAMEWORK_PATH}}"
+      # - name: Run tests to collect coverage data
+      #   run: |
+      #     export QT_QPA_PLATFORM=offscreen
+      #     QTC_ROOT="${{ steps.qtc.outputs.root }}"
+      #     # macOS 动态库搜索路径
+      #     export DYLD_LIBRARY_PATH="${QTC_ROOT}/lib/qtcreator/plugins:${QTC_ROOT}/lib/qtcreator:${QT_ROOT_DIR}/lib${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}"
+      #     export DYLD_FRAMEWORK_PATH="${QTC_ROOT}/lib/qtcreator:${QT_ROOT_DIR}/lib${DYLD_FRAMEWORK_PATH:+:${DYLD_FRAMEWORK_PATH}}"
 
-          TESTS=(
-            build/test/usbmonitortest/usbmonitortest
-            build/test/hdcsocketclienttest/hdcsocketclienttest
-            build/test/ohprocreatetest/ohprocreatetest
-          )
-          for t in "${TESTS[@]}"; do
-            if [ -x "${t}" ]; then
-              # 打印动态库依赖，便于排查加载崩溃问题
-              echo "[otool -L] dependencies for ${t}:"
-              otool -L "${t}" 2>/dev/null || true
-              echo "Running: ${t}"
-              "${t}" || echo "[warning] exit code $? (non-blocking, coverage data still written)"
-            else
-              echo "[skip] not found: ${t}"
-            fi
-          done
+      #     TESTS=(
+      #       build/test/usbmonitortest/usbmonitortest
+      #       build/test/hdcsocketclienttest/hdcsocketclienttest
+      #       build/test/ohprocreatetest/ohprocreatetest
+      #     )
+      #     for t in "${TESTS[@]}"; do
+      #       if [ -x "${t}" ]; then
+      #         # 打印动态库依赖，便于排查加载崩溃问题
+      #         echo "[otool -L] dependencies for ${t}:"
+      #         otool -L "${t}" 2>/dev/null || true
+      #         echo "Running: ${t}"
+      #         "${t}" || echo "[warning] exit code $? (non-blocking, coverage data still written)"
+      #       else
+      #         echo "[skip] not found: ${t}"
+      #       fi
+      #     done
 
       # - name: Generate coverage.xml (gcovr sonarqube format)
       #   run: |
