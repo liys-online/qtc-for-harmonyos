@@ -334,8 +334,8 @@
     <lineToCover lineNumber="75" covered="true" />
     <lineToCover lineNumber="76" covered="true" />
     <lineToCover lineNumber="77" covered="true" />
-    <lineToCover lineNumber="79" covered="false" />
-    <lineToCover lineNumber="81" covered="false" />
+    <lineToCover lineNumber="79" covered="true" />
+    <lineToCover lineNumber="81" covered="true" />
     <lineToCover lineNumber="87" covered="true" />
     <lineToCover lineNumber="89" covered="true" branchesToCover="6" coveredBranches="1" />
     <lineToCover lineNumber="90" covered="true" branchesToCover="2" coveredBranches="1" />
@@ -352,7 +352,7 @@
     <lineToCover lineNumber="104" covered="true" />
     <lineToCover lineNumber="106" covered="true" />
     <lineToCover lineNumber="108" covered="true" branchesToCover="4" coveredBranches="1" />
-    <lineToCover lineNumber="109" covered="true" branchesToCover="2" coveredBranches="1" />
+    <lineToCover lineNumber="109" covered="true" branchesToCover="2" coveredBranches="2" />
     <lineToCover lineNumber="110" covered="true" />
     <lineToCover lineNumber="111" covered="true" />
     <lineToCover lineNumber="112" covered="true" />
@@ -395,23 +395,23 @@
     <lineToCover lineNumber="161" covered="true" />
     <lineToCover lineNumber="163" covered="true" />
     <lineToCover lineNumber="165" covered="true" />
-    <lineToCover lineNumber="166" covered="true" branchesToCover="2" coveredBranches="1" />
+    <lineToCover lineNumber="166" covered="true" branchesToCover="2" coveredBranches="2" />
     <lineToCover lineNumber="167" covered="true" branchesToCover="2" coveredBranches="2" />
     <lineToCover lineNumber="168" covered="true" />
     <lineToCover lineNumber="170" covered="true" />
     <lineToCover lineNumber="171" covered="true" />
     <lineToCover lineNumber="172" covered="true" />
-    <lineToCover lineNumber="174" covered="true" branchesToCover="2" coveredBranches="1" />
-    <lineToCover lineNumber="175" covered="false" />
-    <lineToCover lineNumber="176" covered="false" />
+    <lineToCover lineNumber="174" covered="true" branchesToCover="2" coveredBranches="2" />
+    <lineToCover lineNumber="175" covered="true" />
+    <lineToCover lineNumber="176" covered="true" />
     <lineToCover lineNumber="178" covered="true" branchesToCover="4" coveredBranches="3" />
     <lineToCover lineNumber="179" covered="true" branchesToCover="6" coveredBranches="4" />
     <lineToCover lineNumber="180" covered="true" />
     <lineToCover lineNumber="181" covered="true" />
     <lineToCover lineNumber="182" covered="true" />
     <lineToCover lineNumber="184" covered="true" />
-    <lineToCover lineNumber="186" covered="true" branchesToCover="2" coveredBranches="1" />
-    <lineToCover lineNumber="187" covered="false" />
+    <lineToCover lineNumber="186" covered="true" branchesToCover="2" coveredBranches="2" />
+    <lineToCover lineNumber="187" covered="true" />
     <lineToCover lineNumber="189" covered="true" />
     <lineToCover lineNumber="190" covered="true" branchesToCover="2" coveredBranches="1" />
     <lineToCover lineNumber="191" covered="true" />
@@ -453,8 +453,8 @@
     <lineToCover lineNumber="250" covered="true" />
     <lineToCover lineNumber="251" covered="true" />
     <lineToCover lineNumber="253" covered="true" />
-    <lineToCover lineNumber="255" covered="true" branchesToCover="2" coveredBranches="1" />
-    <lineToCover lineNumber="256" covered="false" />
+    <lineToCover lineNumber="255" covered="true" branchesToCover="2" coveredBranches="2" />
+    <lineToCover lineNumber="256" covered="true" />
     <lineToCover lineNumber="257" covered="true" />
     <lineToCover lineNumber="258" covered="true" branchesToCover="2" coveredBranches="1" />
     <lineToCover lineNumber="259" covered="true" branchesToCover="4" coveredBranches="3" />
@@ -471,16 +471,16 @@
     <lineToCover lineNumber="271" covered="true" />
     <lineToCover lineNumber="272" covered="true" />
     <lineToCover lineNumber="274" covered="true" />
-    <lineToCover lineNumber="276" covered="true" branchesToCover="2" coveredBranches="1" />
+    <lineToCover lineNumber="276" covered="true" branchesToCover="2" coveredBranches="2" />
     <lineToCover lineNumber="277" covered="true" branchesToCover="2" coveredBranches="2" />
     <lineToCover lineNumber="278" covered="true" />
     <lineToCover lineNumber="279" covered="true" />
     <lineToCover lineNumber="280" covered="true" />
     <lineToCover lineNumber="281" covered="true" />
     <lineToCover lineNumber="282" covered="true" />
-    <lineToCover lineNumber="283" covered="true" branchesToCover="2" coveredBranches="1" />
-    <lineToCover lineNumber="284" covered="false" />
-    <lineToCover lineNumber="285" covered="false" />
+    <lineToCover lineNumber="283" covered="true" branchesToCover="2" coveredBranches="2" />
+    <lineToCover lineNumber="284" covered="true" />
+    <lineToCover lineNumber="285" covered="true" />
     <lineToCover lineNumber="287" covered="true" branchesToCover="4" coveredBranches="3" />
     <lineToCover lineNumber="288" covered="true" />
     <lineToCover lineNumber="289" covered="true" branchesToCover="2" coveredBranches="1" />
@@ -490,8 +490,8 @@
     <lineToCover lineNumber="293" covered="true" />
     <lineToCover lineNumber="294" covered="true" />
     <lineToCover lineNumber="296" covered="true" />
-    <lineToCover lineNumber="297" covered="true" branchesToCover="2" coveredBranches="1" />
-    <lineToCover lineNumber="298" covered="false" />
+    <lineToCover lineNumber="297" covered="true" branchesToCover="2" coveredBranches="2" />
+    <lineToCover lineNumber="298" covered="true" />
     <lineToCover lineNumber="299" covered="true" branchesToCover="2" coveredBranches="1" />
     <lineToCover lineNumber="300" covered="true" />
     <lineToCover lineNumber="301" covered="true" />
@@ -614,41 +614,41 @@
     <lineToCover lineNumber="464" covered="true" branchesToCover="2" coveredBranches="1" />
     <lineToCover lineNumber="465" covered="true" />
     <lineToCover lineNumber="467" covered="true" branchesToCover="2" coveredBranches="1" />
-    <lineToCover lineNumber="468" covered="true" branchesToCover="8" coveredBranches="2" />
+    <lineToCover lineNumber="468" covered="true" branchesToCover="8" coveredBranches="5" />
     <lineToCover lineNumber="469" covered="true" />
     <lineToCover lineNumber="470" covered="true" branchesToCover="2" coveredBranches="1" />
     <lineToCover lineNumber="471" covered="true" />
-    <lineToCover lineNumber="474" covered="false" branchesToCover="2" coveredBranches="0" />
-    <lineToCover lineNumber="475" covered="false" branchesToCover="2" coveredBranches="0" />
-    <lineToCover lineNumber="476" covered="false" branchesToCover="2" coveredBranches="0" />
-    <lineToCover lineNumber="477" covered="false" branchesToCover="4" coveredBranches="0" />
-    <lineToCover lineNumber="478" covered="false" branchesToCover="2" coveredBranches="0" />
-    <lineToCover lineNumber="479" covered="false" branchesToCover="2" coveredBranches="0" />
-    <lineToCover lineNumber="480" covered="false" branchesToCover="4" coveredBranches="0" />
+    <lineToCover lineNumber="474" covered="true" branchesToCover="2" coveredBranches="1" />
+    <lineToCover lineNumber="475" covered="true" branchesToCover="2" coveredBranches="1" />
+    <lineToCover lineNumber="476" covered="true" branchesToCover="2" coveredBranches="1" />
+    <lineToCover lineNumber="477" covered="true" branchesToCover="4" coveredBranches="2" />
+    <lineToCover lineNumber="478" covered="true" branchesToCover="2" coveredBranches="1" />
+    <lineToCover lineNumber="479" covered="true" branchesToCover="2" coveredBranches="1" />
+    <lineToCover lineNumber="480" covered="true" branchesToCover="4" coveredBranches="2" />
     <lineToCover lineNumber="481" covered="false" />
     <lineToCover lineNumber="482" covered="false" branchesToCover="8" coveredBranches="0" />
     <lineToCover lineNumber="483" covered="false" />
-    <lineToCover lineNumber="485" covered="false" branchesToCover="4" coveredBranches="0" />
-    <lineToCover lineNumber="486" covered="false" branchesToCover="2" coveredBranches="0" />
-    <lineToCover lineNumber="487" covered="false" branchesToCover="2" coveredBranches="0" />
-    <lineToCover lineNumber="488" covered="false" />
-    <lineToCover lineNumber="489" covered="false" branchesToCover="4" coveredBranches="0" />
-    <lineToCover lineNumber="490" covered="false" />
-    <lineToCover lineNumber="492" covered="false" branchesToCover="4" coveredBranches="0" />
-    <lineToCover lineNumber="493" covered="false" branchesToCover="4" coveredBranches="0" />
+    <lineToCover lineNumber="485" covered="true" branchesToCover="4" coveredBranches="3" />
+    <lineToCover lineNumber="486" covered="true" branchesToCover="2" coveredBranches="1" />
+    <lineToCover lineNumber="487" covered="true" branchesToCover="2" coveredBranches="1" />
+    <lineToCover lineNumber="488" covered="true" />
+    <lineToCover lineNumber="489" covered="true" branchesToCover="4" coveredBranches="2" />
+    <lineToCover lineNumber="490" covered="true" />
+    <lineToCover lineNumber="492" covered="true" branchesToCover="4" coveredBranches="2" />
+    <lineToCover lineNumber="493" covered="true" branchesToCover="4" coveredBranches="2" />
     <lineToCover lineNumber="494" covered="false" />
     <lineToCover lineNumber="495" covered="false" branchesToCover="2" coveredBranches="0" />
     <lineToCover lineNumber="496" covered="false" />
-    <lineToCover lineNumber="498" covered="false" branchesToCover="4" coveredBranches="0" />
-    <lineToCover lineNumber="499" covered="false" />
-    <lineToCover lineNumber="500" covered="false" branchesToCover="2" coveredBranches="0" />
-    <lineToCover lineNumber="501" covered="false" branchesToCover="10" coveredBranches="0" />
-    <lineToCover lineNumber="502" covered="false" branchesToCover="4" coveredBranches="0" />
-    <lineToCover lineNumber="503" covered="false" branchesToCover="10" coveredBranches="0" />
-    <lineToCover lineNumber="504" covered="false" />
-    <lineToCover lineNumber="505" covered="false" />
-    <lineToCover lineNumber="506" covered="false" />
-    <lineToCover lineNumber="507" covered="false" />
+    <lineToCover lineNumber="498" covered="true" branchesToCover="4" coveredBranches="3" />
+    <lineToCover lineNumber="499" covered="true" />
+    <lineToCover lineNumber="500" covered="true" branchesToCover="2" coveredBranches="1" />
+    <lineToCover lineNumber="501" covered="true" branchesToCover="10" coveredBranches="3" />
+    <lineToCover lineNumber="502" covered="true" branchesToCover="4" coveredBranches="2" />
+    <lineToCover lineNumber="503" covered="true" branchesToCover="10" coveredBranches="2" />
+    <lineToCover lineNumber="504" covered="true" />
+    <lineToCover lineNumber="505" covered="true" />
+    <lineToCover lineNumber="506" covered="true" />
+    <lineToCover lineNumber="507" covered="true" />
     <lineToCover lineNumber="508" covered="true" />
   </file>
   <file path="lib/hdcsocketclient/hdcsocketclient.h">
