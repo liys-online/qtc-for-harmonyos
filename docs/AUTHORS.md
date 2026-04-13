@@ -6,7 +6,7 @@
 
 ## 项目性质
 
-- 本插件为 **个人开源项目**，**不是** The Qt Company Ltd. 的官方产品，也**不代表**其立场或担保。
+- 本插件为 **社区开源项目**，**不是** The Qt Company Ltd. 的官方产品，也**不代表**其立场或担保。
 - 插件通过 Qt Creator / Qt 的公开扩展 API 与之集成；使用方式与兼容性以各版本文档及 [VERSIONING.md](../VERSIONING.md) 为准。
 
 ## 许可证
