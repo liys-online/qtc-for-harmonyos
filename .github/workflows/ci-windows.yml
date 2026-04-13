@@ -82,6 +82,12 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
+      - name: Copy Qt6WebSockets alongside arktsdebugbridge
+        run: |
+          set -eu
+          cp "${QT_ROOT_DIR}/bin/Qt6WebSockets.dll" "build/bin/"
+          echo "Copied Qt6WebSockets.dll -> build/bin/"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -93,4 +99,5 @@ jobs:
             build/**/Harmony.pdb
             build/**/lldbbridge.py
             build/**/CMakeLists.txt
-            build/**/arktsdebugbridge.exe
+            build/bin/arktsdebugbridge.exe
+            build/bin/Qt6WebSockets.dll
