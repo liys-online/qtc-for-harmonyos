@@ -93,9 +93,9 @@ jobs:
       - name: Copy Qt6WebSockets alongside arktsdebugbridge
         run: |
           set -eu
-          cp -R "${QT_ROOT_DIR}/lib/QtWebSockets.framework" \
-            "build/Qt Creator.app/Contents/Frameworks/QtWebSockets.framework" \
-          echo "Copied QtWebSockets -> build/Qt Creator.app/Frameworks/"
+          mkdir -p "build/Qt Creator.app/Contents/Frameworks"
+          cp -R "${QT_ROOT_DIR}/lib/QtWebSockets.framework" "build/Qt Creator.app/Contents/Frameworks/QtWebSockets.framework"
+          echo "Copied QtWebSockets -> build/Qt Creator.app/Contents/Frameworks/"
           rm -rf "build/Qt Creator.app/Contents/Frameworks/QtWebSockets.framework/Versions/Current/Headers"
           rm -f "build/Qt Creator.app/Contents/Frameworks/QtWebSockets.framework/Versions/Current/Resources/QtWebSockets.prl"
 
