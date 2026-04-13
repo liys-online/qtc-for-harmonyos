@@ -43,7 +43,7 @@
 | `lldbbridge.py` | OHOS 定制 LLDB 桥接脚本，覆盖 Qt Creator 自带版本 |
 | `CMakeLists.txt` | HarmonyOS 适配新建工程向导模板，覆盖内置模板 |
 | `arktsdebugbridge` | ArkTS 调试桥，startup-break 调试模式所需 |
-| QtWebSockets.framework | `arktsdebugbridge` 运行时依赖 |
+| `QtWebSockets.framework` | `arktsdebugbridge` 运行时依赖 |
 
 ---
 
