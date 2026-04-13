@@ -28,6 +28,7 @@
 | [docs/PRIORITY-PLAN.md](docs/PRIORITY-PLAN.md) | 按优先级的任务计划表 |
 | [docs/BUILD-REPRODUCIBILITY.md](docs/BUILD-REPRODUCIBILITY.md) | 发版用：CMake 参数、产物路径、`Harmony.json` 复核 |
 | [docs/QA-MANUAL-SMOKE.md](docs/QA-MANUAL-SMOKE.md) | 发版前手工主路径烟测 |
+| [RELEASE-NOTES-1.0.0.md](docs/release-notes/RELEASE-NOTES-1.0.0.md) | **1.0.0** Release notes |
 
 ---
 
