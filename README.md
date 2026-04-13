@@ -33,7 +33,7 @@
 
 ## 版本要求
 
-- **最低 Qt Creator 19.x**（基于 `QtTaskTree` 等 API）。  
+- **最低 Qt Creator 19.x**。  
 - **20+**：通过版本宏与可选源码分岔兼容，详见 **[VERSIONING.md](VERSIONING.md)**。
 
 ---
