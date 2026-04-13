@@ -38,11 +38,8 @@
 | 组件 | 版本要求 | 说明 |
 |------|----------|------|
 | **Qt Creator** | **19.x**（与插件构建所用主版本一致） | 插件二进制与宿主 Qt Creator **主版本必须匹配** |
-| **DevEco Studio** | 建议最新稳定版 | 提供 SDK、Node.js、JDK、hvigor、ohpm |
-| **hdc** | DevEco 工具链自带 | 设备通信工具，位于 SDK `toolchains/` 目录下 |
-| **Qt for HarmonyOS** | 由 Qt 官方或 GitCode 发布 | 通过插件内置的 SDK 管理器下载，或手动添加 |
 
-### 加载插件
+### 安装插件
 
 本插件以**外载插件**（out-of-tree plugin）方式加载，启动 Qt Creator 时通过 `-pluginpath` 参数指定插件所在目录：
 
