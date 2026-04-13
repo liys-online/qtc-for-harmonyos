@@ -6,9 +6,7 @@
 
 ---
 
-> **当前发布线：1.0.0-alpha（预览）** — 主路径（配置 → 构建 HAP → 部署 → 运行）已打通，行为与 API 仍可能调整；详见 [docs/README.md](docs/README.md)、[docs/OPERATIONS.md](docs/OPERATIONS.md) 与 [docs/PRIORITY-PLAN.md](docs/PRIORITY-PLAN.md)。**关于对话框中的版本号**来自 `Harmony.json`（由 `Harmony.json.in` 生成）：须为 **纯数字** `x.y.z`（Qt Creator 限制）；**alpha** 体现在 Tag / Release 与英文 Description。
-
-在 **Qt Creator** 中集成 **Qt for HarmonyOS / OpenHarmony** 开发能力：SDK 与工具链配置、CMake 工程、HAP 构建（hvigor / ohpm）、设备发现与 **hdc** 部署。能力划分对标 Qt Creator 内置 **Android** 插件，便于统一产品预期。
+在 **Qt Creator** 中集成 **Qt for HarmonyOS / OpenHarmony** 开发能力：SDK 与工具链配置、CMake 工程、HAP 构建（hvigor / ohpm）、设备发现与 **hdc** 部署、以及 **Native LLDB 调试**。
 
 ## 作者与版权说明
 
@@ -30,7 +28,6 @@
 | [docs/PRIORITY-PLAN.md](docs/PRIORITY-PLAN.md) | 按优先级的任务计划表 |
 | [docs/BUILD-REPRODUCIBILITY.md](docs/BUILD-REPRODUCIBILITY.md) | 发版用：CMake 参数、产物路径、`Harmony.json` 复核 |
 | [docs/QA-MANUAL-SMOKE.md](docs/QA-MANUAL-SMOKE.md) | 发版前手工主路径烟测 |
-| [docs/RELEASE-NOTES-1.0.0-alpha.md](docs/RELEASE-NOTES-1.0.0-alpha.md) | **1.0.0-alpha** Release 正文模板（可粘贴至 GitHub / GitCode） |
 
 ---
 
