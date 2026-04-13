@@ -33,45 +33,129 @@
 
 ### 前提条件
 
-在加载插件前，请确认以下环境已就绪：
-
 | 组件 | 版本要求 | 说明 |
 |------|----------|------|
 | **Qt Creator** | **19.x**（与插件构建所用主版本一致） | 插件二进制与宿主 Qt Creator **主版本必须匹配** |
+| **DevEco Studio** | 建议最新稳定版 | 提供 SDK、Node.js、JDK、hvigor、ohpm |
+| **hdc** | DevEco 工具链自带 | 设备通信工具，位于 SDK `toolchains/` 目录下 |
+| **Qt for HarmonyOS** | 由 Qt 官方或 GitCode 发布 | 通过插件内置的 SDK 管理器下载，或手动添加 |
 
-### 安装插件
+### 产物说明
 
-本插件以**外载插件**（out-of-tree plugin）方式加载，启动 Qt Creator 时通过 `-pluginpath` 参数指定插件所在目录：
+从 Releases 下载对应平台的压缩包后，解压可得以下文件：
 
-```bash
-# macOS
-"/Applications/Qt Creator.app/Contents/MacOS/Qt Creator" \
-    -pluginpath /path/to/plugin/dir
+#### Windows（`qtc4harmony-QtCreator-19.0.0-windows`）
 
-# Linux
-./qtcreator -pluginpath /path/to/plugin/dir
+| 文件 | 用途 |
+|------|------|
+| `Harmony.dll` | 插件主体，拷贝到 Qt Creator 插件目录后自动加载 |
+| `Harmony.lib` | Windows 导入库，仅供二次链接使用，**安装时无需拷贝** |
+| `Harmony.pdb` | 调试符号，用于崩溃分析（可选，建议保留在插件目录旁） |
+| `lldbbridge.py` | OHOS 定制 LLDB Python 桥接脚本，**覆盖** Qt Creator 自带版本以支持 `remote-ohos` 平台调试 |
+| `CMakeLists.txt` | HarmonyOS 适配的新建工程向导模板，**覆盖** 内置 Qt Widgets Application 模板，使新建工程自动生成 OHOS 平台分支 |
+| `arktsdebugbridge.exe` | ArkTS 调试桥，`aa start -D` startup-break 调试模式下解除 ArkTS VM 等待，使 Native C++ LLDB 可正常 attach |
+| `Qt6WebSockets.dll` | `arktsdebugbridge.exe` 的运行时依赖，需与 `arktsdebugbridge.exe` 放在同一目录 |
 
-# Windows（PowerShell）
-& "C:\Qt\Tools\QtCreator\bin\qtcreator.exe" `
-    -pluginpath "C:\path\to\plugin\dir"
+#### macOS（`qtc4harmony-QtCreator-19.0.0-macos`）
+
+| 文件 | 用途 |
+|------|------|
+| `libHarmony.dylib` | 插件主体 |
+| `lldbbridge.py` | OHOS 定制 LLDB Python 桥接脚本（同 Windows）|
+| `CMakeLists.txt` | HarmonyOS 适配的新建工程向导模板（同 Windows）|
+| `arktsdebugbridge` | ArkTS 调试桥可执行文件（同 Windows）|
+| `libQt6WebSockets.6.dylib` | `arktsdebugbridge` 的运行时依赖，需与 `arktsdebugbridge` 放在同一目录 |
+
+#### Linux（`qtc4harmony-QtCreator-19.0.0-linux`）
+
+| 文件 | 用途 |
+|------|------|
+| `libHarmony.so` | 插件主体 |
+| `lldbbridge.py` | OHOS 定制 LLDB Python 桥接脚本（同 Windows）|
+| `CMakeLists.txt` | HarmonyOS 适配的新建工程向导模板（同 Windows）|
+| `arktsdebugbridge` | ArkTS 调试桥可执行文件（同 Windows）|
+| `libQt6WebSockets.so.6` | `arktsdebugbridge` 的运行时依赖，需与 `arktsdebugbridge` 放在同一目录 |
+
+### 安装步骤（文件拷贝）
+
+将解压后的文件拷贝到 Qt Creator 安装目录对应位置（以下 `<QtCreator>` 表示 Qt Creator 根目录）：
+
+#### Windows
+
+```text
+Harmony.dll          →  <QtCreator>\lib\qtcreator\plugins\
+Harmony.pdb          →  <QtCreator>\lib\qtcreator\plugins\        （可选）
+lldbbridge.py        →  <QtCreator>\share\qtcreator\debugger\     （覆盖原文件）
+CMakeLists.txt       →  <QtCreator>\share\qtcreator\templates\wizards\projects\qtwidgetsapplication\  （覆盖原文件）
+arktsdebugbridge.exe →  <QtCreator>\libexec\qtcreator\
+Qt6WebSockets.dll    →  <QtCreator>\libexec\qtcreator\
 ```
 
-**首次加载建议**：追加 `-temporarycleansettings`（或 `-tcs`）参数，以隔离全局用户配置，避免与已有插件设置冲突：
+PowerShell 快速安装（将 `$QTC` 与 `$SRC` 替换为实际路径）：
 
-```bash
-# macOS 示例（首次验证）
-"/Applications/Qt Creator.app/Contents/MacOS/Qt Creator" \
-    -pluginpath /path/to/plugin/dir \
-    -temporarycleansettings
+```powershell
+$QTC = "C:\Qt\Tools\QtCreator"
+$SRC = "C:\path\to\extracted\artifact"
+
+Copy-Item "$SRC\Harmony.dll"          "$QTC\lib\qtcreator\plugins\"
+Copy-Item "$SRC\Harmony.pdb"          "$QTC\lib\qtcreator\plugins\"   # 可选
+Copy-Item "$SRC\lldbbridge.py"        "$QTC\share\qtcreator\debugger\"
+Copy-Item "$SRC\CMakeLists.txt"       "$QTC\share\qtcreator\templates\wizards\projects\qtwidgetsapplication\"
+Copy-Item "$SRC\arktsdebugbridge.exe" "$QTC\libexec\qtcreator\"
+Copy-Item "$SRC\Qt6WebSockets.dll"    "$QTC\libexec\qtcreator\"
 ```
 
-### 验证加载成功
+#### macOS
 
-启动后，依次进入 **Help → About Plugins…**，在插件列表中搜索 **Harmony**，确认插件状态为 **Loaded**，版本号与发布版本一致。
+```text
+libHarmony.dylib   →  <QtCreator>/Qt Creator.app/Contents/PlugIns/
+lldbbridge.py      →  <QtCreator>/Qt Creator.app/Contents/Resources/debugger/           （覆盖原文件）
+CMakeLists.txt     →  <QtCreator>/Qt Creator.app/Contents/Resources/templates/wizards/projects/qtwidgetsapplication/  （覆盖原文件）
+arktsdebugbridge          →  <QtCreator>/Qt Creator.app/Contents/Resources/libexec/
+libQt6WebSockets.6.dylib  →  <QtCreator>/Qt Creator.app/Contents/Resources/libexec/
+```
+
+```bash
+QTC="/Applications/Qt Creator.app"
+SRC="/path/to/extracted/artifact"
+
+cp "$SRC/libHarmony.dylib" "$QTC/Contents/PlugIns/"
+cp "$SRC/lldbbridge.py"    "$QTC/Contents/Resources/debugger/"
+cp "$SRC/CMakeLists.txt"   "$QTC/Contents/Resources/templates/wizards/projects/qtwidgetsapplication/"
+cp "$SRC/arktsdebugbridge"          "$QTC/Contents/Resources/libexec/"
+cp "$SRC/libQt6WebSockets.6.dylib" "$QTC/Contents/Resources/libexec/"
+chmod +x "$QTC/Contents/Resources/libexec/arktsdebugbridge"
+```
+
+#### Linux
+
+```text
+libHarmony.so    →  <QtCreator>/lib/qtcreator/plugins/
+lldbbridge.py    →  <QtCreator>/share/qtcreator/debugger/     （覆盖原文件）
+CMakeLists.txt   →  <QtCreator>/share/qtcreator/templates/wizards/projects/qtwidgetsapplication/  （覆盖原文件）
+arktsdebugbridge     →  <QtCreator>/libexec/qtcreator/
+libQt6WebSockets.so.6 →  <QtCreator>/libexec/qtcreator/
+```
+
+```bash
+QTC="/path/to/qtcreator"
+SRC="/path/to/extracted/artifact"
+
+cp "$SRC/libHarmony.so"    "$QTC/lib/qtcreator/plugins/"
+cp "$SRC/lldbbridge.py"    "$QTC/share/qtcreator/debugger/"
+cp "$SRC/CMakeLists.txt"   "$QTC/share/qtcreator/templates/wizards/projects/qtwidgetsapplication/"
+cp "$SRC/arktsdebugbridge"     "$QTC/libexec/qtcreator/"
+cp "$SRC/libQt6WebSockets.so.6" "$QTC/libexec/qtcreator/"
+chmod +x "$QTC/libexec/qtcreator/arktsdebugbridge"
+```
+
+### 验证安装成功
+
+启动 Qt Creator，依次进入 **Help → About Plugins…**，在插件列表中搜索 **Harmony**，确认插件状态为 **Loaded**，版本号与发布版本一致。
 
 ![about-plugin](images/user-manual/about-plugin.png)
 
-> **提示**：加载成功后，Qt Creator 菜单中将出现 **Tools → Options → Harmony**（macOS 下为 **Qt Creator → Preferences → Harmony**）配置入口；设备面板也会新增 **HarmonyOS** 设备分类。
+> **提示**：安装成功后，Qt Creator 菜单中将出现 **Tools → Options → Harmony**（macOS 下为 **Qt Creator → Preferences → Harmony**）配置入口；设备面板也会新增 **HarmonyOS** 设备分类。
 
 ---
 
