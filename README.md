@@ -12,11 +12,11 @@
 
 ## 作者与版权说明
 
-本插件为 **个人开源项目**，著作权与维护由 **Li-Yaosong（个人）** 负责，**并非** The Qt Company Ltd. 官方作品，也**不属于**其雇员职务成果。插件通过 Qt Creator / Qt 的公开 API 与之集成；除另有说明外，插件源码以仓库内 **LICENSE** 及各文件 SPDX 头注释为准。作者与项目性质见 **[docs/AUTHORS.md](docs/AUTHORS.md)**。
+本插件为 **OpenHarmony Qt SIG 社区维护的开源项目**，维护由 **OpenHarmony Qt SIG** 负责，**并非** The Qt Company Ltd. 官方作品。插件通过 Qt Creator / Qt 的公开 API 与之集成；除另有说明外，插件源码以仓库内 **LICENSE** 及各文件 SPDX 头注释为准。作者与项目性质见 **[docs/AUTHORS.md](docs/AUTHORS.md)**。
 
 ---
 
-## 文档（对外）
+## 文档
 
 完整说明见 **[docs/README.md](docs/README.md)**，核心文档包括：
 
