@@ -1036,7 +1036,19 @@ void HarmonyConfigurations::registerNewToolchains()
 {
     const Toolchains existingHarmonyToolchains
         = ToolchainManager::toolchains(Utils::equal(&Toolchain::typeId, Id(Constants::HARMONY_TOOLCHAIN_TYPEID)));
-    ToolchainManager::registerToolchains(autodetectToolchains(existingHarmonyToolchains));
+    const Toolchains newTcs = autodetectToolchains(existingHarmonyToolchains);
+    if (newTcs.isEmpty()) {
+        Core::MessageManager::writeFlashing(
+            QObject::tr("[Harmony] No Harmony toolchains detected. "
+                        "Check that the OpenHarmony SDK path contains a valid native/llvm/bin/clang."));
+    } else {
+        for (const Toolchain *tc : newTcs) {
+            Core::MessageManager::writeFlashing(
+                QObject::tr("[Harmony] Registered toolchain: %1 (%2)")
+                    .arg(tc->displayName(), tc->compilerCommand().toUserOutput()));
+        }
+    }
+    ToolchainManager::registerToolchains(newTcs);
 }
 bool hasExistingVersion(const QtVersion *qtVersion) {
     const QtVersions installedVersions = QtVersionManager::versions(
@@ -1048,19 +1060,31 @@ bool hasExistingVersion(const QtVersion *qtVersion) {
 
 static void tryRegisterHarmonyQtVersion(const FilePath &qmakePath)
 {
-    if (!qmakePath.isExecutableFile())
+    if (!qmakePath.isExecutableFile()) {
+        Core::MessageManager::writeFlashing(
+            QObject::tr("[Harmony] Qt version skipped: qmake not executable: %1")
+                .arg(qmakePath.toUserOutput()));
         return;
+    }
     auto *qtVersion = QtVersionFactory::createQtVersionFromQMakePath(
         qmakePath, DetectionSource(DetectionSource::FromSystem));
     auto *harmonyQtVersion = dynamic_cast<HarmonyQtVersion *>(qtVersion);
-    if (!harmonyQtVersion)
+    if (!harmonyQtVersion) {
+        Core::MessageManager::writeFlashing(
+            QObject::tr("[Harmony] Qt version skipped: not a HarmonyQtVersion: %1")
+                .arg(qmakePath.toUserOutput()));
         return;
+    }
     const QString displayName = QStringLiteral("Qt %{Qt:Version} for %1 %2")
                                     .arg(harmonyQtVersion->description(),
                                          harmonyQtVersion->supportOhVersion().toString());
     harmonyQtVersion->setUnexpandedDisplayName(displayName);
-    if (QtVersionManager::instance()->isLoaded() && !hasExistingVersion(harmonyQtVersion))
+    if (QtVersionManager::instance()->isLoaded() && !hasExistingVersion(harmonyQtVersion)) {
+        Core::MessageManager::writeFlashing(
+            QObject::tr("[Harmony] Registered Qt version: %1")
+                .arg(harmonyQtVersion->unexpandedDisplayName()));
         QtVersionManager::instance()->addVersion(harmonyQtVersion);
+    }
 }
 
 void HarmonyConfigurations::registerQtVersions()
@@ -1096,8 +1120,6 @@ static FilePath ohosHostLldb()
         return {};
     const FilePath candidate = FilePath(devecoSdk / "openharmony" / "native" / "llvm" / "bin" / "lldb")
                                    .withExecutableSuffix();
-    Core::MessageManager::writeFlashing(QObject::tr("(%1) Looking for OHOS LLDB at %2").arg(
-        QString::fromLatin1(harmonyConfigLog().categoryName()), candidate.toUserOutput()));
     return candidate.isExecutableFile() ? candidate : FilePath{};
 }
 
@@ -1109,8 +1131,14 @@ QVariant HarmonyConfigurations::findOrRegisterOhosDebugger()
 {
     const FilePath lldb = ohosHostLldb();
     if (lldb.isEmpty()) {
-        Core::MessageManager::writeFlashing(QObject::tr("(%1) OHOS LLDB not found in DevEco Studio. ").arg(
-            QString::fromLatin1(harmonyConfigLog().categoryName())));
+        const FilePath devecoSdk = HarmonyConfig::devecoSdkLocation();
+        if (!devecoSdk.isEmpty()) {
+            /* DevEco Studio 已配置但找不到 LLDB，给出具体路径便于排查 */
+            Core::MessageManager::writeFlashing(
+                QObject::tr("[Harmony] OHOS LLDB not found. Expected: %1")
+                    .arg((devecoSdk / "openharmony" / "native" / "llvm" / "bin" / "lldb")
+                             .withExecutableSuffix().toUserOutput()));
+        }
         return {};
     }
 
@@ -1127,6 +1155,8 @@ QVariant HarmonyConfigurations::findOrRegisterOhosDebugger()
     item.setUnexpandedDisplayName(QObject::tr("OHOS LLDB (DevEco Studio)"));
     item.setDetectionSource(DetectionSource::FromSystem);
     item.reinitializeFromFile();
+    Core::MessageManager::writeFlashing(
+        QObject::tr("[Harmony] Registered OHOS LLDB: %1").arg(lldb.toUserOutput()));
     return DebuggerItemManager::registerDebugger(item);
 }
 
@@ -1137,8 +1167,16 @@ QVariant HarmonyConfigurations::findOrRegisterOhosDebugger()
 static FilePath findOrRegisterDevecoCmake()
 {
     const FilePath cmake = HarmonyConfig::devecoCmakePath();
-    if (cmake.isEmpty())
+    if (cmake.isEmpty()) {
+        const FilePath devecoNdk = HarmonyConfig::ndkLocation(HarmonyConfig::devecoSdkLocation());
+        if (!devecoNdk.isEmpty()) {
+            Core::MessageManager::writeFlashing(
+                QObject::tr("[Harmony] DevEco CMake not found. Expected under: %1")
+                    .arg((devecoNdk / "build-tools" / "cmake" / "bin" / "cmake")
+                             .withExecutableSuffix().toUserOutput()));
+        }
         return {};
+    }
 
     using namespace CMakeProjectManager;
 
@@ -1153,6 +1191,8 @@ static FilePath findOrRegisterDevecoCmake()
     tool->setFilePath(cmake);
     tool->setDisplayName(QObject::tr("OHOS CMake"));
     CMakeToolManager::registerCMakeTool(std::move(tool));
+    Core::MessageManager::writeFlashing(
+        QObject::tr("[Harmony] Registered DevEco CMake: %1").arg(cmake.toUserOutput()));
     return cmake;
 }
 
@@ -1320,14 +1360,29 @@ void HarmonyConfigurations::updateAutomaticKitList()
                 /* ** 更新现有 Kit */
                 initKit(existingKit);
                 unhandledKits.removeOne(existingKit);
+                Core::MessageManager::writeFlashing(
+                    QObject::tr("[Harmony] Updated kit: %1").arg(existingKit->displayName()));
             } else {
                 /* ** 注册新 Kit */
-                KitManager::registerKit(initKit);
+                KitManager::registerKit([&initKit, &ohQt](Kit *k) {
+                    initKit(k);
+                    Core::MessageManager::writeFlashing(
+                        QObject::tr("[Harmony] Registered new kit: %1 (Qt %2, OH %3)")
+                            .arg(k->displayName(),
+                                 ohQt->displayName(),
+                                 ohQt->supportOhVersion().toString()));
+                });
             }
         }
     }
 
     /* ** 清理不再使用的 Kit */
+    if (!unhandledKits.isEmpty()) {
+        for (const Kit *k : unhandledKits) {
+            Core::MessageManager::writeFlashing(
+                QObject::tr("[Harmony] Removing outdated kit: %1").arg(k->displayName()));
+        }
+    }
     KitManager::deregisterKits(unhandledKits);
 }
 
