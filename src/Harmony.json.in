@@ -3,12 +3,12 @@
     "Name" : "Harmony",
     "Version" : "1.0.0",
     "CompatVersion" : "1.0.0",
-    "Vendor" : "Li-Yaosong",
+    "Vendor" : "Li Yaosong",
     "VendorId" : "li-yaosong",
-    "Copyright" : "(C) Li-Yaosong",
+    "Copyright" : "(C) Li Yaosong",
     "License" : "GNU General Public License v3.0 only",
     "Description" : "Qt for HarmonyOS / OpenHarmony in Qt Creator: SDK and toolchain, CMake, HAP build (hvigor/ohpm), device discovery and hdc deploy. Requires Qt Creator 19+. Early-access (alpha) quality.",
     "Url" : "https://github.com/liys-online/qtc-for-harmonyos.git",
-    "DocumentationUrl" : "https://github.com/liys-online/qtc-for-harmonyos/blob/main/README.md",
+    "DocumentationUrl" : "https://github.com/liys-online/qtc-for-harmonyos/blob/main/docs/USER-MANUAL.md",
     ${IDE_PLUGIN_DEPENDENCIES}
 }
