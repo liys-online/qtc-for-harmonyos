@@ -317,7 +317,12 @@ void HarmonyToolchain::setNdkLocation(const Utils::FilePath &ndkLocation)
 QVersionNumber HarmonyToolchain::apiVersion() const
 {
     if (m_apiVersion.isNull()) {
-        m_apiVersion = HarmonyConfig::getVersion(HarmonyConfig::releaseFile(m_ndkLocation)).first;
+        /* ** m_ndkLocation 在从 XML 恢复时可能为空（路径通过 inferNdkLocation 延迟推断）。
+         * 若 NDK 目录不存在则直接返回空版本，避免向 oh-uni-package.json 发起 warning 级别日志。 */
+        const FilePath ndk = ndkLocation();
+        if (ndk.isEmpty() || !ndk.isReadableDir())
+            return {};
+        m_apiVersion = HarmonyConfig::getVersion(HarmonyConfig::releaseFile(ndk)).first;
     }
     return m_apiVersion;
 }
@@ -531,6 +536,13 @@ const QStringList gccPredefinedMacrosOptions(Id languageId)
 }
 Toolchain::MacroInspectionRunner HarmonyToolchain::createMacroInspectionRunner() const
 {
+    /* ** 编译器路径为空时（从旧配置恢复 / 路径在当前环境不存在）不调用 gccPredefinedMacros，
+     * 否则会触发 "Compiler '' not found" SOFT ASSERT 以及 "__cplusplus not predefined" 断言。*/
+    if (compilerCommand().isEmpty() || !compilerCommand().isExecutableFile()) {
+        return [](const QStringList &) {
+            return MacroInspectionReport{Macros{}, Utils::LanguageVersion::LatestCxx};
+        };
+    }
     /* ** 使用干净环境会破坏 ccache/distcc 等工具。 */
     Environment env = compilerCommand().deviceEnvironment();
     addToEnvironment(env);
@@ -667,7 +679,10 @@ LanguageExtensions HarmonyToolchain::languageExtensions(const QStringList &cxxfl
 
 QString HarmonyToolchain::defaultDisplayName() const
 {
-    auto versionPair = HarmonyConfig::getVersion(HarmonyConfig::releaseFile(ndkLocation()));
+    const FilePath ndk = ndkLocation();
+    if (ndk.isEmpty() || !ndk.isReadableDir())
+        return Tr::tr("Harmony Clang (%1)").arg(HarmonyConfig::displayName(targetAbi()));
+    auto versionPair = HarmonyConfig::getVersion(HarmonyConfig::releaseFile(ndk));
     return Tr::tr("Harmony Clang (%1, API %2 %3)")
             .arg(HarmonyConfig::displayName(targetAbi()),
                  versionPair.first.toString(),
@@ -946,7 +961,12 @@ static Toolchain *processToolchain(const FilePath &compilerCommand,
     }
     if (auto gccTc = dynamic_cast<HarmonyToolchain *>(tc))
         gccTc->resetToolchain(compilerCommand);
-    tc->setDetectionSource(DetectionSource(DetectionSource::FromSdk));
+    /* ** 使用 FromSystem 而非 FromSdk：Qt Creator 不序列化 FromSdk 工具链到 toolchains.xml，
+     * 导致每次启动重新创建工具链时生成新 UUID，kit 中保存的旧 UUID 就找不到，
+     * 产生 "Tool chain set up in kit X for C not found" 启动警告。
+     * FromSystem 会持久化到 XML，ID 跨启动稳定，kit 引用始终有效。 */
+    tc->setDetectionSource(DetectionSource(DetectionSource::FromSystem,
+                                           QStringLiteral("HarmonyConfiguration")));
     return tc;
 }
 
