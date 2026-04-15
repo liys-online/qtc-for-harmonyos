@@ -48,7 +48,7 @@ const char HARMONY_KIT_MODULE_DEVICE_TYPES[] = "Harmony.ModuleDeviceTypes";
 ** 默认 catalog：GitCode raw qt-oh-binary-catalog.v1.json（主要源）。
 */
 const char QtOhBinaryCatalogDefaultGitcodeUrl[] =
-    "https://raw.gitcode.com/Li-Yaosong/qtc-for-harmonyos/raw/main/docs/qt-oh-binary-catalog.v1.json";
+    "https://raw.gitcode.com/qtforohos/qtc-for-harmony/raw/main/docs/qt-oh-binary-catalog.v1.json";
 /*
 ** 默认 catalog：GitHub raw（主要源失败时使用）。
 */
