@@ -670,7 +670,7 @@ int registerDownloadedSdksUnder(const FilePath &sdkRoot)
     const QStringList &list = getSdkList();
 
     if (isValidSdk(root) && !harmonySdkListContainsNormalized(list, root)) {
-        addSdk(root.toUserOutput());
+        addSdk(root.path());
         ++added;
     }
 
@@ -685,7 +685,7 @@ int registerDownloadedSdksUnder(const FilePath &sdkRoot)
             continue;
         if (harmonySdkListContainsNormalized(list, cleaned))
             continue;
-        addSdk(cleaned.toUserOutput());
+        addSdk(cleaned.path());
         ++added;
     }
     return added;

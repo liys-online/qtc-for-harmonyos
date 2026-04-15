@@ -562,7 +562,7 @@ void HarmonySdkManagerDialog::handleSingleSdkRoot(const FilePath &sdkRoot)
     mbox.addButton(QMessageBox::Close);
     mbox.exec();
     if (mbox.clickedButton() == addBtn) {
-        HarmonyConfig::addSdk(sdkRoot.toUserOutput());
+        HarmonyConfig::addSdk(sdkRoot.path());
         HarmonyConfigurations::applyConfig();
         appendLog(Tr::tr("SDK path registered: %1").arg(sdkRoot.toUserOutput()));
         QMessageBox::information(this, Tr::tr("Harmony SDK"),
