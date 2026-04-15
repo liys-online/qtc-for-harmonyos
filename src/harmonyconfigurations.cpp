@@ -457,7 +457,9 @@ QPair<QVersionNumber, QVersionNumber> getVersion(const Utils::FilePath &releaseF
     QString filePath = releaseFile.path();
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qCWarning(harmonyConfigLog) << "Failed to open file:" << filePath;
+        /* ** 文件不存在是正常情况（SDK 未配置 / NDK 路径无效），降为 debug 避免启动时刷屏。
+         * 调用方应先通过 isValidReleaseFile() 确认文件可读后再调用本函数。 */
+        qCDebug(harmonyConfigLog) << "Failed to open file:" << filePath;
         return versionPair;
     }
     QByteArray rawData = file.readAll();
@@ -1078,7 +1080,7 @@ void HarmonyConfigurations::registerQtVersions()
 void HarmonyConfigurations::removeOldToolchains()
 {
     const auto invalidHarmonyTcs = ToolchainManager::toolchains([](const Toolchain *tc) {
-        return tc->id() == Constants::HARMONY_TOOLCHAIN_TYPEID && !tc->isValid();
+        return tc->typeId() == Constants::HARMONY_TOOLCHAIN_TYPEID && !tc->isValid();
     });
     ToolchainManager::deregisterToolchains(invalidHarmonyTcs);
 }
