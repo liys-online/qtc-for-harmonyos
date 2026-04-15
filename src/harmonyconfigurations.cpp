@@ -1012,6 +1012,7 @@ HarmonyConfigurations *HarmonyConfigurations::instance()
 
 void HarmonyConfigurations::syncToolchainsQtAndKits()
 {
+    findOrRegisterOhosDebugger();
     registerNewToolchains();
     registerQtVersions();
     updateAutomaticKitList();
@@ -1022,6 +1023,8 @@ void HarmonyConfigurations::applyConfig()
 {
     emit m_instance->aboutToUpdate();
     m_instance->save();
+    /* ** DevEco Studio 配置后立即注册 OHOS LLDB（若尚未注册） */
+
     updateHarmonyDevice();
     syncToolchainsQtAndKits();
     emit m_instance->updated();
@@ -1046,7 +1049,7 @@ static void tryRegisterHarmonyQtVersion(const FilePath &qmakePath)
     if (!qmakePath.isExecutableFile())
         return;
     auto *qtVersion = QtVersionFactory::createQtVersionFromQMakePath(
-        qmakePath, DetectionSource(DetectionSource::Manual));
+        qmakePath, DetectionSource(DetectionSource::FromSystem));
     auto *harmonyQtVersion = dynamic_cast<HarmonyQtVersion *>(qtVersion);
     if (!harmonyQtVersion)
         return;
@@ -1081,46 +1084,33 @@ void HarmonyConfigurations::removeOldToolchains()
 }
 
 /*
-** 查找 OHOS LLDB 主机二进制文件。
-** 搜索顺序：(1) DevEco Studio 捆绑 SDK，(2) 给定的 NDK 路径，(3) 所有已注册 SDK。
+** 查找 DevEco Studio 捆绑的 OHOS LLDB 主机二进制文件。
+** 路径：<DevEco>/sdk/default/openharmony/native/llvm/bin/lldb
 */
-static FilePath ohosHostLldb(const FilePath &ndkPath)
+static FilePath ohosHostLldb()
 {
-    /* ** (1) DevEco Studio: <DevEco.app>/Contents/sdk/default/openharmony/native/llvm/bin/lldb */
     const FilePath devecoSdk = HarmonyConfig::devecoSdkLocation();
-    if (!devecoSdk.isEmpty()) {
-        const FilePath candidate = FilePath(devecoSdk / "openharmony" / "native" / "llvm" / "bin" / "lldb")
-                                       .withExecutableSuffix();
-        if (candidate.isExecutableFile())
-            return candidate;
-    }
-    /* ** (2) NDK 路径：<ndk>/llvm/bin/lldb */
-    if (!ndkPath.isEmpty()) {
-        const FilePath candidate = ndkPath / "llvm" / "bin" / "lldb";
-        if (candidate.isExecutableFile())
-            return candidate;
-    }
-    /* ** (3) 所有已注册 SDK */
-    for (const QString &s : HarmonyConfig::getSdkList()) {
-        const FilePath ndk = HarmonyConfig::ndkLocation(FilePath::fromUserInput(s));
-        if (!ndk.isEmpty()) {
-            const FilePath candidate = ndk / "llvm" / "bin" / "lldb";
-            if (candidate.isExecutableFile())
-                return candidate;
-        }
-    }
-    return {};
+    if (devecoSdk.isEmpty())
+        return {};
+    const FilePath candidate = FilePath(devecoSdk / "openharmony" / "native" / "llvm" / "bin" / "lldb")
+                                   .withExecutableSuffix();
+    Core::MessageManager::writeFlashing(QObject::tr("(%1) Looking for OHOS LLDB at %2").arg(
+        QString::fromLatin1(harmonyConfigLog().categoryName()), candidate.toUserOutput()));
+    return candidate.isExecutableFile() ? candidate : FilePath{};
 }
 
 /*
-** 将 OHOS LLDB 二进制文件注册为 DebuggerItem（如未注册）
+** 将 DevEco Studio 捆绑的 OHOS LLDB 注册为 DebuggerItem（如未注册）
 ** 并返回其 ID。找不到二进制文件时返回空 QVariant。
 */
-static QVariant findOrRegisterOhosDebugger(const FilePath &ndkPath)
+QVariant HarmonyConfigurations::findOrRegisterOhosDebugger()
 {
-    const FilePath lldb = ohosHostLldb(ndkPath);
-    if (lldb.isEmpty())
+    const FilePath lldb = ohosHostLldb();
+    if (lldb.isEmpty()) {
+        Core::MessageManager::writeFlashing(QObject::tr("(%1) OHOS LLDB not found in DevEco Studio. ").arg(
+            QString::fromLatin1(harmonyConfigLog().categoryName())));
         return {};
+    }
 
     /* ** 若命令匹配则返回现有注册 */
     using namespace Debugger;
@@ -1132,8 +1122,7 @@ static QVariant findOrRegisterOhosDebugger(const FilePath &ndkPath)
     DebuggerItem item;
     item.setCommand(lldb);
     item.setEngineType(LldbEngineType);
-    item.setUnexpandedDisplayName(
-        QObject::tr("OHOS LLDB (%1)").arg(lldb.parentDir().parentDir().parentDir().parentDir().parentDir().fileName()));
+    item.setUnexpandedDisplayName(QObject::tr("OHOS LLDB (DevEco Studio)"));
     item.setDetectionSource(DetectionSource::FromSystem);
     item.reinitializeFromFile();
     return DebuggerItemManager::registerDebugger(item);
@@ -1240,7 +1229,7 @@ static void applyHarmonyKitSettings(Kit *k, const ToolchainBundle &bundle,
     k->setSticky(ToolchainKitAspect::id(), true);
 
     /* ** 注册并设置 OHOS LLDB 调试器 */
-    const QVariant debuggerId = findOrRegisterOhosDebugger(expectedNdkPath);
+    const QVariant debuggerId = HarmonyConfigurations::findOrRegisterOhosDebugger();
     if (!debuggerId.isNull())
         Debugger::DebuggerKitAspect::setDebugger(k, debuggerId);
 
