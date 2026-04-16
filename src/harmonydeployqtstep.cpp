@@ -386,7 +386,7 @@ SetupResult HarmonyDeployQtStep::installSetupHap(Process &process, DeployErrorFl
             const QString ln = rawLine.trimmed();
             if (!ln.isEmpty()) {
                 *flagsPtr |= parseDeployErrors(ln);
-                emit addOutput(ln, OutputFormat::Stdout, DontAppendNewline);
+                emit addOutput(ln, OutputFormat::Stdout, DoAppendNewline);
             }
         }
         return SetupResult::StopWithSuccess;
