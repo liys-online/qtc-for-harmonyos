@@ -84,8 +84,8 @@ Harmony.dll          →  <QtCreator>\lib\qtcreator\plugins\
 Harmony.pdb          →  <QtCreator>\lib\qtcreator\plugins\        （可选）
 lldbbridge.py        →  <QtCreator>\share\qtcreator\debugger\     （覆盖原文件）
 CMakeLists.txt       →  <QtCreator>\share\qtcreator\templates\wizards\projects\qtwidgetsapplication\  （覆盖原文件）
-arktsdebugbridge.exe →  <QtCreator>\libexec\qtcreator\
-Qt6WebSockets.dll    →  <QtCreator>\libexec\qtcreator\
+arktsdebugbridge.exe →  <QtCreator>\bin\
+Qt6WebSockets.dll    →  <QtCreator>\bin\
 ```
 
 #### macOS
