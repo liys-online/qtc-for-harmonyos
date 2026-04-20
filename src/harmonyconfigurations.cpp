@@ -925,9 +925,9 @@ FilePath devecostudioExeLocation(const Utils::FilePath &devecoLocation)
     if (devecoLocation.isEmpty())
         return {};
 #ifdef Q_OS_MACOS
-    const FilePath classic = FilePath(devecoLocation / "MacOS" / "devecostudio");
+    const auto classic = FilePath(devecoLocation / "MacOS" / "devecostudio");
 #else
-    const FilePath classic = FilePath(devecoLocation / "bin" / "devecostudio64");
+    const auto classic = FilePath(devecoLocation / "bin" / "devecostudio64");
 #endif
     return classic.withExecutableSuffix();
 }
@@ -965,7 +965,7 @@ HarmonyConfigurations::HarmonyConfigurations(QObject *parent)
     m_instance = this;
 }
 
-void HarmonyConfigurations::load()
+void HarmonyConfigurations::load() const
 {
     QtcSettings *settings = Core::ICore::settings();
     settings->beginGroup(SettingsGroup);
@@ -1079,11 +1079,11 @@ static void tryRegisterHarmonyQtVersion(const FilePath &qmakePath)
                                     .arg(harmonyQtVersion->description(),
                                          harmonyQtVersion->supportOhVersion().toString());
     harmonyQtVersion->setUnexpandedDisplayName(displayName);
-    if (QtVersionManager::instance()->isLoaded() && !hasExistingVersion(harmonyQtVersion)) {
+    if (QtVersionManager::isLoaded() && !hasExistingVersion(harmonyQtVersion)) {
         Core::MessageManager::writeFlashing(
             QObject::tr("[Harmony] Registered Qt version: %1")
                 .arg(harmonyQtVersion->unexpandedDisplayName()));
-        QtVersionManager::instance()->addVersion(harmonyQtVersion);
+        QtVersionManager::addVersion(harmonyQtVersion);
     }
 }
 
@@ -1095,7 +1095,7 @@ void HarmonyConfigurations::registerQtVersions()
     for (auto *version : installedVersions) {
         if (!version->qmakeFilePath().exists() ||
             !HarmonyConfig::getQmakeList().contains(version->qmakeFilePath().toFSPathString()))
-            QtVersionManager::instance()->removeVersion(version);
+            QtVersionManager::removeVersion(version);
     }
     for (const auto &qmake : std::as_const(HarmonyConfig::getQmakeList()))
         tryRegisterHarmonyQtVersion(FilePath::fromString(qmake));

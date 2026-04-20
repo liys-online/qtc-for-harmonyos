@@ -59,7 +59,7 @@ namespace Ohos::Internal {
          * @brief load
          * 加载配置
          */
-        void load();
+        void load() const;
         /**
          * @brief save
          * 保存配置
