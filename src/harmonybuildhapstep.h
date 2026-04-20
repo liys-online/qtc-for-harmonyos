@@ -18,6 +18,8 @@ public:
     void fromMap(const Utils::Store &map) override;
     void toMap(Utils::Store &map) const override;
 
+    Utils::FilePath ohProjectPath() const;
+
     QString buildTargetSdk() const;
     void setBuildTargetSdk(const QString &sdk);
 

@@ -230,7 +230,7 @@ public:
                 [this](int idx) {
                     m_step->setBuildTargetSdk(m_targetSDKComboBox->itemText(idx));
                     OhProjecteCreator::updateBuildProfileSdkVersions(
-                        m_step->buildDirectory().toUserOutput() + "/ohpro",
+                        m_step->ohProjectPath().toUserOutput(),
                         m_targetSDKComboBox->currentData().toInt(),
                         m_buildToolsSdkComboBox->currentData().toInt());
                 });
@@ -238,7 +238,7 @@ public:
                 [this](int idx) {
                     m_step->setBuildToolsVersion(m_buildToolsSdkComboBox->itemText(idx));
                     OhProjecteCreator::updateBuildProfileSdkVersions(
-                        m_step->buildDirectory().toUserOutput() + "/ohpro",
+                        m_step->ohProjectPath().toUserOutput(),
                         m_targetSDKComboBox->currentData().toInt(),
                         m_buildToolsSdkComboBox->currentData().toInt());
                 });
@@ -266,7 +266,7 @@ public:
             Tr::tr("Write the entry library name directly into the existing EntryAbility.ets "
                    "without re-creating all templates."));
         connect(applyEntryLibButton, &QAbstractButton::clicked, this, [this] {
-            const QString ohproPath = m_step->buildDirectory().toUserOutput() + "/ohpro";
+            const QString ohproPath = m_step->ohProjectPath().toUserOutput();
             OhProjecteCreator::patchEntryAbilityLib(ohproPath, m_step->resolvedEntryLib());
         });
 
@@ -308,8 +308,8 @@ public:
 
     void openDevEco()
     {
-        auto projectPath = m_step->buildDirectory() / "ohpro";
-        openDevEcoProject(projectPath.toUserOutput());
+        auto projectPath = m_step->ohProjectPath().toUserOutput();
+        openDevEcoProject(projectPath);
     }
 
     void reloadModuleDeviceTypesUiFromStep()
@@ -368,7 +368,7 @@ void HarmonyBuildHapWidget::createTemplatesFromUi() const
         return;
     auto *ohPro = OhProjecteCreator::instance();
     OhProjecteCreator::ProjecteInfo proInfo;
-    proInfo.projectPath = m_step->buildDirectory().toUserOutput() + "/ohpro";
+    proInfo.projectPath = m_step->ohProjectPath().toUserOutput();
     proInfo.targetSdkVersion = m_targetSDKComboBox->currentData().toInt();
     if (proInfo.targetSdkVersion < 0)
         proInfo.targetSdkVersion = HarmonyConfig::devecoStudioVersion().first;
@@ -394,8 +394,8 @@ void HarmonyBuildHapWidget::createTemplatesFromUi() const
 void HarmonyBuildHapWidget::onFollowKitToggled(bool followKit)
 {
     if (followKit) {
-        for (QCheckBox *cb : m_moduleDeviceTypeCheckBoxes) {
         m_step->setModuleDeviceTypes(QStringList{});
+        for (QCheckBox *cb : std::as_const(m_moduleDeviceTypeCheckBoxes)) {
             if (cb) {
                 const QSignalBlocker b(cb);
                 cb->setChecked(false);
@@ -472,6 +472,11 @@ void HarmonyBuildHapStep::toMap(Utils::Store &map) const
     map.insert(Key(Constants::HarmonyBuildHapBuildToolsVersionKey), m_buildToolsVersion);
     map.insert(Key(Constants::HarmonyBuildHapEntryLibOverrideKey), m_entryLibOverride);
     map.insert(Constants::HarmonyBuildOhModuleDeviceTypesLine, m_ohModuleDeviceTypes);
+}
+
+FilePath HarmonyBuildHapStep::ohProjectPath() const
+{
+    return (buildDirectory().cleanPath() / "ohpro").cleanPath();
 }
 
 bool HarmonyBuildHapStep::prepareOhProDirectory(FilePath *outCwd, QString *errorMessage)
