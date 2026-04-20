@@ -316,13 +316,13 @@ public:
     {
         if (!m_followKitModuleDeviceTypes || m_moduleDeviceTypeCheckBoxes.isEmpty())
             return;
-        const bool followKit = m_step->moduleDeviceTypesLine().trimmed().isEmpty();
+        const bool followKit = m_step->moduleDeviceTypes().isEmpty();
         {
             const QSignalBlocker b(m_followKitModuleDeviceTypes);
             m_followKitModuleDeviceTypes->setChecked(followKit);
         }
         m_moduleDeviceTypesOverrideWidget->setEnabled(!followKit);
-        const QStringList tokens = parseOhModuleDeviceTypesLine(m_step->moduleDeviceTypesLine());
+        const QStringList tokens = m_step->moduleDeviceTypes();
         for (const QString &id : ohModuleDeviceTypePresetIds()) {
             if (QCheckBox *cb = m_moduleDeviceTypeCheckBoxes.value(id)) {
                 const QSignalBlocker b(cb);
@@ -339,9 +339,11 @@ public:
                 if (cb->isChecked())
                     out.append(id);
         }
-        const QString line = joinOhModuleDeviceTypesLine(out);
-        if (m_step->moduleDeviceTypesLine() != line)
-            m_step->setModuleDeviceTypesLine(line);
+        if (m_step->moduleDeviceTypes() != out) {
+            m_step->setModuleDeviceTypes(out);
+            const QString ohproPath = m_step->ohProjectPath().toUserOutput();
+            OhProjecteCreator::updateModuleDeviceTypes(ohproPath, m_step->moduleDeviceTypes());
+        }
     }
 
     void createTemplatesFromUi() const;
@@ -392,8 +394,8 @@ void HarmonyBuildHapWidget::createTemplatesFromUi() const
 void HarmonyBuildHapWidget::onFollowKitToggled(bool followKit)
 {
     if (followKit) {
-        m_step->setModuleDeviceTypesLine(QString());
         for (QCheckBox *cb : m_moduleDeviceTypeCheckBoxes) {
+        m_step->setModuleDeviceTypes(QStringList{});
             if (cb) {
                 const QSignalBlocker b(cb);
                 cb->setChecked(false);
@@ -455,7 +457,7 @@ void HarmonyBuildHapStep::fromMap(const Utils::Store &map)
     m_buildTargetSdk = m.value(Key(Constants::HarmonyBuildHapTargetSdkKey)).toString();
     m_buildToolsVersion = m.value(Key(Constants::HarmonyBuildHapBuildToolsVersionKey)).toString();
     m_entryLibOverride = m.value(Key(Constants::HarmonyBuildHapEntryLibOverrideKey)).toString();
-    m_ohModuleDeviceTypesLine = m.value(Constants::HarmonyBuildOhModuleDeviceTypesLine).toString();
+    m_ohModuleDeviceTypes = m.value(Constants::HarmonyBuildOhModuleDeviceTypesLine).toStringList();
     if (m_buildTargetSdk.isEmpty()) {
         m_buildTargetSdk = HarmonyConfig::apiLevelNameFor(HarmonyConfig::devecoStudioVersion().first);
     }
@@ -469,7 +471,7 @@ void HarmonyBuildHapStep::toMap(Utils::Store &map) const
     map.insert(Key(Constants::HarmonyBuildHapTargetSdkKey), m_buildTargetSdk);
     map.insert(Key(Constants::HarmonyBuildHapBuildToolsVersionKey), m_buildToolsVersion);
     map.insert(Key(Constants::HarmonyBuildHapEntryLibOverrideKey), m_entryLibOverride);
-    map.insert(Constants::HarmonyBuildOhModuleDeviceTypesLine, m_ohModuleDeviceTypesLine);
+    map.insert(Constants::HarmonyBuildOhModuleDeviceTypesLine, m_ohModuleDeviceTypes);
 }
 
 bool HarmonyBuildHapStep::prepareOhProDirectory(FilePath *outCwd, QString *errorMessage)
@@ -477,7 +479,7 @@ bool HarmonyBuildHapStep::prepareOhProDirectory(FilePath *outCwd, QString *error
     if (!outCwd || !errorMessage)
         return false;
     *outCwd = {};
-    const FilePath ohPro = (buildDirectory().cleanPath() / "ohpro").cleanPath();
+    const FilePath ohPro = ohProjectPath();
     if (const Result<> mk = ohPro.ensureWritableDir(); !mk) {
         *errorMessage = Tr::tr("Could not create Harmony OHOS wrapper directory \"%1\". %2")
                             .arg(ohPro.toUserOutput(), mk.error());
@@ -766,21 +768,20 @@ QString HarmonyBuildHapStep::resolvedEntryLib() const
     return isDefaultKey ? QStringLiteral("libentry.so") : QString("lib%1.so").arg(buildKey);
 }
 
-QString HarmonyBuildHapStep::moduleDeviceTypesLine() const
+QStringList HarmonyBuildHapStep::moduleDeviceTypes() const
 {
-    return m_ohModuleDeviceTypesLine;
+    return m_ohModuleDeviceTypes;
 }
 
-void HarmonyBuildHapStep::setModuleDeviceTypesLine(const QString &line)
+void HarmonyBuildHapStep::setModuleDeviceTypes(const QStringList &deviceTypes)
 {
-    m_ohModuleDeviceTypesLine = line;
+    m_ohModuleDeviceTypes = deviceTypes;
 }
 
 QStringList HarmonyBuildHapStep::effectiveModuleDeviceTypes() const
 {
-    const QStringList fromLine = parseOhModuleDeviceTypesLine(m_ohModuleDeviceTypesLine);
-    if (!fromLine.isEmpty())
-        return fromLine;
+    if (!m_ohModuleDeviceTypes.isEmpty())
+        return m_ohModuleDeviceTypes;
     const auto *bc = buildConfiguration();
     const ProjectExplorer::Kit *k = bc ? bc->kit() : nullptr;
     if (k) {

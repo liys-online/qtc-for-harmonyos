@@ -80,9 +80,6 @@ bool harmonyHdcShellPreferCli();
  */
 QString harmonyEffectiveDeviceSerial(const ProjectExplorer::BuildConfiguration *bc);
 
-/** Split comma-separated \c module.json5 \c deviceTypes tokens (trim, skip empty). */
-QStringList parseOhModuleDeviceTypesLine(const QString &line);
-QString joinOhModuleDeviceTypesLine(const QStringList &types);
 /** Preset \c deviceTypes ids for UI checkboxes (OpenHarmony \c module.json5 common values). */
 QStringList ohModuleDeviceTypePresetIds();
 
