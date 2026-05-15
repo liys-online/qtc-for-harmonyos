@@ -17,6 +17,57 @@ using namespace ProjectExplorer;
 using namespace Utils;
 namespace Ohos::Internal {
 
+namespace {
+
+/*
+** 设备 shell 单引号包裹（'foo'bar' → 'foo'\''bar'）。
+*/
+QString shellSingleQuoted(const QString &raw)
+{
+    QString out;
+    out.reserve(raw.size() + 2);
+    out.append(u'\'');
+    for (const QChar ch : raw) {
+        if (ch == u'\'')
+            out.append(QLatin1String("'\\''"));
+        else
+            out.append(ch);
+    }
+    out.append(u'\'');
+    return out;
+}
+
+/*
+** `aa start` 立即返回后，轮询 pidof(<bundle>)：先等进程出现（与 hilog 任务相同的 15s 窗口），
+** 再睡到进程消失，使 hdc 会话结束，RunControl 在用户在设备上退出应用时同步结束。
+*/
+QString deviceWaitUntilAppProcessExits(const QString &bundleName)
+{
+    const QString q = shellSingleQuoted(bundleName);
+    QString s;
+    s.reserve(400 + bundleName.size());
+    s.append(QStringLiteral("APP="));
+    s.append(q);
+    s.append(QStringLiteral(
+        ";PID=;i=0;"
+        "while [ $i -lt 30 ]; do "
+        "PID=$(pidof $APP);PID=${PID%% *};"
+        "test x\"$PID\" != x && break;"
+        "PID=;i=$((i+1));sleep 0.5;"
+        "done;"
+        "if test x\"$PID\" = x; then "
+        "echo \"Harmony run: bundle process not detected after start (pidof $APP).\";exit 0;"
+        "fi;"
+        "while true; do "
+        "PID=$(pidof $APP);PID=${PID%% *};"
+        "test x\"$PID\" = x && exit 0;"
+        "sleep 2;"
+        "done"));
+    return s;
+}
+
+} // namespace
+
 /** P1-12: canonical \c settingsKey() matches \c setId(); \a legacyProjectStoreKey is read if canonical absent. */
 class HarmonyMigratingStringAspect final : public StringAspect
 {
@@ -200,9 +251,13 @@ public:
             /*
             ** `aa start` 立即返回；若设备 shell 随即退出，hdc 完成且 RunControl 的任务树
             ** 在 UI 认为运行已激活之前结束（Stop 按鈕保持禁用）。
-            ** 保持 shell 会话开启，直到用户停止运行（与 Android 的 PID 等待思路相同）。
+            ** 已知包名时按 pidof 等待主进程退出，便于设备侧退出应用后 IDE 结束运行；
+            ** 无法解析包名时退化为长驻循环（仅能通过 IDE「停止」结束）。
             */
-            allDeviceCommands << QStringLiteral("while true; do sleep 2; done");
+            if (!pkgName.isEmpty())
+                allDeviceCommands << deviceWaitUntilAppProcessExits(pkgName);
+            else
+                allDeviceCommands << QStringLiteral("while true; do sleep 2; done");
 
             /* ** postStartShellCmd（退出后命令）在 hdc 会话结束时运行——见 harmonyrunner.cpp。 */
             cmd.addArg(allDeviceCommands.join(" ; "));
