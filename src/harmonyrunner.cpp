@@ -27,6 +27,8 @@
 #include <QtTaskTree/qbarriertask.h>
 #include <QtTaskTree/qtasktree.h>
 
+#include <QObject>
+
 #include <chrono>
 #include <functional>
 
@@ -426,12 +428,18 @@ public:
                 const auto mainSocketTask = QCustomTask<HarmonyMainRunSocketTask>(
                     [runControl, deviceSerial, deviceScript](HarmonyMainRunSocketTask &t) {
                         QObject::disconnect(runControl, &RunControl::canceled, runControl, nullptr);
+                        /*
+                        ** 构建前 initiateStop → canceled：须先结束主 hdc shell 会话，再发 aa force-stop。
+                        ** 若先同步 runSyncWithCliFallback(force-stop)，而主会话仍占用 hdc 流式连接，
+                        ** 常见为 hdc 守护进程串行阻塞，「等待应用停止」对话框永不结束。
+                        */
+                        QObject::connect(runControl, &RunControl::canceled, &t,
+                                         [&t] { t.stopShell(); });
                         QObject::connect(runControl,
                                          &RunControl::canceled,
                                          runControl,
-                                         [runControl] { stopHarmonyApplicationOnDevice(runControl); });
-                        QObject::connect(runControl, &RunControl::canceled, &t,
-                                         [&t] { t.stopShell(); });
+                                         [runControl] { stopHarmonyApplicationOnDevice(runControl); },
+                                         Qt::QueuedConnection);
                         QObject::connect(runControl, &RunControl::stopped, &t,
                                          [&t] { t.stopShell(); });
                         QObject::connect(&t,
@@ -454,10 +462,16 @@ public:
             const auto mainTask = runControl->processTask(
                 [runControl](Process &process) {
                     QObject::disconnect(runControl, &RunControl::canceled, runControl, nullptr);
+                    /*
+                    ** canceled 时 RunControl 还会连接 process->stop()（setupCanceler）。
+                    ** 将 force-stop 设为 Queued，确保先执行 process->stop() 释放 hdc shell，
+                    ** 再执行 stopHarmonyApplicationOnDevice，避免与 socket 路径相同的 hdc 死锁。
+                    */
                     QObject::connect(runControl,
                                      &RunControl::canceled,
                                      runControl,
-                                     [runControl] { stopHarmonyApplicationOnDevice(runControl); });
+                                     [runControl] { stopHarmonyApplicationOnDevice(runControl); },
+                                     Qt::QueuedConnection);
                     QObject::connect(&process,
                                      &Process::done,
                                      runControl,
