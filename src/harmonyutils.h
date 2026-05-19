@@ -45,8 +45,6 @@ int minimumSDK(const ProjectExplorer::BuildConfiguration *bc);
 int minimumSDK(const ProjectExplorer::Kit *kit);
 int defaultMinimumSDK(const QtSupport::QtVersion *qtVersion);
 
-bool isQt5CmakeProject(const ProjectExplorer::Target *target);
-
 Utils::FilePath harmonyBuildDirectory(const ProjectExplorer::BuildConfiguration *bc);
 Utils::FilePath buildDirectory(const ProjectExplorer::BuildConfiguration *bc);
 

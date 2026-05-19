@@ -11,7 +11,7 @@
 
 - **入口**：设置 → Harmony → **Qt for Harmony Settings** → **Manage Qt for OpenHarmony SDK…**
 - **发布页（参考）**：[GitCode `openharmony-sig/qt` Releases](https://gitcode.com/openharmony-sig/qt/releases)（清单中的 `downloadUrl` 可指向 Gitee/GitCode 等直链）。
-- **列表数据来源**：插件内置 **主源 GitCode raw**、**备用 GitHub raw**（`ohosconstants.h` 中 `QtOhBinaryCatalogDefaultGitcodeUrl` / `QtOhBinaryCatalogDefaultGithubUrl`）。先请求 GitCode，失败或 JSON 无效时再请求 GitHub。环境变量 **`QT_OH_BINARY_CATALOG_URL`** 若非空则**仅覆盖主源 URL**（备用仍为内置 GitHub）。下载地址来自清单中各 `releases[].assets[].downloadUrl`。
+- **列表数据来源**：`HarmonyQtOhReleasesDownloader` 对 **`HarmonyConfig::effectiveQtOhBinaryCatalogUrl()`** 返回的 URL 发起单次 GET（默认见 `ohosconstants.h` 中 `QtOhBinaryCatalogDefaultGitcodeUrl`；环境变量 **`QT_OH_BINARY_CATALOG_URL`** 若非空则覆盖该默认）。下载地址来自清单中各 `releases[].assets[].downloadUrl`。
 - **行为**：树形勾选 Release / 资源文件 → 下载到「安装根」下的 `.temp/`，可选与 OH SDK 管理器相同逻辑的 **`tar` 解压**（`.zip` / `.tar` / `.tar.gz`）；**分卷 `.7z`** 需用户自行用 7-Zip 合并解压。列表**仅按宿主 OS** 过滤：只显示 `platform` 与当前机器（`linux` / `darwin` / `windows`）一致的条目；清单里的 **`arch` 表示 OpenHarmony 目标架构**（如真机 `aarch64` 与模拟器 `x86_64`），**不与**开发者本机 CPU 比对，故同一宿主 OS 下可能同时列出多种目标包。`kind: metadata` 源码包不显示；无 `platform` 的条目不显示。
 - **解压目标**：`<安装根>/<tag>/`（tag 中的路径字符会替换为 `_`）。
 - **完成后**：勾选「下载后解压」时，插件会在解压目录下递归查找 **`bin/qmake`**，找到则写入 **Qt for Harmony qmake list** 并调用 `HarmonyConfigurations::applyConfig()`（注册 Qt 版本 / Kit 等）；未找到或已存在同一路径时会在日志中说明，必要时仍可在设置里手动添加。

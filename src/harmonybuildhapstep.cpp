@@ -79,33 +79,7 @@ void applyHvigorWorkingDirectoryEnv(Environment &evn, const FilePath &absoluteCw
     evn.set(QStringLiteral("INIT_CWD"), p);
 }
 } // namespace
-[[maybe_unused]] static void createOhPro(ProjectExplorer::BuildSystem *buildsystem, const QString &path)
-{
-    using namespace QtSupport;
-    if (!buildsystem)
-        return;
-    auto *ohPro = OhProjecteCreator::instance();
-    OhProjecteCreator::ProjecteInfo proInfo;
-    proInfo.projectPath = path;
-    proInfo.targetSdkVersion = HarmonyConfig::devecoStudioVersion().first;
-    if(auto *project = buildsystem->project())
-    {
-        QString projFile = project->projectFilePath().toUserOutput();
-        if(projFile.endsWith("CMakeLists.txt")) {
-            proInfo.cmakeListPath = projFile;
-        }
-    }
-    if(auto *kit = buildsystem->kit())
-    {
-        auto ohQt = static_cast<const HarmonyQtVersion *>(QtKitAspect::qtVersion(kit));
-        if(ohQt) {
-            proInfo.compatibleSdkVersion = ohQt->supportOhVersion().majorVersion();
-            proInfo.qtHostPath = ohQt->hostPrefixPath().toUserOutput();
-        }
-    }
-    proInfo.deviceTypes = HarmonyConfig::ohModuleDeviceTypes();
-    ohPro->create(proInfo);
-}
+
 class HarmonyBuildHapWidget : public QWidget
 {
 public:
@@ -121,50 +95,7 @@ public:
         using namespace Layouting;
         using namespace Utils;
 
-        // Application Signature Group
-
-        // auto keystoreLocationChooser = new PathChooser;
-        // keystoreLocationChooser->setExpectedKind(PathChooser::File);
-        // keystoreLocationChooser->lineEdit()->setReadOnly(true);
-        // keystoreLocationChooser->setFilePath(m_step->keystorePath());
-        // keystoreLocationChooser->setInitialBrowsePathBackup(FileUtils::homePath());
-        // keystoreLocationChooser->setPromptDialogFilter(Tr::tr("Keystore files (*.keystore *.jks)"));
-        // keystoreLocationChooser->setPromptDialogTitle(Tr::tr("Select Keystore File"));
-        // connect(keystoreLocationChooser, &PathChooser::textChanged, this, [this, keystoreLocationChooser] {
-        //     const FilePath file = keystoreLocationChooser->unexpandedFilePath();
-        //     m_step->setKeystorePath(file);
-        //     m_signPackageCheckBox->setChecked(!file.isEmpty());
-        //     if (!file.isEmpty())
-        //         setCertificates();
-        // });
-
-        // auto keystoreCreateButton = new QPushButton(Tr::tr("Create..."));
-        // connect(keystoreCreateButton, &QAbstractButton::clicked, this, [this, keystoreLocationChooser] {
-        //     const auto data = executeKeystoreCertificateDialog();
-        //     if (!data)
-        //         return;
-        //     keystoreLocationChooser->setFilePath(data->keystoreFilePath);
-        //     m_step->setKeystorePath(data->keystoreFilePath);
-        //     m_step->setKeystorePassword(data->keystorePassword);
-        //     m_step->setCertificateAlias(data->certificateAlias);
-        //     m_step->setCertificatePassword(data->certificatePassword);
-        //     setCertificates();
-        // });
-
-        // m_signPackageCheckBox = new QCheckBox(Tr::tr("Sign package"));
-        // m_signPackageCheckBox->setChecked(m_step->signPackage());
-
-        // m_signingDebugWarningLabel = new InfoLabel(Tr::tr("Signing a debug package"),
-        //                                            InfoLabel::Warning);
-        // m_signingDebugWarningLabel->hide();
-        // m_signingDebugWarningLabel->setSizePolicy(QSizePolicy::MinimumExpanding,
-        //                                           QSizePolicy::Preferred);
-
-        // m_certificatesAliasComboBox = new QComboBox;
-        // m_certificatesAliasComboBox->setEnabled(false);
-        // m_certificatesAliasComboBox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-
-        using namespace Layouting;
+        /* In-IDE keystore signing is not implemented; release signing is done in DevEco Studio. */
         PushButton openDevEcoButton {
             text(Tr::tr("Signing the HAP in DevEco Studio")),
             Layouting::toolTip(Tr::tr("Processes Hvigor project information and persistently stores it in "
@@ -175,25 +106,8 @@ public:
             title(Tr::tr("Application Signature")),
             Form {
                 openDevEcoButton, br,
-            //     Tr::tr("Keystore:"), keystoreLocationChooser, keystoreCreateButton, br,
-            //     m_signPackageCheckBox, br,
-            //     Tr::tr("Certificate alias:"), m_certificatesAliasComboBox,
-            //     m_signingDebugWarningLabel, st, br,
             }
         };
-
-        // connect(m_signPackageCheckBox, &QAbstractButton::toggled,
-        //         this, &HarmonyBuildHapWidget::signPackageCheckBoxToggled);
-
-        // auto updateAlias = [this](int idx) {
-        //     QString alias = m_certificatesAliasComboBox->itemText(idx);
-        //     if (!alias.isEmpty())
-        //         m_step->setCertificateAlias(alias);
-        // };
-
-        // connect(m_certificatesAliasComboBox, &QComboBox::activated, this, updateAlias);
-        // connect(m_certificatesAliasComboBox, &QComboBox::currentIndexChanged, this, updateAlias);
-
 
         /* ** Application group */
 
@@ -848,7 +762,6 @@ bool HarmonyBuildHapStep::init()
             params->setEnvironment(evn);
             qCDebug(harmonyBuildLog) << "Step in directory:"
                                         << params->workingDirectory().toUserOutput();
-            // params->setCommandLine({node, {hvigorwJs.toUserOutput(), "--help"}});
             params->setCommandLine({node, {hvigorwJs.toUserOutput(),
                                            "--mode",
                                            "module",
@@ -862,7 +775,6 @@ bool HarmonyBuildHapStep::init()
                                           }});
             const auto ohProPath = params->workingDirectory().toUserOutput();
             if (!QFile::exists(ohProPath + "/build-profile.json5")) {
-                // createOhPro(buildSystem(), ohProPath);
                 emit createTemplates();
             } else {
                 qCDebug(harmonyBuildLog) << Tr::tr("OhPro already exists in %1").arg(ohProPath);

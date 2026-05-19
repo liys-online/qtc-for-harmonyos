@@ -49,11 +49,6 @@ const char HARMONY_KIT_MODULE_DEVICE_TYPES[] = "Harmony.ModuleDeviceTypes";
 */
 const char QtOhBinaryCatalogDefaultGitcodeUrl[] =
     "https://raw.gitcode.com/qtforohos/qtc-for-harmony/raw/main/docs/qt-oh-binary-catalog.v1.json";
-/*
-** 默认 catalog：GitHub raw（主要源失败时使用）。
-*/
-// const char QtOhBinaryCatalogDefaultGithubUrl[] =
-//     "https://raw.githubusercontent.com/liys-online/qtc-for-harmonyos/refs/heads/main/docs/qt-oh-binary-catalog.v1.json";
 const char OHOS_SDK_ENV_VAR[] = "OHOS_SDK_PATH";
 /*
 ** 可选；在 OHOS_SDK_PATH 之前检查，作为默认 HarmonyOS SDK 根目录（SDK 管理器布局）。
