@@ -4,6 +4,7 @@
 #include "harmonysdkmanagerdialog.h"
 #include "harmonysdkarchiveutils.h"
 #include "harmonysdkdownloader.h"
+#include "harmonysdklicensedialog.h"
 #include "harmonyconfigurations.h"
 #include "ohosconstants.h"
 #include "ohostr.h"
@@ -321,6 +322,17 @@ void HarmonySdkManagerDialog::onDownloadSelected()
         appendLog(Tr::tr("A download is already in progress."));
         return;
     }
+
+    // ── License agreement check ─────────────────────────────────────────
+    if (!HarmonySdkLicenseDialog::isLicenseAccepted()) {
+        HarmonySdkLicenseDialog licenseDlg(this);
+        if (licenseDlg.exec() != QDialog::Accepted) {
+            appendLog(Tr::tr("Download cancelled: license not accepted."));
+            return;
+        }
+        appendLog(Tr::tr("License accepted."));
+    }
+
     const FilePath sdkRoot = HarmonyConfig::effectiveOhosSdkRoot().cleanPath();
     if (!sdkRoot.exists() && !sdkRoot.createDir()) {
         QMessageBox::warning(this, Tr::tr("Download"),

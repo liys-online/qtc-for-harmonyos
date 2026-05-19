@@ -83,6 +83,7 @@ add_qtc_plugin(Harmony
     harmonyutils.h harmonyutils.cpp
     harmonylogcategories.h harmonylogcategories.cpp
     harmonysdkdownloader.h harmonysdkdownloader.cpp
+    harmonysdklicensedialog.h harmonysdklicensedialog.cpp
     harmonysdkmanagerdialog.h harmonysdkmanagerdialog.cpp
     harmonyqttreleasesdownloader.h harmonyqttreleasesdownloader.cpp
     harmonyqttsdkmanagerdialog.h harmonyqttsdkmanagerdialog.cpp
