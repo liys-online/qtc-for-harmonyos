@@ -54,6 +54,8 @@ public:
      * @return true on success; false if the file does not exist or cannot be written.
      */
     static bool patchEntryAbilityLib(const QString &ohproPath, const QString &libName);
+
+    static bool updateModuleDeviceTypes(const QString &ohproPath, const QStringList &deviceTypes);
 Q_SIGNALS:
     void signalCreateFinished(bool success, const QString &msg);
 private:

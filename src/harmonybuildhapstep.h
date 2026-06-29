@@ -18,6 +18,8 @@ public:
     void fromMap(const Utils::Store &map) override;
     void toMap(Utils::Store &map) const override;
 
+    Utils::FilePath ohProjectPath() const;
+
     QString buildTargetSdk() const;
     void setBuildTargetSdk(const QString &sdk);
 
@@ -29,8 +31,8 @@ public:
     /** Returns the override if set, otherwise auto-detects from the active build key. */
     QString resolvedEntryLib() const;
 
-    QString moduleDeviceTypesLine() const;
-    void setModuleDeviceTypesLine(const QString &line);
+    QStringList moduleDeviceTypes() const;
+    void setModuleDeviceTypes(const QStringList &deviceTypes);
     /** For \c OhProjecteCreator: step line → else Kit → else global preferences (default \c 2in1). */
     QStringList effectiveModuleDeviceTypes() const;
 
@@ -53,7 +55,7 @@ private:
     QString m_buildTargetSdk;
     QString m_buildToolsVersion;
     QString m_entryLibOverride;
-    QString m_ohModuleDeviceTypesLine;
+    QStringList m_ohModuleDeviceTypes;
 };
 
 void setupHarmonyBuildHapStep();

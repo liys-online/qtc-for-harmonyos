@@ -6,8 +6,6 @@
 #include "ohosconstants.h"
 #include "ohostr.h"
 #include "ohprojectecreator/ohprojectecreator.h"
-#include <cmakeprojectmanager/cmakeprojectconstants.h>
-#include <coreplugin/icontext.h>
 #include "harmonydevice.h"
 #include "hdcsocketclient.h"
 
@@ -238,15 +236,6 @@ QString buildKeyForCMakeExtraData(const BuildConfiguration *bc)
     return buildKey;
 }
 
-bool isQt5CmakeProject(const ProjectExplorer::Target *target)
-{
-    const QtSupport::QtVersion *qt = QtSupport::QtKitAspect::qtVersion(target->kit());
-    const bool isQt5 = qt && qt->qtVersion() < QVersionNumber(6, 0, 0);
-    const Core::Context cmakeCtx(CMakeProjectManager::Constants::CMAKE_PROJECT_ID);
-    const bool isCmakeProject = (target->project()->projectContext() == cmakeCtx);
-    return isQt5 && isCmakeProject;
-}
-
 QString deviceSerialNumber(const ProjectExplorer::BuildConfiguration *bc)
 {
     return bc->extraData(HarmonyDeviceSn).toString();
@@ -313,14 +302,15 @@ void setAppJson5Path(ProjectExplorer::BuildConfiguration *bc, const Utils::FileP
 {
     bc->setExtraData(HarmonyAppJson5Name, QVariant::fromValue(path));
 }
-static int parseMinSdk(const FilePath &appJson5Path)
+/** Minimum compatible API from \c build-profile.json5 \c products[].compatibleSdkVersion. */
+static int parseMinSdkFromBuildProfile(const FilePath &buildProfilePath)
 {
-    const Result<QByteArray> appJsonContents = appJson5Path.fileContents();
-    if (!appJsonContents) {
-        qCWarning(harmonyDeployLog) << "Failed to read" << appJson5Path;
+    const Result<QByteArray> contents = buildProfilePath.fileContents();
+    if (!contents) {
+        qCWarning(harmonyDeployLog) << "Failed to read" << buildProfilePath;
         return 0;
     }
-    QJsonObject rootJson = QJsonDocument::fromJson(*appJsonContents).object();
+    QJsonObject rootJson = QJsonDocument::fromJson(*contents).object();
     auto productsArray = rootJson.value("products").toArray();
     int minSdkVersion = OhProjecteCreator::latestApiLevel();
     for (const auto &productValue : std::as_const(productsArray)) {
@@ -337,7 +327,7 @@ int minimumSDK(const ProjectExplorer::BuildConfiguration *bc)
     if (!buildProfile.exists())
         return minimumSDK(bc->kit());
 
-    const int minSdkVersion = parseMinSdk(buildProfile);
+    const int minSdkVersion = parseMinSdkFromBuildProfile(buildProfile);
     if (minSdkVersion == 0)
         return defaultMinimumSDK(QtSupport::QtKitAspect::qtVersion(bc->kit()));
     return minSdkVersion;
@@ -541,22 +531,6 @@ FilePath findBuiltHapPackage(const FilePath &ohProRoot, QString *diagnosticOut)
         *diagnosticOut = lines.join(QLatin1Char('\n'));
 
     return found;
-}
-
-QStringList parseOhModuleDeviceTypesLine(const QString &line)
-{
-    QStringList out;
-    for (const QString &part : line.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
-        const QString t = part.trimmed();
-        if (!t.isEmpty())
-            out.append(t);
-    }
-    return out;
-}
-
-QString joinOhModuleDeviceTypesLine(const QStringList &types)
-{
-    return types.join(QStringLiteral(", "));
 }
 
 QStringList ohModuleDeviceTypePresetIds()

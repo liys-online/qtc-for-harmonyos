@@ -10,7 +10,9 @@
 
 #include <projectexplorer/kitmanager.h>
 #include <projectexplorer/buildsystem.h>
+#include <projectexplorer/project.h>
 #include <projectexplorer/projectmanager.h>
+#include <projectexplorer/target.h>
 #include <projectexplorer/deployconfiguration.h>
 
 #include <extensionsystem/iplugin.h>
@@ -123,6 +125,11 @@ public:
                 Qt::SingleShotConnection);
         connect(ProjectManager::instance(), &ProjectManager::activeBuildConfigurationChanged,
             this, &OhosPlugin::addBuildHapStepForOhBuild);
+        /* ** 项目打开后（含启动时恢复的项目）：为其所有 BC 补充 HAP 步骤 */
+        connect(ProjectManager::instance(), &ProjectManager::projectAdded,
+            this, [this](ProjectExplorer::Project *project) {
+                ensureHapStepForAllBcs(project);
+            });
     }
 
     void kitsRestored()
@@ -131,6 +138,13 @@ public:
             HarmonyConfigurations::applyConfig();
         else
             HarmonyConfigurations::syncToolchainsQtAndKits();
+
+        /*
+         * Kit 加载完成后，activeBuildConfigurationChanged 可能已在 Kit 就绪前触发（项目作为
+         * "最近项目"在启动期间加载），导致 HarmonyQtVersion 检测失败、步骤未被添加。
+         * 此处对所有已加载项目做一次补偿遍历。
+         */
+        ensureHapStepForAllBcs();
 
         askUserAboutHarmonySdkSetupIfNeeded();
 
@@ -205,6 +219,19 @@ public:
             Utils::InfoBarEntry::ButtonAction::SuppressPersistently);
         infoBar->addInfo(entry);
     }
+    /** 遍历 project（或所有已加载项目）的全部 Target/BC，确保 HAP 步骤存在。 */
+    void ensureHapStepForAllBcs(ProjectExplorer::Project *project = nullptr)
+    {
+        const QList<ProjectExplorer::Project *> projects =
+            project ? QList{project} : ProjectManager::projects();
+        for (ProjectExplorer::Project *p : projects) {
+            for (ProjectExplorer::Target *t : p->targets()) {
+                for (ProjectExplorer::BuildConfiguration *bc : t->buildConfigurations())
+                    addBuildHapStepForOhBuild(bc);
+            }
+        }
+    }
+
     void addBuildHapStepForOhBuild(ProjectExplorer::BuildConfiguration *bc)
     {
         using namespace QtSupport;

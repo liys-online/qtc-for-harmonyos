@@ -515,7 +515,7 @@ void HarmonyQtOhSdkManagerDialog::tryRegisterExtractedQtOhQmake(const FilePath &
         return;
     }
 
-    const QString qs = qmakePath.toFSPathString();
+    const QString qs = qmakePath.path();
     if (HarmonyConfig::getQmakeList().contains(qs)) {
         appendLog(Tr::tr("qmake path already in Qt for Harmony list: %1")
                       .arg(qmakePath.toUserOutput()));

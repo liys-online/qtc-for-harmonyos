@@ -4,7 +4,6 @@
 #include "harmonyqttreleasesdownloader.h"
 
 #include "harmonyconfigurations.h"
-#include "ohosconstants.h"
 #include "ohostr.h"
 
 #include <QJsonArray>
@@ -127,7 +126,6 @@ void HarmonyQtOhReleasesDownloader::fetchAllReleases()
 
     const QString primaryString = HarmonyConfig::effectiveQtOhBinaryCatalogUrl();
     const QUrl primary = QUrl::fromUserInput(primaryString);
-    // m_fallbackUrl = QUrl(QString::fromLatin1(Constants::QtOhBinaryCatalogDefaultGithubUrl));
 
     if (!primary.isValid() || primaryString.trimmed().isEmpty()) {
         emit fetchFailed(Ohos::Tr::tr("Invalid Qt for OpenHarmony catalog URL."));
@@ -140,13 +138,11 @@ void HarmonyQtOhReleasesDownloader::fetchAllReleases()
         return;
     }
 
-    startCatalogFetch(primary, true);
+    startCatalogFetch(primary);
 }
 
-void HarmonyQtOhReleasesDownloader::startCatalogFetch(const QUrl &url, bool isPrimaryAttempt)
+void HarmonyQtOhReleasesDownloader::startCatalogFetch(const QUrl &url)
 {
-    m_currentFetchIsPrimary = isPrimaryAttempt;
-
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("QtCreator-Harmony-Plugin"));
     m_reply = m_nam->get(request);

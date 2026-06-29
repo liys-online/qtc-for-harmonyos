@@ -34,7 +34,7 @@ struct QtForOhRelease {
 
 /**
  * Fetches \c qt-for-openharmony.binary-catalog (v1) JSON from a configurable HTTPS URL
- * (Harmony settings and/or \c QT_OH_BINARY_CATALOG_URL), with an optional fallback URL.
+ * (Harmony settings and/or \c QT_OH_BINARY_CATALOG_URL).
  */
 class HarmonyQtOhReleasesDownloader final : public QObject
 {
@@ -43,7 +43,7 @@ class HarmonyQtOhReleasesDownloader final : public QObject
 public:
     explicit HarmonyQtOhReleasesDownloader(QObject *parent = nullptr);
 
-    /** GET primary catalog URL, then optional fallback on network/parse failure. */
+    /** GET catalog from \c HarmonyConfig::effectiveQtOhBinaryCatalogUrl(). */
     void fetchAllReleases();
 
 signals:
@@ -51,14 +51,11 @@ signals:
     void fetchFailed(const QString &errorMessage);
 
 private:
-    void startCatalogFetch(const QUrl &url, bool isPrimaryAttempt);
+    void startCatalogFetch(const QUrl &url);
     void onCatalogReplyFinished();
 
     std::unique_ptr<QNetworkAccessManager> m_nam;
     QNetworkReply *m_reply = nullptr;
-
-    // QUrl m_fallbackUrl;
-    bool m_currentFetchIsPrimary = true;
 };
 
 } // namespace Ohos::Internal

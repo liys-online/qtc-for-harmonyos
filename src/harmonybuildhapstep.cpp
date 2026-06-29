@@ -79,33 +79,7 @@ void applyHvigorWorkingDirectoryEnv(Environment &evn, const FilePath &absoluteCw
     evn.set(QStringLiteral("INIT_CWD"), p);
 }
 } // namespace
-[[maybe_unused]] static void createOhPro(ProjectExplorer::BuildSystem *buildsystem, const QString &path)
-{
-    using namespace QtSupport;
-    if (!buildsystem)
-        return;
-    auto *ohPro = OhProjecteCreator::instance();
-    OhProjecteCreator::ProjecteInfo proInfo;
-    proInfo.projectPath = path;
-    proInfo.targetSdkVersion = HarmonyConfig::devecoStudioVersion().first;
-    if(auto *project = buildsystem->project())
-    {
-        QString projFile = project->projectFilePath().toUserOutput();
-        if(projFile.endsWith("CMakeLists.txt")) {
-            proInfo.cmakeListPath = projFile;
-        }
-    }
-    if(auto *kit = buildsystem->kit())
-    {
-        auto ohQt = static_cast<const HarmonyQtVersion *>(QtKitAspect::qtVersion(kit));
-        if(ohQt) {
-            proInfo.compatibleSdkVersion = ohQt->supportOhVersion().majorVersion();
-            proInfo.qtHostPath = ohQt->hostPrefixPath().toUserOutput();
-        }
-    }
-    proInfo.deviceTypes = HarmonyConfig::ohModuleDeviceTypes();
-    ohPro->create(proInfo);
-}
+
 class HarmonyBuildHapWidget : public QWidget
 {
 public:
@@ -121,50 +95,7 @@ public:
         using namespace Layouting;
         using namespace Utils;
 
-        // Application Signature Group
-
-        // auto keystoreLocationChooser = new PathChooser;
-        // keystoreLocationChooser->setExpectedKind(PathChooser::File);
-        // keystoreLocationChooser->lineEdit()->setReadOnly(true);
-        // keystoreLocationChooser->setFilePath(m_step->keystorePath());
-        // keystoreLocationChooser->setInitialBrowsePathBackup(FileUtils::homePath());
-        // keystoreLocationChooser->setPromptDialogFilter(Tr::tr("Keystore files (*.keystore *.jks)"));
-        // keystoreLocationChooser->setPromptDialogTitle(Tr::tr("Select Keystore File"));
-        // connect(keystoreLocationChooser, &PathChooser::textChanged, this, [this, keystoreLocationChooser] {
-        //     const FilePath file = keystoreLocationChooser->unexpandedFilePath();
-        //     m_step->setKeystorePath(file);
-        //     m_signPackageCheckBox->setChecked(!file.isEmpty());
-        //     if (!file.isEmpty())
-        //         setCertificates();
-        // });
-
-        // auto keystoreCreateButton = new QPushButton(Tr::tr("Create..."));
-        // connect(keystoreCreateButton, &QAbstractButton::clicked, this, [this, keystoreLocationChooser] {
-        //     const auto data = executeKeystoreCertificateDialog();
-        //     if (!data)
-        //         return;
-        //     keystoreLocationChooser->setFilePath(data->keystoreFilePath);
-        //     m_step->setKeystorePath(data->keystoreFilePath);
-        //     m_step->setKeystorePassword(data->keystorePassword);
-        //     m_step->setCertificateAlias(data->certificateAlias);
-        //     m_step->setCertificatePassword(data->certificatePassword);
-        //     setCertificates();
-        // });
-
-        // m_signPackageCheckBox = new QCheckBox(Tr::tr("Sign package"));
-        // m_signPackageCheckBox->setChecked(m_step->signPackage());
-
-        // m_signingDebugWarningLabel = new InfoLabel(Tr::tr("Signing a debug package"),
-        //                                            InfoLabel::Warning);
-        // m_signingDebugWarningLabel->hide();
-        // m_signingDebugWarningLabel->setSizePolicy(QSizePolicy::MinimumExpanding,
-        //                                           QSizePolicy::Preferred);
-
-        // m_certificatesAliasComboBox = new QComboBox;
-        // m_certificatesAliasComboBox->setEnabled(false);
-        // m_certificatesAliasComboBox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-
-        using namespace Layouting;
+        /* In-IDE keystore signing is not implemented; release signing is done in DevEco Studio. */
         PushButton openDevEcoButton {
             text(Tr::tr("Signing the HAP in DevEco Studio")),
             Layouting::toolTip(Tr::tr("Processes Hvigor project information and persistently stores it in "
@@ -175,25 +106,8 @@ public:
             title(Tr::tr("Application Signature")),
             Form {
                 openDevEcoButton, br,
-            //     Tr::tr("Keystore:"), keystoreLocationChooser, keystoreCreateButton, br,
-            //     m_signPackageCheckBox, br,
-            //     Tr::tr("Certificate alias:"), m_certificatesAliasComboBox,
-            //     m_signingDebugWarningLabel, st, br,
             }
         };
-
-        // connect(m_signPackageCheckBox, &QAbstractButton::toggled,
-        //         this, &HarmonyBuildHapWidget::signPackageCheckBoxToggled);
-
-        // auto updateAlias = [this](int idx) {
-        //     QString alias = m_certificatesAliasComboBox->itemText(idx);
-        //     if (!alias.isEmpty())
-        //         m_step->setCertificateAlias(alias);
-        // };
-
-        // connect(m_certificatesAliasComboBox, &QComboBox::activated, this, updateAlias);
-        // connect(m_certificatesAliasComboBox, &QComboBox::currentIndexChanged, this, updateAlias);
-
 
         /* ** Application group */
 
@@ -230,7 +144,7 @@ public:
                 [this](int idx) {
                     m_step->setBuildTargetSdk(m_targetSDKComboBox->itemText(idx));
                     OhProjecteCreator::updateBuildProfileSdkVersions(
-                        m_step->buildDirectory().toUserOutput() + "/ohpro",
+                        m_step->ohProjectPath().toUserOutput(),
                         m_targetSDKComboBox->currentData().toInt(),
                         m_buildToolsSdkComboBox->currentData().toInt());
                 });
@@ -238,7 +152,7 @@ public:
                 [this](int idx) {
                     m_step->setBuildToolsVersion(m_buildToolsSdkComboBox->itemText(idx));
                     OhProjecteCreator::updateBuildProfileSdkVersions(
-                        m_step->buildDirectory().toUserOutput() + "/ohpro",
+                        m_step->ohProjectPath().toUserOutput(),
                         m_targetSDKComboBox->currentData().toInt(),
                         m_buildToolsSdkComboBox->currentData().toInt());
                 });
@@ -266,7 +180,7 @@ public:
             Tr::tr("Write the entry library name directly into the existing EntryAbility.ets "
                    "without re-creating all templates."));
         connect(applyEntryLibButton, &QAbstractButton::clicked, this, [this] {
-            const QString ohproPath = m_step->buildDirectory().toUserOutput() + "/ohpro";
+            const QString ohproPath = m_step->ohProjectPath().toUserOutput();
             OhProjecteCreator::patchEntryAbilityLib(ohproPath, m_step->resolvedEntryLib());
         });
 
@@ -308,21 +222,21 @@ public:
 
     void openDevEco()
     {
-        auto projectPath = m_step->buildDirectory() / "ohpro";
-        openDevEcoProject(projectPath.toUserOutput());
+        auto projectPath = m_step->ohProjectPath().toUserOutput();
+        openDevEcoProject(projectPath);
     }
 
     void reloadModuleDeviceTypesUiFromStep()
     {
         if (!m_followKitModuleDeviceTypes || m_moduleDeviceTypeCheckBoxes.isEmpty())
             return;
-        const bool followKit = m_step->moduleDeviceTypesLine().trimmed().isEmpty();
+        const bool followKit = m_step->moduleDeviceTypes().isEmpty();
         {
             const QSignalBlocker b(m_followKitModuleDeviceTypes);
             m_followKitModuleDeviceTypes->setChecked(followKit);
         }
         m_moduleDeviceTypesOverrideWidget->setEnabled(!followKit);
-        const QStringList tokens = parseOhModuleDeviceTypesLine(m_step->moduleDeviceTypesLine());
+        const QStringList tokens = m_step->moduleDeviceTypes();
         for (const QString &id : ohModuleDeviceTypePresetIds()) {
             if (QCheckBox *cb = m_moduleDeviceTypeCheckBoxes.value(id)) {
                 const QSignalBlocker b(cb);
@@ -339,9 +253,11 @@ public:
                 if (cb->isChecked())
                     out.append(id);
         }
-        const QString line = joinOhModuleDeviceTypesLine(out);
-        if (m_step->moduleDeviceTypesLine() != line)
-            m_step->setModuleDeviceTypesLine(line);
+        if (m_step->moduleDeviceTypes() != out) {
+            m_step->setModuleDeviceTypes(out);
+            const QString ohproPath = m_step->ohProjectPath().toUserOutput();
+            OhProjecteCreator::updateModuleDeviceTypes(ohproPath, m_step->moduleDeviceTypes());
+        }
     }
 
     void createTemplatesFromUi() const;
@@ -366,7 +282,7 @@ void HarmonyBuildHapWidget::createTemplatesFromUi() const
         return;
     auto *ohPro = OhProjecteCreator::instance();
     OhProjecteCreator::ProjecteInfo proInfo;
-    proInfo.projectPath = m_step->buildDirectory().toUserOutput() + "/ohpro";
+    proInfo.projectPath = m_step->ohProjectPath().toUserOutput();
     proInfo.targetSdkVersion = m_targetSDKComboBox->currentData().toInt();
     if (proInfo.targetSdkVersion < 0)
         proInfo.targetSdkVersion = HarmonyConfig::devecoStudioVersion().first;
@@ -392,8 +308,8 @@ void HarmonyBuildHapWidget::createTemplatesFromUi() const
 void HarmonyBuildHapWidget::onFollowKitToggled(bool followKit)
 {
     if (followKit) {
-        m_step->setModuleDeviceTypesLine(QString());
-        for (QCheckBox *cb : m_moduleDeviceTypeCheckBoxes) {
+        m_step->setModuleDeviceTypes(QStringList{});
+        for (QCheckBox *cb : std::as_const(m_moduleDeviceTypeCheckBoxes)) {
             if (cb) {
                 const QSignalBlocker b(cb);
                 cb->setChecked(false);
@@ -455,7 +371,7 @@ void HarmonyBuildHapStep::fromMap(const Utils::Store &map)
     m_buildTargetSdk = m.value(Key(Constants::HarmonyBuildHapTargetSdkKey)).toString();
     m_buildToolsVersion = m.value(Key(Constants::HarmonyBuildHapBuildToolsVersionKey)).toString();
     m_entryLibOverride = m.value(Key(Constants::HarmonyBuildHapEntryLibOverrideKey)).toString();
-    m_ohModuleDeviceTypesLine = m.value(Constants::HarmonyBuildOhModuleDeviceTypesLine).toString();
+    m_ohModuleDeviceTypes = m.value(Constants::HarmonyBuildOhModuleDeviceTypesLine).toStringList();
     if (m_buildTargetSdk.isEmpty()) {
         m_buildTargetSdk = HarmonyConfig::apiLevelNameFor(HarmonyConfig::devecoStudioVersion().first);
     }
@@ -469,7 +385,12 @@ void HarmonyBuildHapStep::toMap(Utils::Store &map) const
     map.insert(Key(Constants::HarmonyBuildHapTargetSdkKey), m_buildTargetSdk);
     map.insert(Key(Constants::HarmonyBuildHapBuildToolsVersionKey), m_buildToolsVersion);
     map.insert(Key(Constants::HarmonyBuildHapEntryLibOverrideKey), m_entryLibOverride);
-    map.insert(Constants::HarmonyBuildOhModuleDeviceTypesLine, m_ohModuleDeviceTypesLine);
+    map.insert(Constants::HarmonyBuildOhModuleDeviceTypesLine, m_ohModuleDeviceTypes);
+}
+
+FilePath HarmonyBuildHapStep::ohProjectPath() const
+{
+    return (buildDirectory().cleanPath() / "ohpro").cleanPath();
 }
 
 bool HarmonyBuildHapStep::prepareOhProDirectory(FilePath *outCwd, QString *errorMessage)
@@ -477,7 +398,7 @@ bool HarmonyBuildHapStep::prepareOhProDirectory(FilePath *outCwd, QString *error
     if (!outCwd || !errorMessage)
         return false;
     *outCwd = {};
-    const FilePath ohPro = (buildDirectory().cleanPath() / "ohpro").cleanPath();
+    const FilePath ohPro = ohProjectPath();
     if (const Result<> mk = ohPro.ensureWritableDir(); !mk) {
         *errorMessage = Tr::tr("Could not create Harmony OHOS wrapper directory \"%1\". %2")
                             .arg(ohPro.toUserOutput(), mk.error());
@@ -766,21 +687,20 @@ QString HarmonyBuildHapStep::resolvedEntryLib() const
     return isDefaultKey ? QStringLiteral("libentry.so") : QString("lib%1.so").arg(buildKey);
 }
 
-QString HarmonyBuildHapStep::moduleDeviceTypesLine() const
+QStringList HarmonyBuildHapStep::moduleDeviceTypes() const
 {
-    return m_ohModuleDeviceTypesLine;
+    return m_ohModuleDeviceTypes;
 }
 
-void HarmonyBuildHapStep::setModuleDeviceTypesLine(const QString &line)
+void HarmonyBuildHapStep::setModuleDeviceTypes(const QStringList &deviceTypes)
 {
-    m_ohModuleDeviceTypesLine = line;
+    m_ohModuleDeviceTypes = deviceTypes;
 }
 
 QStringList HarmonyBuildHapStep::effectiveModuleDeviceTypes() const
 {
-    const QStringList fromLine = parseOhModuleDeviceTypesLine(m_ohModuleDeviceTypesLine);
-    if (!fromLine.isEmpty())
-        return fromLine;
+    if (!m_ohModuleDeviceTypes.isEmpty())
+        return m_ohModuleDeviceTypes;
     const auto *bc = buildConfiguration();
     const ProjectExplorer::Kit *k = bc ? bc->kit() : nullptr;
     if (k) {
@@ -842,7 +762,6 @@ bool HarmonyBuildHapStep::init()
             params->setEnvironment(evn);
             qCDebug(harmonyBuildLog) << "Step in directory:"
                                         << params->workingDirectory().toUserOutput();
-            // params->setCommandLine({node, {hvigorwJs.toUserOutput(), "--help"}});
             params->setCommandLine({node, {hvigorwJs.toUserOutput(),
                                            "--mode",
                                            "module",
@@ -856,7 +775,6 @@ bool HarmonyBuildHapStep::init()
                                           }});
             const auto ohProPath = params->workingDirectory().toUserOutput();
             if (!QFile::exists(ohProPath + "/build-profile.json5")) {
-                // createOhPro(buildSystem(), ohProPath);
                 emit createTemplates();
             } else {
                 qCDebug(harmonyBuildLog) << Tr::tr("OhPro already exists in %1").arg(ohProPath);

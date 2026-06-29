@@ -1,5 +1,6 @@
 #include "usbmonitor.h"
 
+#include <QCoreApplication>
 #include <QLoggingCategory>
 #include <QTimer>
 
@@ -304,6 +305,10 @@ UsbMonitor::UsbMonitor(QObject *parent)
     m_p->debounceTimer = std::make_unique<QTimer>();
     m_p->debounceTimer->setSingleShot(true);
     connect(m_p->debounceTimer.get(), &QTimer::timeout, this, &UsbMonitor::usbDeviceChanged);
+
+    if (auto *app = QCoreApplication::instance()) {
+        connect(app, &QCoreApplication::aboutToQuit, this, &UsbMonitor::stopMonitor);
+    }
 }
 
 UsbMonitor::~UsbMonitor()

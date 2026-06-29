@@ -501,6 +501,17 @@ bool OhProjecteCreator::patchEntryAbilityLib(const QString &ohproPath, const QSt
     return sf.commit();
 }
 
+bool OhProjecteCreator::updateModuleDeviceTypes(const QString &ohproPath, const QStringList &deviceTypes)
+{
+    const QString filePath = ohproPath + "/entry/src/main/module.json5";
+    if (!QFile::exists(filePath))
+        return false;
+    QJsonArray deviceTypeArray =QJsonArray::fromStringList(deviceTypes);
+    QMap<QString, QJsonValue> changes;
+    changes.insert("module.deviceTypes", deviceTypeArray);
+    return modifyJsonFile(filePath, changes);
+}
+
 bool OhProjecteCreator::updateBuildProfileSdkVersions(const QString &ohproPath,
                                                       int targetSdkVersion,
                                                       int compatibleSdkVersion)
